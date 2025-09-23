@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Dashboard from "./pages/Dashboard";
 import TowDriver from "./pages/TowDriver";
 import Owner from "./pages/Owner";
@@ -32,7 +33,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
           <Route path="/tow-driver" element={<TowDriver />} />
           <Route path="/owner" element={<Owner />} />
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
