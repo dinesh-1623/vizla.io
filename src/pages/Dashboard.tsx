@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+'use client';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { mockCars } from '@/data/mockCars';
-import { computeKPITotals, computeBreakdown, formatTimeDisplay, formatCurrencyDisplay } from '@/lib/metrics';
-import { Truck, User, RefreshCw, Filter } from 'lucide-react';
+import { loadLocated, loadLocatedWithFilters, getUniqueValues, LocatedRow } from '@/lib/data/loaders';
+import { Truck, User, RefreshCw, Filter, AlertCircle, Navigation } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { StatTile } from '@/components/ui/StatTile';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -14,14 +15,16 @@ import { DataTable } from '@/components/ui/DataTable';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState<LocatedRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
   
-  // Mock filter state for demonstration
+  // Filter state
   const [filters, setFilters] = useState({
-    weekRange: 'This Week',
+    market: '',
+    status: '',
     client: '',
-    zone: 'Zone 1',
-    timeLocated: '',
+    zone: '',
     driver: ''
   });
 
@@ -30,11 +33,102 @@ const Dashboard: React.FC = () => {
   const [selectedZone, setSelectedZone] = useState<string>('');
   const [selectedDriver, setSelectedDriver] = useState<string>('');
   
-  // Memoized metrics computation - only recomputes when mockCars changes
-  const kpis = useMemo(() => computeKPITotals(mockCars), []);
-  const clientBreakdown = useMemo(() => computeBreakdown(mockCars, 'client'), []);
-  const zoneBreakdown = useMemo(() => computeBreakdown(mockCars, 'zone'), []);
-  const driverBreakdown = useMemo(() => computeBreakdown(mockCars, 'assignedDriver'), []);
+  // Load data on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const loadedData = await loadLocated();
+      setData(loadedData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+      console.error('Error loading data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Filter data based on current filters
+  const filteredData = useMemo(() => {
+    return data.filter(row => {
+      if (filters.market && row.market !== filters.market) return false;
+      if (filters.status && row.status !== filters.status) return false;
+      if (filters.client && row.client !== filters.client) return false;
+      if (filters.zone && row.zone !== filters.zone) return false;
+      if (filters.driver && row.driver !== filters.driver) return false;
+      return true;
+    });
+  }, [data, filters]);
+
+  // Compute KPIs from filtered data
+  const kpis = useMemo(() => {
+    const total = filteredData.length;
+    const located = filteredData.filter(r => r.status === 'located').length;
+    const blocked = filteredData.filter(r => r.status === 'blocked').length;
+    
+    // Calculate average time since located (mock calculation for now)
+    const avgMins = Math.round(Math.random() * 120 + 60); // Random between 60-180 minutes
+    
+    // Calculate 5+ days (mock calculation)
+    const fivePlus = Math.round(total * 0.15); // Assume 15% are 5+ days
+    
+    // Calculate missed revenue (mock calculation)
+    const missedRevenue = blocked * 150; // $150 per blocked vehicle
+    
+    return { total, located, blocked, avgMins, fivePlus, missedRevenue };
+  }, [filteredData]);
+
+  // Compute breakdowns from filtered data
+  const clientBreakdown = useMemo(() => {
+    const counts = new Map<string, number>();
+    filteredData.forEach(row => {
+      counts.set(row.client, (counts.get(row.client) || 0) + 1);
+    });
+    
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({
+        name,
+        count,
+        pct: Math.round((count / filteredData.length) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [filteredData]);
+
+  const zoneBreakdown = useMemo(() => {
+    const counts = new Map<string, number>();
+    filteredData.forEach(row => {
+      counts.set(row.zone, (counts.get(row.zone) || 0) + 1);
+    });
+    
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({
+        name,
+        count,
+        pct: Math.round((count / filteredData.length) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [filteredData]);
+
+  const driverBreakdown = useMemo(() => {
+    const counts = new Map<string, number>();
+    filteredData.forEach(row => {
+      if (row.driver) {
+        counts.set(row.driver, (counts.get(row.driver) || 0) + 1);
+      }
+    });
+    
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({
+        name,
+        count,
+        pct: Math.round((count / filteredData.length) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [filteredData]);
 
 
   const handleRowClick = (type: 'client' | 'zone' | 'driver', value: string) => {
@@ -87,12 +181,36 @@ const Dashboard: React.FC = () => {
 
   const handleClearAllFilters = () => {
     setFilters({
-      weekRange: '',
+      market: '',
+      status: '',
       client: '',
       zone: '',
-      timeLocated: '',
       driver: ''
     });
+  };
+
+  // Format time display helper
+  const formatTimeDisplay = (minutes: number): string => {
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  };
+
+  // Format currency display helper
+  const formatCurrencyDisplay = (amount: number): string => {
+    return `$${amount.toLocaleString()}`;
+  };
+
+  // Build Google Maps URL for navigation
+  const buildNavigationUrl = (row: LocatedRow): string => {
+    if (row.address && row.address !== 'Unknown Location') {
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(row.address)}`;
+    }
+    if (row.lat && row.lon) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${row.lat},${row.lon}`;
+    }
+    return '#';
   };
 
   return (
@@ -104,13 +222,14 @@ const Dashboard: React.FC = () => {
         actionSlot={
           <>
             <button
-              onClick={() => setIsLoading(!isLoading)}
+              onClick={loadData}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-              aria-label="Toggle Loading State"
+              aria-label="Refresh Data"
+              disabled={isLoading}
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               <span className="text-sm font-medium text-vizla-text-secondary">
-                {isLoading ? 'Loading...' : 'Demo Loading'}
+                {isLoading ? 'Loading...' : 'Refresh Data'}
               </span>
             </button>
             <button
@@ -140,6 +259,22 @@ const Dashboard: React.FC = () => {
         onClearAll={handleClearAllFilters}
       />
 
+      {/* Error State */}
+      {error && (
+        <div className="mb-6 p-4 rounded-lg bg-vizla-danger/10 border border-vizla-danger/20">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-vizla-danger" />
+            <span className="text-sm font-medium text-vizla-danger">Error loading data: {error}</span>
+            <button
+              onClick={loadData}
+              className="ml-auto px-3 py-1 rounded-md bg-vizla-danger text-white text-sm font-medium hover:bg-vizla-danger/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="space-y-6">
         {/* KPI Cards */}
@@ -157,7 +292,7 @@ const Dashboard: React.FC = () => {
               <StatTile
                 label="Total Located"
                 value={kpis.total}
-                delta={{ dir: 'up', text: '+2' }}
+                delta={{ dir: 'up', text: `+${kpis.located}` }}
               />
             )}
           </GlassCard>
@@ -209,8 +344,8 @@ const Dashboard: React.FC = () => {
               </div>
             ) : (
               <StatTile
-                label="Missed Revenue"
-                value={formatCurrencyDisplay(kpis.missedRevenue)}
+                label="Pending Order Confirmation"
+                value={kpis.blocked}
                 delta={{ dir: 'down', text: '-$200' }}
               />
             )}
@@ -239,13 +374,32 @@ const Dashboard: React.FC = () => {
                 columns={[
                   { key: 'client', header: 'Client' },
                   { key: 'located', header: 'Located' },
-                  { key: 'percentage', header: '%' }
+                  { key: 'percentage', header: '%' },
+                  { key: 'navigate', header: 'Navigate' }
                 ]}
-                rows={clientBreakdown.map((item) => ({
-                  client: item.name,
-                  located: item.count,
-                  percentage: createMicroBar(item.pct)
-                }))}
+                rows={clientBreakdown.map((item) => {
+                  // Find a sample row for this client to get location info
+                  const sampleRow = filteredData.find(row => row.client === item.name);
+                  const navUrl = sampleRow ? buildNavigationUrl(sampleRow) : '#';
+                  
+                  return {
+                    client: item.name,
+                    located: item.count,
+                    percentage: createMicroBar(item.pct),
+                    navigate: (
+                      <a
+                        href={navUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-vizla-brand-primary/10 text-vizla-brand-primary text-xs font-medium hover:bg-vizla-brand-primary/20 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Navigation className="w-3 h-3" />
+                        Navigate
+                      </a>
+                    )
+                  };
+                })}
                 onRowClick={(row, rowIndex) => {
                   const item = clientBreakdown[rowIndex];
                   if (item) handleClientRowClick(item.name);
@@ -289,13 +443,32 @@ const Dashboard: React.FC = () => {
                 columns={[
                   { key: 'zone', header: 'Zone' },
                   { key: 'located', header: 'Located' },
-                  { key: 'percentage', header: '%' }
+                  { key: 'percentage', header: '%' },
+                  { key: 'navigate', header: 'Navigate' }
                 ]}
-                rows={zoneBreakdown.map((item) => ({
-                  zone: item.name,
-                  located: item.count,
-                  percentage: createMicroBar(item.pct)
-                }))}
+                rows={zoneBreakdown.map((item) => {
+                  // Find a sample row for this zone to get location info
+                  const sampleRow = filteredData.find(row => row.zone === item.name);
+                  const navUrl = sampleRow ? buildNavigationUrl(sampleRow) : '#';
+                  
+                  return {
+                    zone: item.name,
+                    located: item.count,
+                    percentage: createMicroBar(item.pct),
+                    navigate: (
+                      <a
+                        href={navUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-vizla-brand-primary/10 text-vizla-brand-primary text-xs font-medium hover:bg-vizla-brand-primary/20 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Navigation className="w-3 h-3" />
+                        Navigate
+                      </a>
+                    )
+                  };
+                })}
                 onRowClick={(row, rowIndex) => {
                   const item = zoneBreakdown[rowIndex];
                   if (item) handleZoneRowClick(item.name);
@@ -331,13 +504,32 @@ const Dashboard: React.FC = () => {
                 columns={[
                   { key: 'driver', header: 'Driver' },
                   { key: 'located', header: 'Located' },
-                  { key: 'percentage', header: '%' }
+                  { key: 'percentage', header: '%' },
+                  { key: 'navigate', header: 'Navigate' }
                 ]}
-                rows={driverBreakdown.map((item) => ({
-                  driver: item.name,
-                  located: item.count,
-                  percentage: createMicroBar(item.pct)
-                }))}
+                rows={driverBreakdown.map((item) => {
+                  // Find a sample row for this driver to get location info
+                  const sampleRow = filteredData.find(row => row.driver === item.name);
+                  const navUrl = sampleRow ? buildNavigationUrl(sampleRow) : '#';
+                  
+                  return {
+                    driver: item.name,
+                    located: item.count,
+                    percentage: createMicroBar(item.pct),
+                    navigate: (
+                      <a
+                        href={navUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-vizla-brand-primary/10 text-vizla-brand-primary text-xs font-medium hover:bg-vizla-brand-primary/20 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Navigation className="w-3 h-3" />
+                        Navigate
+                      </a>
+                    )
+                  };
+                })}
                 onRowClick={(row, rowIndex) => {
                   const item = driverBreakdown[rowIndex];
                   if (item) handleDriverRowClick(item.name);
