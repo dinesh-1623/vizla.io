@@ -118,6 +118,7 @@ function parseCoordinates(gpsField: string): { lat: number; lon: number } | null
  */
 function determineMarket(city: string, client: string): string {
   const cityLower = city.toLowerCase();
+  const clientLower = client.toLowerCase();
   
   if (cityLower.includes('dallas') || cityLower.includes('fort worth') || cityLower.includes('plano')) {
     return 'Dallas';
@@ -133,10 +134,11 @@ function determineMarket(city: string, client: string): string {
   }
   
   // Default based on client if available
-  if (client.toLowerCase().includes('dallas')) return 'Dallas';
-  if (client.toLowerCase().includes('maryland')) return 'Maryland';
+  if (clientLower.includes('dallas')) return 'Dallas';
+  if (clientLower.includes('maryland')) return 'Maryland';
   
-  return 'Unknown';
+  // Default to Maryland for most clients in the CSV
+  return 'Maryland';
 }
 
 /**
@@ -225,15 +227,19 @@ export async function loadLocated(): Promise<LocatedRow[]> {
     console.log('Sample rows:', rows.slice(0, 3));
     
     // Filter out empty rows and map to LocatedRow format
-    const locatedRows = rows
-      .filter(row => {
-        // Skip rows without essential data
-        const hasClient = row.CLIENT && row.CLIENT.trim() !== '';
-        const hasType = row.TYPE && row.TYPE.trim() !== '';
-        const hasVIN = row.VIN && row.VIN.trim() !== '';
-        
-        return hasClient && hasType && hasVIN;
-      })
+    const validRows = rows.filter(row => {
+      // Skip rows without essential data
+      const hasClient = row.CLIENT && row.CLIENT.trim() !== '';
+      const hasType = row.TYPE && row.TYPE.trim() !== '';
+      const hasVIN = row.VIN && row.VIN.trim() !== '';
+      
+      return hasClient && hasType && hasVIN;
+    });
+    
+    console.log('Valid rows after filtering:', validRows.length);
+    console.log('Sample valid rows:', validRows.slice(0, 3));
+    
+    const locatedRows = validRows
       .map(mapToLocatedRow)
       .filter(row => row.id && row.id.trim() !== '' && row.client && row.client !== 'Unknown');
     
