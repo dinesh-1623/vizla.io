@@ -19,6 +19,11 @@ const Dashboard: React.FC = () => {
   const [data, setData] = useState<LocatedRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   
+  console.log('🎯 Dashboard component mounted');
+  console.log('📊 Current data length:', data.length);
+  console.log('⏳ Loading state:', isLoading);
+  console.log('❌ Error state:', error);
+  
   // Filter state
   const [filters, setFilters] = useState({
     market: '',
@@ -42,13 +47,14 @@ const Dashboard: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('Loading CSV data...');
+      console.log('🔄 Loading CSV data...');
       const loadedData = await loadLocated();
-      console.log('Loaded data:', loadedData.length, 'rows');
+      console.log('✅ Loaded data:', loadedData.length, 'rows');
+      console.log('📊 Sample data:', loadedData.slice(0, 2));
       setData(loadedData);
     } catch (err) {
+      console.error('❌ Error loading data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
-      console.error('Error loading data:', err);
     } finally {
       setIsLoading(false);
     }
@@ -64,7 +70,8 @@ const Dashboard: React.FC = () => {
       if (filters.driver && row.driver !== filters.driver) return false;
       return true;
     });
-    console.log('Filtered data:', filtered.length, 'rows');
+    console.log('🔍 Filtered data:', filtered.length, 'rows');
+    console.log('📋 Sample filtered data:', filtered.slice(0, 2));
     return filtered;
   }, [data, filters]);
 
