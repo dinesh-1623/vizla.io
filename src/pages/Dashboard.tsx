@@ -42,7 +42,9 @@ const Dashboard: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
+      console.log('Loading CSV data...');
       const loadedData = await loadLocated();
+      console.log('Loaded data:', loadedData.length, 'rows');
       setData(loadedData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -54,7 +56,7 @@ const Dashboard: React.FC = () => {
 
   // Filter data based on current filters
   const filteredData = useMemo(() => {
-    return data.filter(row => {
+    const filtered = data.filter(row => {
       if (filters.market && row.market !== filters.market) return false;
       if (filters.status && row.status !== filters.status) return false;
       if (filters.client && row.client !== filters.client) return false;
@@ -62,6 +64,8 @@ const Dashboard: React.FC = () => {
       if (filters.driver && row.driver !== filters.driver) return false;
       return true;
     });
+    console.log('Filtered data:', filtered.length, 'rows');
+    return filtered;
   }, [data, filters]);
 
   // Compute KPIs from filtered data

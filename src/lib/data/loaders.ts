@@ -84,17 +84,28 @@ function mapToLocatedRow(row: Record<string, string>): LocatedRow {
  * Handles formats like: "38.56498, -77.00248    8/18" or "39.325345, -76.45749"
  */
 function parseCoordinates(gpsField: string): { lat: number; lon: number } | null {
-  if (!gpsField) return null;
+  if (!gpsField || gpsField.trim() === '') return null;
   
-  // Try to extract lat,lon from the GPS field
-  const coordMatch = gpsField.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
-  if (coordMatch) {
-    const lat = parseFloat(coordMatch[1]);
-    const lon = parseFloat(coordMatch[2]);
-    
-    // Basic validation - check if coordinates are reasonable
-    if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
-      return { lat, lon };
+  // Try multiple patterns to extract coordinates
+  const patterns = [
+    // Pattern 1: "38.56498, -77.00248    8/18"
+    /(-?\d+\.?\d*),\s*(-?\d+\.?\d*)\s*\d+\/\d+/,
+    // Pattern 2: "39.325345, -76.45749"
+    /(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/,
+    // Pattern 3: "38.56498,-77.00248" (no spaces)
+    /(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = gpsField.match(pattern);
+    if (match) {
+      const lat = parseFloat(match[1]);
+      const lon = parseFloat(match[2]);
+      
+      // Basic validation - check if coordinates are reasonable
+      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+        return { lat, lon };
+      }
     }
   }
   
@@ -209,10 +220,24 @@ export async function loadLocated(): Promise<LocatedRow[]> {
     const text = await res.text();
     const rows = parseCsv(text);
     
+    console.log('Raw CSV rows:', rows.length);
+    console.log('Sample rows:', rows.slice(0, 3));
+    
     // Filter out empty rows and map to LocatedRow format
     const locatedRows = rows
+      .filter(row => {
+        // Skip rows without essential data
+        const hasClient = row.CLIENT && row.CLIENT.trim() !== '';
+        const hasType = row.TYPE && row.TYPE.trim() !== '';
+        const hasVIN = row.VIN && row.VIN.trim() !== '';
+        
+        return hasClient && hasType && hasVIN;
+      })
       .map(mapToLocatedRow)
-      .filter(row => row.id && row.id.trim() !== '');
+      .filter(row => row.id && row.id.trim() !== '' && row.client && row.client !== 'Unknown');
+    
+    console.log('Processed located rows:', locatedRows.length);
+    console.log('Sample processed rows:', locatedRows.slice(0, 3));
     
     return locatedRows;
   } catch (error) {

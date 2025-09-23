@@ -24,8 +24,9 @@ export function parseCsv(text: string): Record<string, string>[] {
 
     const values = parseCsvLine(line);
     
-    // Skip rows with only empty values or special characters (like the separator rows in the CSV)
-    if (values.every(v => v === '' || (v.length === 1 && v === ''))) {
+    // Skip rows with only empty values or problematic characters
+    const hasValidData = values.some(v => v && v.trim() !== '' && v.length > 1 && !v.includes('') && !v.includes(''));
+    if (!hasValidData) {
       continue;
     }
 
