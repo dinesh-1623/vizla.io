@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Users, Truck, BarChart3, AlertCircle, Navigation } from 'lucide-react';
-import { AppShell } from '@/components/shell/AppShell';
+import AppShell from '@/components/shell/AppShell';
 import { StatTile } from '@/components/ui/StatTile';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -10,7 +10,7 @@ import { DataTable } from '@/components/ui/DataTable';
 import { BreakdownPanel } from '@/components/dashboard/BreakdownPanel';
 import { FilterChips } from '@/components/dashboard/FilterChips';
 import { SkeletonDashboard } from '@/components/ui/SkeletonLoader';
-import { ToastContainer } from '@/components/ui/Toast';
+import { NotificationToastContainer } from '@/components/ui/NotificationToast';
 import { loadLocated } from '@/lib/data/loaders';
 import { loadFilters, saveFilters, applyFilters, hasActiveFilters, clearFilters, updateFilter, removeFilter } from '@/lib/filters';
 import { buildMultiStopURL, getNavigationSettings } from '@/lib/navigation';
@@ -242,7 +242,7 @@ const Dashboard: React.FC = () => {
   if (isLoading) {
     return (
       <AppShell title="Dashboard">
-        <ToastContainer />
+        <NotificationToastContainer />
         <SkeletonDashboard />
       </AppShell>
     );
@@ -250,7 +250,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <AppShell title="Dashboard">
-      <ToastContainer />
+      <NotificationToastContainer />
       
       {/* Header */}
       <SectionHeading

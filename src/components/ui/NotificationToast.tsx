@@ -7,7 +7,7 @@ interface ToastProps {
   onRemove: (id: string) => void;
 }
 
-export const Toast: React.FC<ToastProps> = ({ toast, onRemove }) => {
+export const NotificationToast: React.FC<ToastProps> = ({ toast, onRemove }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export const Toast: React.FC<ToastProps> = ({ toast, onRemove }) => {
   );
 };
 
-export const ToastContainer: React.FC = () => {
+export const NotificationToastContainer: React.FC = () => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export const ToastContainer: React.FC = () => {
   return (
     <>
       {toasts.map(toast => (
-        <Toast key={toast.id} toast={toast} onRemove={removeToast} />
+        <NotificationToast key={toast.id} toast={toast} onRemove={removeToast} />
       ))}
     </>
   );
