@@ -25,7 +25,7 @@ export function parseCsv(text: string): Record<string, string>[] {
     const values = parseCsvLine(line);
     
     // Skip rows with only empty values or problematic characters
-    const hasValidData = values.some(v => v && v.trim() !== '' && v.length > 1 && !v.includes('') && !v.includes(''));
+    const hasValidData = values.some(v => v && v.trim() !== '' && v.length > 1);
     if (!hasValidData) {
       continue;
     }

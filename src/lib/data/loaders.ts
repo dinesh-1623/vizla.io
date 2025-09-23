@@ -33,12 +33,13 @@ export type LocatedRow = {
  * Handles common variations in column names
  */
 function mapToLocatedRow(row: Record<string, string>): LocatedRow {
-  // Extract coordinates from GPS field (format: "lat, lon" or "lat, lon date")
-  const gpsField = row.GPS || row.gps || '';
-  const coords = parseCoordinates(gpsField);
+  // Extract coordinates from NOTES field (format: "lat, lon date")
+  // The GPS field contains "GPS" or "BANK", coordinates are in NOTES
+  const notesField = row.NOTES || row.notes || '';
+  const coords = parseCoordinates(notesField);
   
-  // Extract date from GPS field if present
-  const dateMatch = gpsField.match(/(\d{1,2}\/\d{1,2})/);
+  // Extract date from notes field if present
+  const dateMatch = notesField.match(/(\d{1,2}\/\d{1,2})/);
   const locatedDate = dateMatch ? dateMatch[1] : undefined;
   
   // Build address from street, city, zip
