@@ -33,14 +33,9 @@ export type LocatedRow = {
  * Handles common variations in column names
  */
 function mapToLocatedRow(row: Record<string, string>): LocatedRow {
-  // Extract coordinates from NOTES field (format: "lat, lon date")
-  // The GPS field contains "GPS" or "BANK", coordinates are in NOTES
+  // Extract coordinates from NOTES field (format: "lat, lon")
   const notesField = row.NOTES || row.notes || '';
   const coords = parseCoordinates(notesField);
-  
-  // Extract date from notes field if present
-  const dateMatch = notesField.match(/(\d{1,2}\/\d{1,2})/);
-  const locatedDate = dateMatch ? dateMatch[1] : undefined;
   
   // Build address from street, city, zip
   const street = row.STREET || row.Street || row.address || '';
@@ -58,7 +53,7 @@ function mapToLocatedRow(row: Record<string, string>): LocatedRow {
   const status = determineStatus(row.DRIVER || row.driver || '', row.TYPE || row.type || '');
   
   return {
-    id: row.VIN || row.vin || row.TAG || row.tag || `row_${Math.random().toString(36).substr(2, 9)}`,
+    id: row.ID || row.VIN || row.vin || row.TAG || row.tag || `row_${Math.random().toString(36).substr(2, 9)}`,
     status,
     market,
     client: row.CLIENT || row.client || row.Client || 'Unknown',
@@ -67,7 +62,7 @@ function mapToLocatedRow(row: Record<string, string>): LocatedRow {
     lat: coords.lat || 0,
     lon: coords.lon || 0,
     driver: row.SPOTTER || row.Spotter || row.DRIVER || row.driver || undefined,
-    locatedAt: locatedDate,
+    locatedAt: undefined, // No date in clean CSV
     year: row.YEAR || row.year || undefined,
     make: row.MAKE || row.make || undefined,
     model: row.MODEL || row.model || undefined,
@@ -209,7 +204,7 @@ function determineStatus(driver: string, type: string): 'located' | 'blocked' | 
  */
 export async function loadLocated(): Promise<LocatedRow[]> {
   try {
-    const res = await fetch('/data/located-vehicles.csv', { 
+    const res = await fetch('/data/located-vehicles-clean.csv', { 
       cache: 'no-store',
       headers: {
         'Cache-Control': 'no-cache'
@@ -229,8 +224,8 @@ export async function loadLocated(): Promise<LocatedRow[]> {
     // Filter out empty rows and map to LocatedRow format
     const validRows = rows.filter(row => {
       // Skip rows without essential data
-      const hasClient = row.CLIENT && row.CLIENT.trim() !== '' && row.CLIENT.trim() !== '';
-      const hasType = row.TYPE && row.TYPE.trim() !== '' && row.TYPE.trim() !== '';
+      const hasClient = row.CLIENT && row.CLIENT.trim() !== '';
+      const hasType = row.TYPE && row.TYPE.trim() !== '';
       const hasVIN = row.VIN && row.VIN.trim() !== '';
       
       return hasClient && hasType && hasVIN;

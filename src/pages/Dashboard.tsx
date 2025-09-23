@@ -12,7 +12,6 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FilterChips } from '@/components/ui/FilterChips';
 import { DataTable } from '@/components/ui/DataTable';
-import TestDataLoader from '@/components/TestDataLoader';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -240,8 +239,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <AppShell title="Dashboard">
-      {/* Test Data Loader */}
-      <TestDataLoader />
       {/* Header */}
       <SectionHeading
         title="Dashboard"
