@@ -1,141 +1,129 @@
-import React, { memo } from 'react';
+import React, { useMemo } from 'react';
 import { Navigation } from 'lucide-react';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { buildSingleDestinationURL } from '@/lib/navigation';
-import { safeEncodeURIComponent } from '@/lib/validate';
-import type { BreakdownItem, LocatedRow } from '@/types/dashboard';
+import { cn, toTitleCase, formatPercent, buildGoogleMapsUrl, getMarketOrigin } from '@/lib/utils';
+import { BreakdownItem } from '@/types/dashboard';
+import { LocatedRow } from '@/lib/data/loaders';
 
 interface BreakdownPanelProps {
   title: string;
   items: BreakdownItem[];
-  data: LocatedRow[];
+  totalCount: number;
+  onItemClick: (item: BreakdownItem) => void;
   selectedItem?: string;
-  onItemClick?: (item: string) => void;
   className?: string;
 }
 
-export const BreakdownPanel = memo<BreakdownPanelProps>(({
+export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({
   title,
   items,
-  data,
-  selectedItem,
+  totalCount,
   onItemClick,
+  selectedItem,
   className
 }) => {
-  const getRowData = (itemName: string): LocatedRow[] => {
-    return data.filter(row => {
-      switch (title) {
-        case 'By Client':
-          return row.client === itemName;
-        case 'By Zone / Market':
-          return row.zone === itemName;
-        case 'By Driver':
-          return (row.driver || 'Unassigned') === itemName;
-        default:
-          return false;
-      }
-    });
-  };
-
-  const handleRowClick = (itemName: string) => {
-    if (onItemClick) {
-      onItemClick(itemName);
-    }
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent, itemName: string) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      handleRowClick(itemName);
-    }
-  };
-
-  const handleNavigate = (event: React.MouseEvent, itemName: string) => {
+  const handleNavigate = (item: BreakdownItem, event: React.MouseEvent) => {
     event.stopPropagation();
-    const rowData = getRowData(itemName);
     
-    if (rowData.length > 0) {
-      const url = buildSingleDestinationURL(rowData[0]);
-      if (url !== '#') {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      }
+    if (item.vehicles.length === 0) return;
+    
+    // Get market from first vehicle to determine origin
+    const market = item.vehicles[0]?.market || 'Maryland';
+    const origin = getMarketOrigin(market);
+    
+    const url = buildGoogleMapsUrl(origin, item.vehicles);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    
+    // Show toast if more than 8 vehicles
+    if (item.vehicles.length > 8) {
+      // Simple toast notification - you can enhance this later
+      console.log(`Showing first 8 stops (${item.vehicles.length} total)`);
     }
   };
+
+  if (items.length === 0) {
+    return (
+      <div className={cn(
+        "bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder rounded-2xl p-6 text-center",
+        className
+      )}>
+        <div className="flex flex-col items-center space-y-3">
+          <div className="w-12 h-12 rounded-full bg-vizla-glass flex items-center justify-center">
+            <Navigation className="w-6 h-6 text-vizla-text-muted" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-vizla-text-primary">
+              No {title} Data
+            </h3>
+            <p className="text-sm text-vizla-text-secondary mt-1">
+              No {title.toLowerCase()} breakdown data available at this time.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <GlassCard className={className}>
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-vizla-text-primary mb-1">
-          {title}
-        </h3>
-        <caption className="sr-only">
-          {title} breakdown showing {items.length} items with counts and percentages
-        </caption>
+    <div className={cn(
+      "bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder rounded-2xl overflow-hidden",
+      className
+    )}>
+      <div className="sticky top-0 z-10 bg-vizla-elev1/60 border-b border-vizla-borderSubtle px-4 py-3">
+        <h3 className="text-lg font-semibold text-vizla-text-primary">{title}</h3>
       </div>
-
-      {items.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-sm text-vizla-text-muted">
-            No data available
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-1">
-          {items.map((item, index) => {
-            const isSelected = selectedItem === item.name;
-            
-            return (
-              <div
-                key={item.name}
-                role="button"
-                tabIndex={0}
-                onClick={() => handleRowClick(item.name)}
-                onKeyDown={(e) => handleKeyDown(e, item.name)}
-                className={`
-                  flex items-center justify-between p-3 rounded-lg cursor-pointer
-                  transition-all duration-200 hover:bg-vizla-glassElev
-                  focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-elev-1)] focus-visible:ring-[var(--ring-focus)] focus-visible:outline-none
-                  ${isSelected ? 'bg-vizla-glassElev ring-1 ring-vizla-glassBorder' : ''}
-                `}
-                aria-label={`${item.name}: ${item.count} vehicles (${item.pct.toFixed(1)}%)`}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-vizla-text-primary truncate">
-                      {item.name}
-                    </span>
-                    <span className="text-sm text-vizla-text-secondary ml-2 flex-shrink-0">
+      
+      <div className="divide-y divide-vizla-borderSubtle">
+        {items.map((item, index) => {
+          const isSelected = selectedItem === item.name;
+          
+          return (
+            <div
+              key={item.name}
+              className={cn(
+                "h-11 px-4 flex items-center justify-between cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus focus-visible:outline-none",
+                isSelected 
+                  ? "bg-vizla-elev2" 
+                  : "hover:bg-vizla-glassElev"
+              )}
+              onClick={() => onItemClick(item)}
+              tabIndex={0}
+              role="button"
+              aria-label={`Filter by ${title}: ${item.name}`}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-vizla-text-primary truncate">
+                    {toTitleCase(item.name)}
+                  </span>
+                  <div className="flex items-center gap-2 ml-2">
+                    <span className="text-xs text-vizla-text-secondary">
                       {item.count}
                     </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 bg-vizla-glass rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-vizla-brand-primary transition-all duration-300"
-                        style={{ width: `${Math.min(item.pct, 100)}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-vizla-text-muted flex-shrink-0">
-                      {item.pct.toFixed(1)}%
+                    <span className="text-xs text-vizla-text-muted">
+                      ({formatPercent(item.pct)})
                     </span>
                   </div>
                 </div>
-
-                <button
-                  onClick={(e) => handleNavigate(e, item.name)}
-                  className="ml-3 p-1.5 rounded-lg hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-elev-1)] focus-visible:ring-[var(--ring-focus)] focus-visible:outline-none transition-colors"
-                  aria-label={`Navigate to ${item.name} location in Google Maps`}
-                >
-                  <Navigation className="w-4 h-4 text-vizla-text-muted hover:text-vizla-brand-primary" />
-                </button>
+                <div className="w-full h-1.5 bg-vizla-glass rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-vizla-brand-primary transition-all duration-300"
+                    style={{ width: `${Math.min(item.pct, 100)}%` }}
+                  />
+                </div>
               </div>
-            );
-          })}
-        </div>
-      )}
-    </GlassCard>
+              
+              <button
+                onClick={(e) => handleNavigate(item, e)}
+                className="ml-3 p-1 rounded-md hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                aria-label={`Navigate to ${item.name} locations`}
+                title="Navigate to locations"
+              >
+                <Navigation className="w-4 h-4 text-vizla-text-muted hover:text-vizla-text-secondary" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
-});
-
-BreakdownPanel.displayName = 'BreakdownPanel';
+};

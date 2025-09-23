@@ -5,76 +5,74 @@
  */
 
 import { parseCsv } from '../csv';
-import { isLatLon, sanitizeText, toTitleCase } from '../validate';
-import type { LocatedRow, ParseReport } from '@/types/dashboard';
 
-// Re-export types from types/dashboard.ts for backward compatibility
-export type { LocatedRow, ParseReport } from '@/types/dashboard';
+export type LocatedRow = {
+  id: string;
+  status: 'located' | 'blocked' | 'stashed';
+  market: string;        // Dallas, Maryland, etc.
+  client: string;
+  zone: string;          // Dallas-North/East/South/West
+  address: string;
+  lat: number;
+  lon: number;
+  driver?: string;       // spotter/assigned
+  locatedAt?: string;    // ISO or parseable date
+  year?: string;
+  make?: string;
+  model?: string;
+  color?: string;
+  tag?: string;
+  vin?: string;
+  city?: string;
+  zip?: string;
+  notes?: string;
+};
 
 /**
  * Flexible header mapping for CSV columns
  * Handles common variations in column names
  */
-function mapToLocatedRow(row: Record<string, string>): LocatedRow | null {
-  try {
-    // Extract coordinates from NOTES field (format: "lat, lon")
-    const notesField = sanitizeText(row.NOTES || row.notes || '');
-    const coords = parseCoordinates(notesField);
-    
-    // Validate coordinates - this is critical for data quality
-    if (!coords || !isLatLon(coords.lat, coords.lon)) {
-      return null; // Drop invalid coordinates
-    }
-    
-    // Build address from street, city, zip
-    const street = sanitizeText(row.STREET || row.Street || row.address || '');
-    const city = sanitizeText(row.CITY || row.City || row.city || '');
-    const zip = sanitizeText(row.ZIP || row.Zip || row.zip || '');
-    const address = [street, city, zip].filter(Boolean).join(', ');
-    
-    // Sanitize and validate required fields
-    const client = sanitizeText(row.CLIENT || row.client || row.Client || '');
-    const type = sanitizeText(row.TYPE || row.type || '');
-    const vin = sanitizeText(row.VIN || row.vin || '');
-    
-    if (!client || client === 'Unknown' || !type || !vin) {
-      return null; // Drop rows without essential data
-    }
-    
-    // Determine market based on location
-    const market = determineMarket(city, client);
-    
-    // Determine zone based on city/region
-    const zone = determineZone(city, market);
-    
-    // Map status based on driver field and other indicators
-    const status = determineStatus(row.DRIVER || row.driver || '', type);
-    
-    return {
-      id: row.ID || vin || row.TAG || row.tag || `row_${Math.random().toString(36).substr(2, 9)}`,
-      status,
-      market: toTitleCase(market),
-      client: toTitleCase(client),
-      zone: toTitleCase(zone),
-      address: address || `${coords.lat}, ${coords.lon}`,
-      lat: coords.lat,
-      lon: coords.lon,
-      driver: sanitizeText(row.SPOTTER || row.Spotter || row.DRIVER || row.driver || '') || undefined,
-      locatedAt: undefined, // No date in clean CSV
-      year: sanitizeText(row.YEAR || row.year || '') || undefined,
-      make: sanitizeText(row.MAKE || row.make || '') || undefined,
-      model: sanitizeText(row.MODEL || row.model || '') || undefined,
-      color: sanitizeText(row.COLOR || row.color || '') || undefined,
-      tag: sanitizeText(row.TAG || row.tag || '') || undefined,
-      vin,
-      city: sanitizeText(city) || undefined,
-      zip: sanitizeText(zip) || undefined,
-      notes: notesField || undefined,
-    };
-  } catch (error) {
-    console.warn('Error mapping row:', row, error);
-    return null;
-  }
+function mapToLocatedRow(row: Record<string, string>): LocatedRow {
+  // Extract coordinates from NOTES field (format: "lat, lon")
+  const notesField = row.NOTES || row.notes || '';
+  const coords = parseCoordinates(notesField);
+  
+  // Build address from street, city, zip
+  const street = row.STREET || row.Street || row.address || '';
+  const city = row.CITY || row.City || row.city || '';
+  const zip = row.ZIP || row.Zip || row.zip || '';
+  const address = [street, city, zip].filter(Boolean).join(', ');
+  
+  // Determine market based on location
+  const market = determineMarket(city, row.CLIENT || row.client || '');
+  
+  // Determine zone based on city/region
+  const zone = determineZone(city, market);
+  
+  // Map status based on driver field and other indicators
+  const status = determineStatus(row.DRIVER || row.driver || '', row.TYPE || row.type || '');
+  
+  return {
+    id: row.ID || row.VIN || row.vin || row.TAG || row.tag || `row_${Math.random().toString(36).substr(2, 9)}`,
+    status,
+    market,
+    client: row.CLIENT || row.client || row.Client || 'Unknown',
+    zone,
+    address: address || (coords ? `${coords.lat}, ${coords.lon}` : 'Unknown Location'),
+    lat: coords ? coords.lat : 0,
+    lon: coords ? coords.lon : 0,
+    driver: row.SPOTTER || row.Spotter || row.DRIVER || row.driver || undefined,
+    locatedAt: undefined, // No date in clean CSV
+    year: row.YEAR || row.year || undefined,
+    make: row.MAKE || row.make || undefined,
+    model: row.MODEL || row.model || undefined,
+    color: row.COLOR || row.color || undefined,
+    tag: row.TAG || row.tag || undefined,
+    vin: row.VIN || row.vin || undefined,
+    city: city || undefined,
+    zip: zip || undefined,
+    notes: row.NOTES || row.notes || undefined,
+  };
 }
 
 /**
@@ -203,9 +201,9 @@ function determineStatus(driver: string, type: string): 'located' | 'blocked' | 
 }
 
 /**
- * Load located vehicles from CSV with validation and parse reporting
+ * Load located vehicles from CSV
  */
-export async function loadLocated(): Promise<{ data: LocatedRow[]; report: ParseReport }> {
+export async function loadLocated(): Promise<LocatedRow[]> {
   try {
     const res = await fetch('/data/located-vehicles-clean.csv', { 
       cache: 'no-store',
@@ -222,65 +220,39 @@ export async function loadLocated(): Promise<{ data: LocatedRow[]; report: Parse
     const rows = parseCsv(text);
     
     console.log('Raw CSV rows:', rows.length);
+    console.log('Sample rows:', rows.slice(0, 3));
     
-    // Initialize parse report
-    const report: ParseReport = {
-      total: rows.length,
-      valid: 0,
-      dropped: 0,
-      reasonCounts: {}
-    };
-    
-    // Filter out empty rows first
+    // Filter out empty rows and map to LocatedRow format
     const validRows = rows.filter(row => {
       // Skip rows without essential data
       const hasClient = row.CLIENT && row.CLIENT.trim() !== '';
       const hasType = row.TYPE && row.TYPE.trim() !== '';
       const hasVIN = row.VIN && row.VIN.trim() !== '';
       
-      if (!hasClient || !hasType || !hasVIN) {
-        report.dropped++;
-        report.reasonCounts['missing_required_fields'] = (report.reasonCounts['missing_required_fields'] || 0) + 1;
-        return false;
-      }
-      
-      return true;
+      return hasClient && hasType && hasVIN;
     });
     
     console.log('Valid rows after filtering:', validRows.length);
+    console.log('Sample valid rows:', validRows.slice(0, 3));
     
-    // Map and validate rows
-    const locatedRows: LocatedRow[] = [];
+    const locatedRows = validRows
+      .map(row => {
+        try {
+          return mapToLocatedRow(row);
+        } catch (error) {
+          console.error('Error mapping row:', row, error);
+          return null;
+        }
+      })
+      .filter((row): row is LocatedRow => row !== null && row.id && row.id.trim() !== '' && row.client && row.client !== 'Unknown');
     
-    for (const row of validRows) {
-      const mappedRow = mapToLocatedRow(row);
-      
-      if (mappedRow) {
-        locatedRows.push(mappedRow);
-        report.valid++;
-      } else {
-        report.dropped++;
-        report.reasonCounts['invalid_coordinates'] = (report.reasonCounts['invalid_coordinates'] || 0) + 1;
-      }
-    }
+    console.log('Processed located rows:', locatedRows.length);
+    console.log('Sample processed rows:', locatedRows.slice(0, 3));
     
-    report.reasonCounts['successfully_parsed'] = report.valid;
-    
-    console.log('Parse report:', report);
-    console.log('Final located rows:', locatedRows.length);
-    
-    return { data: locatedRows, report };
+    return locatedRows;
   } catch (error) {
     console.error('Error loading located vehicles:', error);
-    return { 
-      data: [], 
-      report: { 
-        total: 0, 
-        valid: 0, 
-        dropped: 0, 
-        reasonCounts: { error: 1 } 
-      } 
-    };
+    return [];
   }
 }
 

@@ -1,44 +1,56 @@
 'use client';
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, Users, Truck, BarChart3, AlertCircle, Navigation } from 'lucide-react';
+import { loadLocated, loadLocatedWithFilters, getUniqueValues, LocatedRow } from '@/lib/data/loaders';
+import { Truck, User, RefreshCw, Filter, AlertCircle, Navigation } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { StatTile } from '@/components/ui/StatTile';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { DataTable } from '@/components/ui/DataTable';
-import { BreakdownPanel } from '@/components/dashboard/BreakdownPanel';
+import { FilterChips as OldFilterChips } from '@/components/ui/FilterChips';
 import { FilterChips } from '@/components/dashboard/FilterChips';
-import { SkeletonDashboard } from '@/components/ui/SkeletonLoader';
-import { Toaster } from '@/components/ui/toaster';
-import { ToastProvider } from '@/components/ui/ToastProvider';
-import { loadLocated } from '@/lib/data/loaders';
-import { loadFilters, saveFilters, applyFilters, hasActiveFilters, clearFilters, updateFilter, removeFilter } from '@/lib/filters';
-import { buildMultiStopURL, getNavigationSettings } from '@/lib/navigation';
-import { showWarning } from '@/lib/toast';
-import { runDevAssertions } from '@/lib/__dev__';
-import type { LocatedRow, ParseReport, FilterState, KPIMetrics, BreakdownItem } from '@/types/dashboard';
+import { BreakdownPanel } from '@/components/dashboard/BreakdownPanel';
+import { DataTable } from '@/components/ui/DataTable';
+import { loadDashboardFilters, saveDashboardFilters } from '@/lib/utils';
+import { DashboardFilters, BreakdownItem, FilterChip } from '@/types/dashboard';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<LocatedRow[]>([]);
-  const [parseReport, setParseReport] = useState<ParseReport>({ total: 0, valid: 0, dropped: 0, reasonCounts: {} });
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FilterState>(loadFilters());
+  
+  console.log('🎯 Dashboard component mounted');
+  console.log('📊 Current data length:', data.length);
+  console.log('⏳ Loading state:', isLoading);
+  console.log('❌ Error state:', error);
+  
+  // Filter state
+  const [filters, setFilters] = useState({
+    market: '',
+    status: '',
+    client: '',
+    zone: '',
+    driver: ''
+  });
+
+  // Dashboard filter state for breakdown interactions
+  const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters>(() => 
+    loadDashboardFilters()
+  );
+
+  // Selection state for breakdown tables
   const [selectedClient, setSelectedClient] = useState<string>('');
   const [selectedZone, setSelectedZone] = useState<string>('');
   const [selectedDriver, setSelectedDriver] = useState<string>('');
-
+  
   // Load data on mount
   useEffect(() => {
     loadData();
   }, []);
-
-  // Persist filters to localStorage
-  useEffect(() => {
-    saveFilters(filters);
-  }, [filters]);
 
   // Log when data changes
   useEffect(() => {
@@ -49,16 +61,20 @@ const Dashboard: React.FC = () => {
     }
   }, [data]);
 
+  // Save dashboard filters to localStorage
+  useEffect(() => {
+    saveDashboardFilters(dashboardFilters);
+  }, [dashboardFilters]);
+
   const loadData = async () => {
     try {
       setIsLoading(true);
       setError(null);
       console.log('🔄 Loading CSV data...');
-      const { data: loadedData, report } = await loadLocated();
+      const loadedData = await loadLocated();
       console.log('✅ Loaded data:', loadedData.length, 'rows');
       console.log('📊 Sample data:', loadedData.slice(0, 2));
       setData(loadedData);
-      setParseReport(report);
     } catch (err) {
       console.error('❌ Error loading data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -69,193 +85,272 @@ const Dashboard: React.FC = () => {
 
   // Filter data based on current filters
   const filteredData = useMemo(() => {
-    const filtered = applyFilters(data, filters);
+    const filtered = data.filter(row => {
+      if (filters.market && row.market !== filters.market) return false;
+      if (filters.status && row.status !== filters.status) return false;
+      if (filters.client && row.client !== filters.client) return false;
+      if (filters.zone && row.zone !== filters.zone) return false;
+      if (filters.driver && row.driver !== filters.driver) return false;
+      
+      // Apply dashboard filters
+      if (dashboardFilters.client && row.client !== dashboardFilters.client) return false;
+      if (dashboardFilters.zone && row.zone !== dashboardFilters.zone) return false;
+      if (dashboardFilters.driver && row.driver !== dashboardFilters.driver) return false;
+      
+      return true;
+    });
     console.log('🔍 Filtered data:', filtered.length, 'rows');
     console.log('📋 Sample filtered data:', filtered.slice(0, 2));
-    console.log('🔍 All clients in filtered data:', filtered.map(d => d.client));
     return filtered;
-  }, [data, filters]);
+  }, [data, filters, dashboardFilters]);
 
   // Compute KPIs from filtered data
-  const kpis = useMemo((): KPIMetrics => {
+  const kpis = useMemo(() => {
     const total = filteredData.length;
-    const located = filteredData.filter(row => row.status === 'located').length;
-    const blocked = filteredData.filter(row => row.status === 'blocked').length;
+    const located = filteredData.filter(r => r.status === 'located').length;
+    const blocked = filteredData.filter(r => r.status === 'blocked').length;
     
-    // Calculate average time (mock calculation for now)
-    const avgMins = total > 0 ? Math.round(Math.random() * 120 + 60) : 0;
+    // Calculate average time since located (mock calculation for now)
+    const avgMins = Math.round(Math.random() * 120 + 60); // Random between 60-180 minutes
     
-    // Count vehicles located for 5+ days (mock calculation)
-    const fivePlus = Math.round(total * 0.15);
+    // Calculate 5+ days (mock calculation)
+    const fivePlus = Math.round(total * 0.15); // Assume 15% are 5+ days
     
-    // Calculate missed revenue
+    // Calculate missed revenue (mock calculation)
     const missedRevenue = blocked * 150; // $150 per blocked vehicle
     
     return { total, located, blocked, avgMins, fivePlus, missedRevenue };
   }, [filteredData]);
 
   // Compute breakdowns from filtered data
-  const clientBreakdown = useMemo(() => {
+  const clientBreakdown = useMemo((): BreakdownItem[] => {
     console.log('🔢 Computing client breakdown for', filteredData.length, 'rows');
-    const counts = new Map<string, number>();
+    const counts = new Map<string, { count: number; vehicles: any[] }>();
+    
     filteredData.forEach(row => {
-      counts.set(row.client, (counts.get(row.client) || 0) + 1);
+      const client = row.client;
+      if (!counts.has(client)) {
+        counts.set(client, { count: 0, vehicles: [] });
+      }
+      const entry = counts.get(client)!;
+      entry.count++;
+      entry.vehicles.push({
+        id: row.id,
+        address: row.address,
+        lat: row.lat,
+        lon: row.lon,
+        market: row.market
+      });
     });
     
     const result = Array.from(counts.entries())
-      .map(([name, count]) => ({
+      .map(([name, data]) => ({
         name,
-        count,
-        pct: Math.round((count / filteredData.length) * 1000) / 10 // One decimal place
+        count: data.count,
+        pct: (data.count / filteredData.length) * 100,
+        vehicles: data.vehicles
       }))
       .sort((a, b) => b.count - a.count);
     
     console.log('👥 Client breakdown result:', result.length, 'clients');
     console.log('📋 Sample client breakdown:', result.slice(0, 3));
-    console.log('🔍 All clients in filtered data:', filteredData.map(d => d.client));
     return result;
   }, [filteredData]);
 
-  const zoneBreakdown = useMemo(() => {
-    const counts = new Map<string, number>();
+  const zoneBreakdown = useMemo((): BreakdownItem[] => {
+    const counts = new Map<string, { count: number; vehicles: any[] }>();
+    
     filteredData.forEach(row => {
-      counts.set(row.zone, (counts.get(row.zone) || 0) + 1);
+      const zone = row.zone;
+      if (!counts.has(zone)) {
+        counts.set(zone, { count: 0, vehicles: [] });
+      }
+      const entry = counts.get(zone)!;
+      entry.count++;
+      entry.vehicles.push({
+        id: row.id,
+        address: row.address,
+        lat: row.lat,
+        lon: row.lon,
+        market: row.market
+      });
     });
     
     return Array.from(counts.entries())
-      .map(([name, count]) => ({
+      .map(([name, data]) => ({
         name,
-        count,
-        pct: Math.round((count / filteredData.length) * 1000) / 10
+        count: data.count,
+        pct: (data.count / filteredData.length) * 100,
+        vehicles: data.vehicles
       }))
       .sort((a, b) => b.count - a.count);
   }, [filteredData]);
 
-  const driverBreakdown = useMemo(() => {
-    const counts = new Map<string, number>();
+  const driverBreakdown = useMemo((): BreakdownItem[] => {
+    const counts = new Map<string, { count: number; vehicles: any[] }>();
+    
     filteredData.forEach(row => {
       const driver = row.driver || 'Unassigned';
-      counts.set(driver, (counts.get(driver) || 0) + 1);
+      if (!counts.has(driver)) {
+        counts.set(driver, { count: 0, vehicles: [] });
+      }
+      const entry = counts.get(driver)!;
+      entry.count++;
+      entry.vehicles.push({
+        id: row.id,
+        address: row.address,
+        lat: row.lat,
+        lon: row.lon,
+        market: row.market
+      });
     });
     
     return Array.from(counts.entries())
-      .map(([name, count]) => ({
+      .map(([name, data]) => ({
         name,
-        count,
-        pct: Math.round((count / filteredData.length) * 1000) / 10
+        count: data.count,
+        pct: (data.count / filteredData.length) * 100,
+        vehicles: data.vehicles
       }))
       .sort((a, b) => b.count - a.count);
   }, [filteredData]);
 
-  // Run development assertions
-  useEffect(() => {
-    if (data.length > 0) {
-      runDevAssertions(data, {
-        clientBreakdown,
-        zoneBreakdown,
-        driverBreakdown
-      });
-    }
-  }, [data, clientBreakdown, zoneBreakdown, driverBreakdown]);
 
-  // Handle filter changes
-  const handleFilterChange = (key: keyof FilterState, value: string) => {
-    setFilters(prev => updateFilter(prev, key, value));
+  const handleRowClick = (type: 'client' | 'zone' | 'driver', value: string) => {
+    const params = new URLSearchParams();
+    if (type === 'driver') {
+      params.set('driver', value);
+    } else {
+      params.set(type, value);
+    }
+    navigate(`/tow-driver?${params.toString()}`);
   };
 
-  const handleRemoveFilter = (key: keyof FilterState) => {
-    setFilters(prev => removeFilter(prev, key));
+  // New dashboard filter handlers
+  const handleBreakdownItemClick = (type: 'client' | 'zone' | 'driver', item: BreakdownItem) => {
+    setDashboardFilters(prev => ({
+      ...prev,
+      [type]: item.name
+    }));
+  };
+
+  const handleFilterRemove = (key: keyof DashboardFilters) => {
+    setDashboardFilters(prev => {
+      const newFilters = { ...prev };
+      delete newFilters[key];
+      return newFilters;
+    });
+  };
+
+  const handleFilterClearAll = () => {
+    setDashboardFilters({});
+  };
+
+  // Generate filter chips
+  const filterChips = useMemo((): FilterChip[] => {
+    const chips: FilterChip[] = [];
+    
+    if (dashboardFilters.client) {
+      chips.push({
+        key: 'client',
+        label: 'Client',
+        value: dashboardFilters.client
+      });
+    }
+    
+    if (dashboardFilters.zone) {
+      chips.push({
+        key: 'zone',
+        label: 'Zone',
+        value: dashboardFilters.zone
+      });
+    }
+    
+    if (dashboardFilters.driver) {
+      chips.push({
+        key: 'driver',
+        label: 'Driver',
+        value: dashboardFilters.driver
+      });
+    }
+    
+    return chips;
+  }, [dashboardFilters]);
+
+  // Helper function to create micro-bar visualization
+  const createMicroBar = (percentage: number) => {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-1.5 bg-vizla-glass rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-vizla-accent/60 rounded-full transition-all duration-300"
+            style={{ width: `${Math.min(percentage, 100)}%` }}
+          />
+        </div>
+        <span className="text-xs text-vizla-text-vizla-text-muted w-8 text-right">{percentage}%</span>
+      </div>
+    );
+  };
+
+  // Row click handlers for selection
+  const handleClientRowClick = (client: string) => {
+    setSelectedClient(selectedClient === client ? '' : client);
+    handleRowClick('client', client);
+  };
+
+  const handleZoneRowClick = (zone: string) => {
+    setSelectedZone(selectedZone === zone ? '' : zone);
+    handleRowClick('zone', zone);
+  };
+
+  const handleDriverRowClick = (driver: string) => {
+    setSelectedDriver(selectedDriver === driver ? '' : driver);
+    handleRowClick('driver', driver);
+  };
+
+  const handleFilterClear = (key: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: ''
+    }));
   };
 
   const handleClearAllFilters = () => {
-    setFilters(clearFilters());
-  };
-
-  // Handle breakdown item clicks
-  const handleClientClick = (client: string) => {
-    if (selectedClient === client) {
-      setSelectedClient('');
-      handleRemoveFilter('client');
-    } else {
-      setSelectedClient(client);
-      handleFilterChange('client', client);
-    }
-  };
-
-  const handleZoneClick = (zone: string) => {
-    if (selectedZone === zone) {
-      setSelectedZone('');
-      handleRemoveFilter('zone');
-    } else {
-      setSelectedZone(zone);
-      handleFilterChange('zone', zone);
-    }
-  };
-
-  const handleDriverClick = (driver: string) => {
-    if (selectedDriver === driver) {
-      setSelectedDriver('');
-      handleRemoveFilter('driver');
-    } else {
-      setSelectedDriver(driver);
-      handleFilterChange('driver', driver === 'Unassigned' ? '' : driver);
-    }
-  };
-
-  // Handle multi-stop navigation
-  const handleMultiStopNavigation = (items: BreakdownItem[], title: string) => {
-    const navSettings = getNavigationSettings();
-    
-    if (items.length > navSettings.maxWaypoints) {
-      showWarning(`Showing first ${navSettings.maxWaypoints} stops (${items.length} total)`);
-    }
-
-    // Get rows for the selected items
-    const rows = filteredData.filter(row => {
-      switch (title) {
-        case 'By Client':
-          return row.client === selectedClient;
-        case 'By Zone / Market':
-          return row.zone === selectedZone;
-        case 'By Driver':
-          return (row.driver || 'Unassigned') === selectedDriver;
-        default:
-          return false;
-      }
+    setFilters({
+      market: '',
+      status: '',
+      client: '',
+      zone: '',
+      driver: ''
     });
-
-    if (rows.length > 0) {
-      const url = buildMultiStopURL(rows.slice(0, navSettings.maxWaypoints), navSettings);
-      if (url !== '#') {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      }
-    }
   };
 
-  // Build navigation URL for individual rows
+  // Format time display helper
+  const formatTimeDisplay = (minutes: number): string => {
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  };
+
+  // Format currency display helper
+  const formatCurrencyDisplay = (amount: number): string => {
+    return `$${amount.toLocaleString()}`;
+  };
+
+  // Build Google Maps URL for navigation
   const buildNavigationUrl = (row: LocatedRow): string => {
+    if (row.address && row.address !== 'Unknown Location') {
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(row.address)}`;
+    }
     if (row.lat && row.lon) {
       return `https://www.google.com/maps/dir/?api=1&destination=${row.lat},${row.lon}`;
     }
     return '#';
   };
 
-  if (isLoading) {
-    return (
-      <AppShell title="Dashboard">
-        <ToastProvider>
-          <Toaster />
-          <SkeletonDashboard />
-        </ToastProvider>
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell title="Dashboard">
-      <ToastProvider>
-        <Toaster />
-      
       {/* Header */}
       <SectionHeading
         title="Dashboard"
@@ -265,47 +360,56 @@ const Dashboard: React.FC = () => {
             <button
               onClick={loadData}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-              aria-label="Refresh data"
+              aria-label="Refresh Data"
+              disabled={isLoading}
             >
-              <RefreshCw className="w-4 h-4" />
-              <span className="text-sm font-medium">Refresh Data</span>
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="text-sm font-medium text-vizla-text-secondary">
+                {isLoading ? 'Loading...' : 'Refresh Data'}
+              </span>
             </button>
             <button
               onClick={() => navigate('/owner')}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-              aria-label="Go to owner view"
+              aria-label="Go to Owner View"
             >
-              <Users className="w-4 h-4" />
-              <span className="text-sm font-medium">Owner View</span>
+              <User className="w-4 h-4" />
+              <span className="text-sm font-medium text-vizla-text-secondary">Owner View</span>
             </button>
             <button
               onClick={() => navigate('/tow-driver')}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-              aria-label="Go to tow driver view"
+              aria-label="Go to Tow Driver View"
             >
               <Truck className="w-4 h-4" />
-              <span className="text-sm font-medium">Tow Driver View</span>
+              <span className="text-sm font-medium text-vizla-text-secondary">Tow Driver View</span>
             </button>
           </>
         }
       />
 
-      {/* Parse Report Badge (Development Only) */}
-      {process.env.NODE_ENV === 'development' && parseReport.total > 0 && (
-        <div className="mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-vizla-info/20 text-vizla-info text-xs font-medium">
-          <BarChart3 className="w-3 h-3" />
-          Loaded {parseReport.valid}, dropped {parseReport.dropped} ({Object.entries(parseReport.reasonCounts).map(([reason, count]) => `${reason}: ${count}`).join(', ')})
-        </div>
-      )}
+      {/* Filter Chips */}
+      <OldFilterChips
+        filters={filters}
+        onClear={handleFilterClear}
+        onClearAll={handleClearAllFilters}
+      />
 
-      {/* Error Display */}
+      {/* Dashboard Filter Chips */}
+      <FilterChips
+        chips={filterChips}
+        onRemove={handleFilterRemove}
+        onClearAll={handleFilterClearAll}
+      />
+
+      {/* Error State */}
       {error && (
         <div className="mb-6 p-4 rounded-lg bg-vizla-danger/10 border border-vizla-danger/20">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-vizla-danger" />
             <span className="text-sm font-medium text-vizla-danger">Error loading data: {error}</span>
-            <button 
-              onClick={loadData} 
+            <button
+              onClick={loadData}
               className="ml-auto px-3 py-1 rounded-md bg-vizla-danger text-white text-sm font-medium hover:bg-vizla-danger/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
             >
               Retry
@@ -314,115 +418,113 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <StatTile
-          label="Total Located"
-          value={kpis.total.toString()}
-          delta={`+${kpis.total}`}
-          deltaType="positive"
-          icon={BarChart3}
-        />
-        <StatTile
-          label="Avg Time Since Located"
-          value={`${Math.floor(kpis.avgMins / 60)}h ${kpis.avgMins % 60}m`}
-          delta="-5m"
-          deltaType="negative"
-          icon={BarChart3}
-        />
-        <StatTile
-          label="Located for 5+ Days"
-          value={kpis.fivePlus.toString()}
-          delta="+1"
-          deltaType="positive"
-          icon={BarChart3}
-        />
-        <StatTile
-          label="Pending Order Confirmation"
-          value={kpis.blocked.toString()}
-          delta={`$${kpis.missedRevenue}`}
-          deltaType="negative"
-          icon={BarChart3}
-        />
-      </div>
+      {/* Main Content */}
+      <div className="space-y-6">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <GlassCard>
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-3 w-20" />
+                <div className="flex items-end justify-between">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-5 w-8 rounded-full" />
+                </div>
+              </div>
+            ) : (
+              <StatTile
+                label="Total Located"
+                value={kpis.total}
+                delta={{ dir: 'up', text: `+${kpis.located}` }}
+              />
+            )}
+          </GlassCard>
+          
+          <GlassCard>
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-3 w-28" />
+                <div className="flex items-end justify-between">
+                  <Skeleton className="h-8 w-12" />
+                  <Skeleton className="h-5 w-10 rounded-full" />
+                </div>
+              </div>
+            ) : (
+              <StatTile
+                label="Avg Time Since Located"
+                value={formatTimeDisplay(kpis.avgMins)}
+                delta={{ dir: 'down', text: '-5m' }}
+              />
+            )}
+          </GlassCard>
+          
+          <GlassCard>
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-3 w-24" />
+                <div className="flex items-end justify-between">
+                  <Skeleton className="h-8 w-8" />
+                  <Skeleton className="h-5 w-6 rounded-full" />
+                </div>
+              </div>
+            ) : (
+              <StatTile
+                label="Located for 5+ Days"
+                value={kpis.fivePlus}
+                delta={{ dir: 'up', text: '+1' }}
+              />
+            )}
+          </GlassCard>
+          
+          <GlassCard>
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-3 w-20" />
+                <div className="flex items-end justify-between">
+                  <Skeleton className="h-8 w-20" />
+                  <Skeleton className="h-5 w-12 rounded-full" />
+                </div>
+              </div>
+            ) : (
+              <StatTile
+                label="Pending Order Confirmation"
+                value={kpis.blocked}
+                delta={{ dir: 'down', text: '-$200' }}
+              />
+            )}
+          </GlassCard>
+        </div>
 
-      {/* Filter Chips */}
-      {hasActiveFilters(filters) && (
-        <FilterChips
-          filters={filters}
-          onRemoveFilter={handleRemoveFilter}
-          onClearAll={handleClearAllFilters}
-          className="mb-6"
-        />
-      )}
+        {/* Breakdown Panels */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* By Client */}
+          <BreakdownPanel
+            title="By Client"
+            items={clientBreakdown}
+            totalCount={filteredData.length}
+            onItemClick={(item) => handleBreakdownItemClick('client', item)}
+            selectedItem={dashboardFilters.client}
+          />
 
-      {/* Breakdown Panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <BreakdownPanel
-          title="By Client"
-          items={clientBreakdown}
-          data={filteredData}
-          selectedItem={selectedClient}
-          onItemClick={handleClientClick}
-        />
-        <BreakdownPanel
-          title="By Zone / Market"
-          items={zoneBreakdown}
-          data={filteredData}
-          selectedItem={selectedZone}
-          onItemClick={handleZoneClick}
-        />
-        <BreakdownPanel
-          title="By Driver"
-          items={driverBreakdown}
-          data={filteredData}
-          selectedItem={selectedDriver}
-          onItemClick={handleDriverClick}
-        />
-      </div>
+          {/* By Zone */}
+          <BreakdownPanel
+            title="By Zone / Market"
+            items={zoneBreakdown}
+            totalCount={filteredData.length}
+            onItemClick={(item) => handleBreakdownItemClick('zone', item)}
+            selectedItem={dashboardFilters.zone}
+          />
 
-      {/* Data Table */}
-      {filteredData.length > 0 && (
-        <div className="mt-6">
-          <DataTable
-            data={filteredData}
-            columns={[
-              { key: 'client', label: 'Client', className: 'font-medium' },
-              { key: 'zone', label: 'Zone' },
-              { key: 'status', label: 'Status', className: 'capitalize' },
-              { key: 'address', label: 'Address' },
-              { 
-                key: 'navigate', 
-                label: 'Navigate', 
-                render: (row: LocatedRow) => (
-                  <a
-                    href={buildNavigationUrl(row)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-vizla-brand-primary text-white text-xs font-medium hover:bg-[color:var(--ring-hover)] focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-                    aria-label={`Navigate to ${row.address} in Google Maps`}
-                  >
-                    <Navigation className="w-3 h-3" />
-                    Navigate
-                  </a>
-                )
-              }
-            ]}
-            className="mt-6"
+          {/* By Driver */}
+          <BreakdownPanel
+            title="By Driver"
+            items={driverBreakdown}
+            totalCount={filteredData.length}
+            onItemClick={(item) => handleBreakdownItemClick('driver', item)}
+            selectedItem={dashboardFilters.driver}
           />
         </div>
-      )}
-
-      {/* Empty State */}
-      {filteredData.length === 0 && !isLoading && (
-        <EmptyState
-          title="No Data Found"
-          message={hasActiveFilters(filters) ? "No vehicles match the current filters. Try adjusting your search criteria." : "No vehicle data available at this time."}
-          icon={BarChart3}
-          className="mt-6"
-        />
-      )}
-      </ToastProvider>
+      </div>
     </AppShell>
   );
 };
