@@ -5,6 +5,7 @@ import { BreakdownItem, LocatedRow } from '@/lib/types';
 
 interface BreakdownPanelProps {
   title: string;
+  subtitle?: string;
   items: BreakdownItem[];
   totalCount: number;
   onItemClick: (key: string) => void;
@@ -15,6 +16,7 @@ interface BreakdownPanelProps {
 
 export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({
   title,
+  subtitle,
   items,
   totalCount,
   onItemClick,
@@ -59,6 +61,9 @@ export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({
     )}>
       <div className="sticky top-0 z-10 bg-vizla-elev1/60 border-b border-vizla-borderSubtle px-4 py-3">
         <h3 className="text-lg font-semibold text-vizla-text-primary">{title}</h3>
+        {subtitle && (
+          <p className="text-xs text-vizla-text-muted mt-1">{subtitle}</p>
+        )}
       </div>
       
       <div className="divide-y divide-vizla-borderSubtle">

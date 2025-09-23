@@ -461,9 +461,10 @@ const Dashboard: React.FC = () => {
             onNavigate={handleNavigate}
           />
 
-          {/* By Driver */}
+          {/* By Source */}
           <BreakdownPanel
-            title="By Driver"
+            title="By Source"
+            subtitle="Source from CSV 'DRIVER' column (GPS, Rotors, Imp, …)"
             items={driverBreakdown}
             totalCount={filteredData.length}
             onItemClick={(key) => handleBreakdownItemClick('driver', key)}
