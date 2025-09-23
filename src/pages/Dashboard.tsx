@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loadLocated, loadLocatedWithFilters, getUniqueValues } from '@/lib/data/loaders';
+import { loadLocated } from '@/lib/data/loaders';
 import { Truck, User, RefreshCw, AlertCircle } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { StatTile } from '@/components/ui/StatTile';
@@ -278,61 +278,12 @@ const Dashboard: React.FC = () => {
     );
   };
 
-  // Row click handlers for selection
-  const handleClientRowClick = (client: string) => {
-    setSelectedClient(selectedClient === client ? '' : client);
-    handleRowClick('client', client);
-  };
-
-  const handleZoneRowClick = (zone: string) => {
-    setSelectedZone(selectedZone === zone ? '' : zone);
-    handleRowClick('zone', zone);
-  };
-
-  const handleDriverRowClick = (driver: string) => {
-    setSelectedDriver(selectedDriver === driver ? '' : driver);
-    handleRowClick('driver', driver);
-  };
-
-  const handleFilterClear = (key: string) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: ''
-    }));
-  };
-
-  const handleClearAllFilters = () => {
-    setFilters({
-      market: '',
-      status: '',
-      client: '',
-      zone: '',
-      driver: ''
-    });
-  };
-
   // Format time display helper
   const formatTimeDisplay = (minutes: number): string => {
     if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-  };
-
-  // Format currency display helper
-  const formatCurrencyDisplay = (amount: number): string => {
-    return `$${amount.toLocaleString()}`;
-  };
-
-  // Build Google Maps URL for navigation
-  const buildNavigationUrl = (row: LocatedRow): string => {
-    if (row.address && row.address !== 'Unknown Location') {
-      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(row.address)}`;
-    }
-    if (row.lat && row.lon) {
-      return `https://www.google.com/maps/dir/?api=1&destination=${row.lat},${row.lon}`;
-    }
-    return '#';
   };
 
   return (
