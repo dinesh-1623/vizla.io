@@ -58,9 +58,9 @@ function mapToLocatedRow(row: Record<string, string>): LocatedRow {
     market,
     client: row.CLIENT || row.client || row.Client || 'Unknown',
     zone,
-    address: address || coords ? `${coords.lat}, ${coords.lon}` : 'Unknown Location',
-    lat: coords.lat || 0,
-    lon: coords.lon || 0,
+    address: address || (coords ? `${coords.lat}, ${coords.lon}` : 'Unknown Location'),
+    lat: coords ? coords.lat : 0,
+    lon: coords ? coords.lon : 0,
     driver: row.SPOTTER || row.Spotter || row.DRIVER || row.driver || undefined,
     locatedAt: undefined, // No date in clean CSV
     year: row.YEAR || row.year || undefined,
@@ -98,13 +98,14 @@ function parseCoordinates(gpsField: string): { lat: number; lon: number } | null
       const lat = parseFloat(match[1]);
       const lon = parseFloat(match[2]);
       
-      // Basic validation - check if coordinates are reasonable
-      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+      // Basic validation - check if coordinates are reasonable (US coordinates roughly)
+      if (lat >= 25 && lat <= 50 && lon >= -130 && lon <= -65) {
         return { lat, lon };
       }
     }
   }
   
+  console.warn('Could not parse coordinates from:', gpsField);
   return null;
 }
 
@@ -235,8 +236,15 @@ export async function loadLocated(): Promise<LocatedRow[]> {
     console.log('Sample valid rows:', validRows.slice(0, 3));
     
     const locatedRows = validRows
-      .map(mapToLocatedRow)
-      .filter(row => row.id && row.id.trim() !== '' && row.client && row.client !== 'Unknown');
+      .map(row => {
+        try {
+          return mapToLocatedRow(row);
+        } catch (error) {
+          console.error('Error mapping row:', row, error);
+          return null;
+        }
+      })
+      .filter((row): row is LocatedRow => row !== null && row.id && row.id.trim() !== '' && row.client && row.client !== 'Unknown');
     
     console.log('Processed located rows:', locatedRows.length);
     console.log('Sample processed rows:', locatedRows.slice(0, 3));
