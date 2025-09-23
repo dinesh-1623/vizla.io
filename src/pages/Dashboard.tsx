@@ -51,13 +51,13 @@ const Dashboard: React.FC = () => {
   const createMicroBar = (percentage: number) => {
     return (
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <div className="flex-1 h-1.5 bg-vizla-glass rounded-full overflow-hidden">
           <div 
             className="h-full bg-vizla-accent/60 rounded-full transition-all duration-300"
             style={{ width: `${Math.min(percentage, 100)}%` }}
           />
         </div>
-        <span className="text-xs text-muted w-8 text-right">{percentage}%</span>
+        <span className="text-xs text-vizla-text-vizla-text-muted w-8 text-right">{percentage}%</span>
       </div>
     );
   };
@@ -105,29 +105,29 @@ const Dashboard: React.FC = () => {
           <>
             <button
               onClick={() => setIsLoading(!isLoading)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg glass hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
               aria-label="Toggle Loading State"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              <span className="text-sm font-medium text-secondary">
+              <span className="text-sm font-medium text-vizla-text-secondary">
                 {isLoading ? 'Loading...' : 'Demo Loading'}
               </span>
             </button>
             <button
               onClick={() => navigate('/owner')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg glass hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
               aria-label="Go to Owner View"
             >
               <User className="w-4 h-4" />
-              <span className="text-sm font-medium text-secondary">Owner View</span>
+              <span className="text-sm font-medium text-vizla-text-secondary">Owner View</span>
             </button>
             <button
               onClick={() => navigate('/tow-driver')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg glass hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
               aria-label="Go to Tow Driver View"
             >
               <Truck className="w-4 h-4" />
-              <span className="text-sm font-medium text-secondary">Tow Driver View</span>
+              <span className="text-sm font-medium text-vizla-text-secondary">Tow Driver View</span>
             </button>
           </>
         }
@@ -254,13 +254,13 @@ const Dashboard: React.FC = () => {
               />
             ) : (
               <EmptyState
-                icon={<AlertCircle className="w-8 h-8 text-muted" />}
+                icon={<AlertCircle className="w-8 h-8 text-vizla-text-muted" />}
                 title="No Client Data"
                 message="No client breakdown data available at this time."
                 action={
                   <button
                     onClick={() => setIsLoading(false)}
-                    className="px-4 py-2 rounded-lg bg-white/10 text-sm font-medium text-primary hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                    className="px-4 py-2 rounded-lg bg-vizla-brand-primary text-sm font-medium text-white hover:bg-[color:var(--ring-hover)] focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
                   >
                     Refresh
                   </button>
@@ -304,7 +304,7 @@ const Dashboard: React.FC = () => {
               />
             ) : (
               <EmptyState
-                icon={<AlertCircle className="w-8 h-8 text-muted" />}
+                icon={<AlertCircle className="w-8 h-8 text-vizla-text-muted" />}
                 title="No Zone Data"
                 message="No zone breakdown data available at this time."
               />
@@ -346,7 +346,7 @@ const Dashboard: React.FC = () => {
               />
             ) : (
               <EmptyState
-                icon={<AlertCircle className="w-8 h-8 text-muted" />}
+                icon={<AlertCircle className="w-8 h-8 text-vizla-text-muted" />}
                 title="No Driver Data"
                 message="No driver breakdown data available at this time."
               />

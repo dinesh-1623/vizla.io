@@ -18,11 +18,11 @@ const SectionHeading: React.FC<SectionHeadingProps> = ({
     <div className={cn("mb-6", className)}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-[22px] font-semibold tracking-[-0.01em] text-primary">
+          <h2 className="text-[22px] font-semibold tracking-[-0.01em] text-vizla-text-primary">
             {title}
           </h2>
           {subtitle && (
-            <p className="text-secondary mt-1">
+            <p className="text-vizla-text-secondary mt-1">
               {subtitle}
             </p>
           )}

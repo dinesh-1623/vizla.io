@@ -12,8 +12,14 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { mockCars } from '@/data/mockCars';
 import { filterCars, getUniqueValues, computeDayCounts } from '@/lib/metrics';
 import { VehicleCard } from '@/components/driver/VehicleCard';
+import RouteGroupCard from '@/components/owner/RouteGroupCard';
+import AssumptionsDrawer from '@/components/owner/AssumptionsDrawer';
+import { useAssumptions } from '@/hooks/useAssumptions';
+import { groupNearby, toPoints } from '@/lib/route/grouping';
+import { totalTimeStash } from '@/lib/route/engine';
+import { DALLAS_LOT } from '@/lib/route/config';
 import { Filters } from '@/components/driver/Filters';
-import { X, ArrowLeft } from 'lucide-react';
+import { X, ArrowLeft, Settings } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { FilterChips } from '@/components/ui/FilterChips';
 
@@ -52,6 +58,11 @@ const TowDriver: React.FC = () => {
   const [assignedDriver, setAssignedDriver] = useState('');
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [showTop, setShowTop] = useState(false);
+  const [routeMode, setRouteMode] = useState<'return' | 'stash'>('stash');
+  const [isAssumptionsOpen, setIsAssumptionsOpen] = useState(false);
+  
+  // Assumptions management
+  const { assumptions, updateAssumptions } = useAssumptions();
 
   // Check for demo mode and repeat functionality
   const [searchParams] = useSearchParams();
@@ -69,6 +80,18 @@ const TowDriver: React.FC = () => {
     if (zoneParam) setZone(zoneParam);
     if (driverParam) setAssignedDriver(driverParam);
   }, [searchParams]);
+
+  // Persist route mode in localStorage
+  useEffect(() => {
+    const savedRouteMode = localStorage.getItem('tow-driver-route-mode') as 'return' | 'stash';
+    if (savedRouteMode && ['return', 'stash'].includes(savedRouteMode)) {
+      setRouteMode(savedRouteMode);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('tow-driver-route-mode', routeMode);
+  }, [routeMode]);
 
   // Get unique clients and drivers from mock data - memoized
   const uniqueClients = useMemo(() => getUniqueValues(mockCars, 'client'), []);
@@ -110,6 +133,33 @@ const TowDriver: React.FC = () => {
       assignedDriver
     });
   }, [selectedDay, client, zone, timeLocated, vizlaRoute, assignedDriver]);
+
+  // Route grouping
+  const routeGroups = useMemo(() => {
+    return groupNearby(filtered, 5);
+  }, [filtered]);
+
+  // Create a map of car IDs to their step numbers for active route groups
+  const carStepMap = useMemo(() => {
+    const stepMap = new Map<string, number>();
+    routeGroups.forEach((group) => {
+      try {
+        // Use the route engine to get optimized order for stash mode
+        const params = toPoints(group, DALLAS_LOT);
+        const stashResult = totalTimeStash(params);
+        
+        stashResult.orderIds.forEach((carId, stepIndex) => {
+          stepMap.set(carId, stepIndex + 1);
+        });
+      } catch (error) {
+        // Fallback: use original order if route optimization fails
+        group.forEach((car, stepIndex) => {
+          stepMap.set(car.id, stepIndex + 1);
+        });
+      }
+    });
+    return stepMap;
+  }, [routeGroups]);
 
   // Support demo mode to cap at 6 and repeat functionality
   const baseList = filtered; // includes selectedDay + other filters
@@ -211,16 +261,26 @@ const TowDriver: React.FC = () => {
     <AppShell title="Tow Truck Driver View">
       {/* Sticky Header */}
       <header className="sticky top-0 z-40 bg-white/5 backdrop-blur-md ring-1 ring-white/10 rounded-2xl p-4 mb-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-neutral-200 ring-1 ring-white/10 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+              aria-label="Back to Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm font-medium">Dashboard</span>
+            </button>
+            <h1 className="text-2xl font-bold text-neutral-100">Tow Truck Driver View</h1>
+          </div>
           <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-neutral-200 ring-1 ring-white/10 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-400/60 transition-colors"
-            aria-label="Back to Dashboard"
+            onClick={() => setIsAssumptionsOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vizla-glass text-vizla-text-secondary ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev hover:text-vizla-text-primary transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus"
+            aria-label="Open route assumptions"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm font-medium">Dashboard</span>
+            <Settings className="w-4 h-4" />
+            <span className="text-sm font-medium">Assumptions</span>
           </button>
-          <h1 className="text-2xl font-bold text-neutral-100">Tow Truck Driver View</h1>
         </div>
       </header>
 
@@ -234,7 +294,7 @@ const TowDriver: React.FC = () => {
                 role="tab"
                 aria-selected={selectedDay === day}
                 aria-label={`Select ${day}`}
-                className={`relative px-4 py-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 ${
+                className={`relative px-4 py-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vizla-ring-focus ${
                   selectedDay === day
                     ? 'bg-white text-slate-900'
                     : 'bg-white/5 text-neutral-200 ring-1 ring-white/10 hover:bg-white/10'
@@ -308,7 +368,7 @@ const TowDriver: React.FC = () => {
             )}
             <button
               onClick={clearAllFilters}
-              className="text-neutral-300 hover:text-white text-sm px-2 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+              className="text-neutral-300 hover:text-white text-sm px-2 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vizla-ring-focus"
             >
               Clear all
             </button>
@@ -353,11 +413,35 @@ const TowDriver: React.FC = () => {
           </h2>
         </div>
 
+        {/* Route Groups */}
+        {routeGroups.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-md font-medium text-neutral-100 mb-3">
+              Optimized Routes ({routeGroups.length} groups)
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {routeGroups.map((group, index) => (
+                <RouteGroupCard
+                  key={index}
+                  cars={group}
+                  lot={DALLAS_LOT}
+                  mode={routeMode}
+                  assumptions={assumptions}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Vehicle cards grid */}
         {cardsToRender.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {cardsToRender.map((car) => (
-              <VehicleCard key={(car as any).__dupKey ?? car.id} car={car} />
+              <VehicleCard 
+                key={(car as any).__dupKey ?? car.id} 
+                car={car} 
+                stepNumber={carStepMap.get(car.id)}
+              />
             ))}
           </div>
         ) : (
@@ -389,11 +473,19 @@ const TowDriver: React.FC = () => {
       {showTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-6 right-6 rounded-full bg-white/10 backdrop-blur-md ring-1 ring-white/20 px-4 py-2 text-sm text-neutral-200 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+          className="fixed bottom-6 right-6 rounded-full bg-white/10 backdrop-blur-md ring-1 ring-white/20 px-4 py-2 text-sm text-neutral-200 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus"
         >
           Back to top
         </button>
       )}
+
+      {/* Assumptions Drawer */}
+      <AssumptionsDrawer
+        isOpen={isAssumptionsOpen}
+        onClose={() => setIsAssumptionsOpen(false)}
+        assumptions={assumptions}
+        onAssumptionsChange={updateAssumptions}
+      />
     </AppShell>
   );
 };

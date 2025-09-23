@@ -9,7 +9,7 @@ const Skeleton: React.FC<SkeletonProps> = ({ className }) => {
   return (
     <div
       className={cn(
-        "animate-pulse rounded-md bg-white/10",
+        "animate-pulse rounded-md bg-vizla-glass",
         className
       )}
     />

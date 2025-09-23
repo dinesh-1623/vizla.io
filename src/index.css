@@ -8,25 +8,34 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Vizla Dark Theme - Professional color palette inspired by Apple & McKinsey */
-    --bg-canvas: #0f1419;
-    --bg-elev-1: #1a1f26;
-    --bg-elev-2: #252a31;
-    
-    --glass-bg: rgba(255, 255, 255, 0.04);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    
+    /* Canvas & elevations */
+    --bg-canvas: #0a0e14;
+    --bg-elev-1: #141a21;
+    --bg-elev-2: #1f252d;
+
+    /* Glass */
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-elevated: rgba(255, 255, 255, 0.08);
+
+    /* Text */
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
     --text-muted: #64748b;
-    
-    --ring-focus: #10b981;
-    --border-subtle: rgba(255, 255, 255, 0.06);
-    
-    --accent: #06b6d4;
-    --warn: #f59e0b;
-    --danger: #ef4444;
+    --text-disabled: #475569;
+
+    /* Brand & semantics */
+    --accent-primary: #3b82f6;  /* blue */
+    --accent-secondary: #06b6d4; /* cyan */
     --success: #10b981;
+    --warning: #f59e0b;
+    --danger:  #ef4444;
+    --info:    #6366f1;
+
+    /* Interactions */
+    --ring-focus: #3b82f6;
+    --ring-hover: #60a5fa;
+    --border-subtle: rgba(148, 163, 184, 0.10);
 
     /* Legacy shadcn variables for compatibility */
     --background: 222.2 84% 4.9%;
@@ -81,9 +90,9 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
-  body {
-    background-color: var(--bg-canvas);
-    color: var(--text-primary);
+  html, body, #root {
+    background: radial-gradient(1200px 600px at 50% -200px, #111827 0%, #0a0e14 45%, #0a0e14 100%);
+    color: var(--text-secondary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

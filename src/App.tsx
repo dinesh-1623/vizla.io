@@ -6,6 +6,21 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import TowDriver from "./pages/TowDriver";
 import Owner from "./pages/Owner";
+import OrderConfirmation from "./pages/OrderConfirmation";
+import ToDispatch from "./pages/ToDispatch";
+import Dispatched from "./pages/Dispatched";
+import Stashed from "./pages/Stashed";
+import Spotters from "./pages/Spotters";
+import TowTrucks from "./pages/TowTrucks";
+import Fleet from "./pages/admin/Fleet";
+import Users from "./pages/admin/Users";
+import Shifts from "./pages/admin/Shifts";
+import ClientPrefs from "./pages/admin/ClientPrefs";
+import Scheduling from "./pages/admin/Scheduling";
+import Zones from "./pages/admin/Zones";
+import Reports from "./pages/admin/Reports";
+import ActionItems from "./pages/admin/ActionItems";
+import StorageLots from "./pages/admin/StorageLots";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +35,21 @@ const App = () => (
           <Route path="/" element={<Dashboard />} />
           <Route path="/tow-driver" element={<TowDriver />} />
           <Route path="/owner" element={<Owner />} />
+          <Route path="/order-confirmation" element={<OrderConfirmation />} />
+          <Route path="/to-dispatch" element={<ToDispatch />} />
+          <Route path="/dispatched" element={<Dispatched />} />
+          <Route path="/stashed" element={<Stashed />} />
+          <Route path="/spotters" element={<Spotters />} />
+          <Route path="/tow-trucks" element={<TowTrucks />} />
+          <Route path="/admin/fleet" element={<Fleet />} />
+          <Route path="/admin/users" element={<Users />} />
+          <Route path="/admin/shifts" element={<Shifts />} />
+          <Route path="/admin/client-prefs" element={<ClientPrefs />} />
+          <Route path="/admin/scheduling" element={<Scheduling />} />
+          <Route path="/admin/zones" element={<Zones />} />
+          <Route path="/admin/reports" element={<Reports />} />
+          <Route path="/admin/action-items" element={<ActionItems />} />
+          <Route path="/admin/storage-lots" element={<StorageLots />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -2,7 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mockCars, DRIVERS } from '@/data/mockCars';
 import { VehicleCard } from '@/components/driver/VehicleCard';
-import { X, ArrowLeft, Grid3X3, List } from 'lucide-react';
+import RouteGroupCard from '@/components/owner/RouteGroupCard';
+import AssumptionsDrawer from '@/components/owner/AssumptionsDrawer';
+import { useAssumptions } from '@/hooks/useAssumptions';
+import { groupNearby, toPoints } from '@/lib/route/grouping';
+import { totalTimeStash } from '@/lib/route/engine';
+import { DALLAS_LOT } from '@/lib/route/config';
+import { X, ArrowLeft, Grid3X3, List, Settings } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 
 type ViewMode = 'card' | 'grid';
@@ -22,6 +28,11 @@ const Owner: React.FC = () => {
   const [selectedClient, setSelectedClient] = useState<string>('');
   const [selectedZone, setSelectedZone] = useState<string>('');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
+  const [routeMode, setRouteMode] = useState<'return' | 'stash'>('stash');
+  const [isAssumptionsOpen, setIsAssumptionsOpen] = useState(false);
+  
+  // Assumptions management
+  const { assumptions, updateAssumptions } = useAssumptions();
 
   // Get unique values for filters
   const uniqueClients = useMemo(() => {
@@ -40,6 +51,18 @@ const Owner: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('owner-view-mode', viewMode);
   }, [viewMode]);
+
+  // Persist route mode in localStorage
+  useEffect(() => {
+    const savedRouteMode = localStorage.getItem('owner-route-mode') as 'return' | 'stash';
+    if (savedRouteMode && ['return', 'stash'].includes(savedRouteMode)) {
+      setRouteMode(savedRouteMode);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('owner-route-mode', routeMode);
+  }, [routeMode]);
 
   // Persist selectedDriver in localStorage
   useEffect(() => {
@@ -148,6 +171,33 @@ const Owner: React.FC = () => {
     });
   }, [selectedDriver, selectedClient, selectedZone, client, zone, timeLocated]);
 
+  // Route grouping
+  const routeGroups = useMemo(() => {
+    return groupNearby(results, 5);
+  }, [results]);
+
+  // Create a map of car IDs to their step numbers for active route groups
+  const carStepMap = useMemo(() => {
+    const stepMap = new Map<string, number>();
+    routeGroups.forEach((group) => {
+      try {
+        // Use the route engine to get optimized order for stash mode
+        const params = toPoints(group, DALLAS_LOT);
+        const stashResult = totalTimeStash(params);
+        
+        stashResult.orderIds.forEach((carId, stepIndex) => {
+          stepMap.set(carId, stepIndex + 1);
+        });
+      } catch (error) {
+        // Fallback: use original order if route optimization fails
+        group.forEach((car, stepIndex) => {
+          stepMap.set(car.id, stepIndex + 1);
+        });
+      }
+    });
+    return stepMap;
+  }, [routeGroups]);
+
   // Clear functions
   const clearClient = () => setSelectedClient('');
   const clearZone = () => setSelectedZone('');
@@ -200,19 +250,29 @@ const Owner: React.FC = () => {
     <AppShell title="Owner View · Drilldowns">
       {/* Sticky Header */}
       <header className="bg-white/5 backdrop-blur-md ring-1 ring-white/10 sticky top-0 z-40 rounded-2xl p-4 mb-6">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-neutral-200 ring-1 ring-white/10 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-400/60 transition-colors"
-            aria-label="Back to Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm font-medium">Dashboard</span>
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-neutral-100">Owner View · Drilldowns</h1>
-            <p className="text-neutral-400 text-sm">Mock data only</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-neutral-200 ring-1 ring-white/10 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+              aria-label="Back to Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm font-medium">Dashboard</span>
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-neutral-100">Owner View · Drilldowns</h1>
+              <p className="text-neutral-400 text-sm">Mock data only</p>
+            </div>
           </div>
+          <button
+            onClick={() => setIsAssumptionsOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vizla-glass text-vizla-text-secondary ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev hover:text-vizla-text-primary transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus"
+            aria-label="Open route assumptions"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="text-sm font-medium">Assumptions</span>
+          </button>
         </div>
       </header>
 
@@ -228,7 +288,7 @@ const Owner: React.FC = () => {
                 <select
                   value={weekRange}
                   onChange={(e) => setWeekRange(e.target.value)}
-                  className="w-full bg-white/5 text-neutral-100 ring-1 ring-white/10 rounded-xl px-3 py-2 pr-8 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all appearance-none"
+                  className="w-full bg-white/5 text-neutral-100 ring-1 ring-white/10 rounded-xl px-3 py-2 pr-8 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-vizla-ring-focus transition-all appearance-none"
                 >
                   <option value="" className="bg-slate-900">Select week range</option>
                   <option value="this-week" className="bg-slate-900">This week</option>
@@ -255,7 +315,7 @@ const Owner: React.FC = () => {
                 <select
                   value={client}
                   onChange={(e) => setClient(e.target.value)}
-                  className="w-full bg-white/5 text-neutral-100 ring-1 ring-white/10 rounded-xl px-3 py-2 pr-8 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all appearance-none"
+                  className="w-full bg-white/5 text-neutral-100 ring-1 ring-white/10 rounded-xl px-3 py-2 pr-8 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-vizla-ring-focus transition-all appearance-none"
                 >
                   <option value="" className="bg-slate-900">Select client</option>
                   {uniqueClients.map((c) => (
@@ -283,7 +343,7 @@ const Owner: React.FC = () => {
                 <select
                   value={zone}
                   onChange={(e) => setZone(e.target.value)}
-                  className="w-full bg-white/5 text-neutral-100 ring-1 ring-white/10 rounded-xl px-3 py-2 pr-8 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all appearance-none"
+                  className="w-full bg-white/5 text-neutral-100 ring-1 ring-white/10 rounded-xl px-3 py-2 pr-8 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-vizla-ring-focus transition-all appearance-none"
                 >
                   <option value="" className="bg-slate-900">Select zone</option>
                   {allZones.map((z) => (
@@ -311,7 +371,7 @@ const Owner: React.FC = () => {
                 <select
                   value={timeLocated}
                   onChange={(e) => setTimeLocated(e.target.value)}
-                  className="w-full bg-white/5 text-neutral-100 ring-1 ring-white/10 rounded-xl px-3 py-2 pr-8 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all appearance-none"
+                  className="w-full bg-white/5 text-neutral-100 ring-1 ring-white/10 rounded-xl px-3 py-2 pr-8 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-vizla-ring-focus transition-all appearance-none"
                 >
                   <option value="" className="bg-slate-900">Select time</option>
                   <option value="Less than 1 hour" className="bg-slate-900">Less than 1 hour</option>
@@ -340,7 +400,7 @@ const Owner: React.FC = () => {
                 <select
                   value={driver}
                   onChange={(e) => setDriver(e.target.value)}
-                  className="w-full bg-white/5 text-neutral-100 ring-1 ring-white/10 rounded-xl px-3 py-2 pr-8 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all appearance-none"
+                  className="w-full bg-white/5 text-neutral-100 ring-1 ring-white/10 rounded-xl px-3 py-2 pr-8 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-vizla-ring-focus transition-all appearance-none"
                 >
                   <option value="" className="bg-slate-900">All</option>
                   {DRIVERS.map((d) => (
@@ -372,7 +432,7 @@ const Owner: React.FC = () => {
                   <button
                     key={item.driver}
                     onClick={() => handleDriverClick(item.driver)}
-                    className={`w-full flex items-center justify-between rounded-xl ring-1 ring-white/10 px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400/60 cursor-pointer ${
+                    className={`w-full flex items-center justify-between rounded-xl ring-1 ring-white/10 px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus cursor-pointer ${
                       selectedDriver === item.driver
                         ? 'bg-white/10 text-neutral-100'
                         : 'bg-white/5 text-neutral-200 hover:bg-white/10'
@@ -400,7 +460,7 @@ const Owner: React.FC = () => {
                   <div className="flex items-center gap-2 mb-4">
                     <button
                       onClick={() => handleDriverClick(selectedDriver)}
-                      className="text-sm font-medium text-neutral-300 hover:text-neutral-100 focus-visible:ring-2 focus-visible:ring-emerald-400/60 rounded px-2 py-1"
+                      className="text-sm font-medium text-neutral-300 hover:text-neutral-100 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus rounded px-2 py-1"
                     >
                       {selectedDriver}
                     </button>
@@ -409,7 +469,7 @@ const Owner: React.FC = () => {
                         <span className="text-neutral-400">→</span>
                         <button
                           onClick={() => clearBreadcrumb('client')}
-                          className="text-sm font-medium text-neutral-300 hover:text-neutral-100 focus-visible:ring-2 focus-visible:ring-emerald-400/60 rounded px-2 py-1"
+                          className="text-sm font-medium text-neutral-300 hover:text-neutral-100 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus rounded px-2 py-1"
                         >
                           {selectedClient}
                         </button>
@@ -420,7 +480,7 @@ const Owner: React.FC = () => {
                         <span className="text-neutral-400">→</span>
                         <button
                           onClick={() => clearBreadcrumb('zone')}
-                          className="text-sm font-medium text-neutral-300 hover:text-neutral-100 focus-visible:ring-2 focus-visible:ring-emerald-400/60 rounded px-2 py-1"
+                          className="text-sm font-medium text-neutral-300 hover:text-neutral-100 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus rounded px-2 py-1"
                         >
                           {selectedZone}
                         </button>
@@ -433,7 +493,7 @@ const Owner: React.FC = () => {
                     <div className="flex rounded-lg bg-white/5 p-1">
                       <button
                         onClick={() => setViewMode('card')}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400/60 ${
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus ${
                           viewMode === 'card'
                             ? 'bg-white text-slate-900'
                             : 'text-neutral-300 hover:text-neutral-100'
@@ -444,7 +504,7 @@ const Owner: React.FC = () => {
                       </button>
                       <button
                         onClick={() => setViewMode('grid')}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400/60 ${
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus ${
                           viewMode === 'grid'
                             ? 'bg-white text-slate-900'
                             : 'text-neutral-300 hover:text-neutral-100'
@@ -476,7 +536,7 @@ const Owner: React.FC = () => {
                         )}
                         <button
                           onClick={clearAllSelections}
-                          className="text-neutral-300 hover:text-white text-sm px-2 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+                          className="text-neutral-300 hover:text-white text-sm px-2 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vizla-ring-focus"
                         >
                           Clear all
                         </button>
@@ -497,7 +557,7 @@ const Owner: React.FC = () => {
                           <button
                             key={item.name}
                             onClick={() => handleClientClick(item.name)}
-                            className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400/60 ${
+                            className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus ${
                               selectedClient === item.name
                                 ? 'bg-white/10 text-neutral-100'
                                 : 'hover:bg-white/8 text-neutral-200'
@@ -519,7 +579,7 @@ const Owner: React.FC = () => {
                         <button
                           key={item.name}
                           onClick={() => handleZoneClick(item.name)}
-                          className={`p-3 rounded-lg text-center transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400/60 ${
+                          className={`p-3 rounded-lg text-center transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus ${
                             selectedZone === item.name
                               ? 'bg-white/10 text-neutral-100'
                               : 'bg-white/5 hover:bg-white/8 text-neutral-200'
@@ -544,12 +604,36 @@ const Owner: React.FC = () => {
               <h3 className="text-lg font-semibold text-neutral-100 mb-4">
                 Results ({results.length} {results.length === 1 ? 'vehicle' : 'vehicles'})
               </h3>
+
+              {/* Route Groups */}
+              {routeGroups.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-md font-medium text-neutral-100 mb-3">
+                    Optimized Routes ({routeGroups.length} groups)
+                  </h4>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {routeGroups.map((group, index) => (
+                      <RouteGroupCard
+                        key={index}
+                        cars={group}
+                        lot={DALLAS_LOT}
+                        mode={routeMode}
+                        assumptions={assumptions}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
               
               {results.length > 0 ? (
                 viewMode === 'card' ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {results.map((car) => (
-                      <VehicleCard key={car.id} car={car} />
+                      <VehicleCard 
+                        key={car.id} 
+                        car={car} 
+                        stepNumber={carStepMap.get(car.id)}
+                      />
                     ))}
                   </div>
                 ) : (
@@ -575,7 +659,7 @@ const Owner: React.FC = () => {
                         {results.map((car) => (
                           <tr
                             key={car.id}
-                            className="border-b border-white/5 hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+                            className="border-b border-white/5 hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus"
                             tabIndex={0}
                           >
                             <td className="p-3 text-sm text-neutral-200">{car.locatedDate}</td>
@@ -616,7 +700,7 @@ const Owner: React.FC = () => {
                   {hasActiveSelections && (
                     <button
                       onClick={clearAllSelections}
-                      className="px-4 py-2 bg-white/10 text-neutral-200 ring-1 ring-white/20 rounded-lg hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-emerald-400/60 transition-colors"
+                      className="px-4 py-2 bg-white/10 text-neutral-200 ring-1 ring-white/20 rounded-lg hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
                     >
                       Reset selection
                     </button>
@@ -626,6 +710,14 @@ const Owner: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Assumptions Drawer */}
+        <AssumptionsDrawer
+          isOpen={isAssumptionsOpen}
+          onClose={() => setIsAssumptionsOpen(false)}
+          assumptions={assumptions}
+          onAssumptionsChange={updateAssumptions}
+        />
     </AppShell>
   );
 };

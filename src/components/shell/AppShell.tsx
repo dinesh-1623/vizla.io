@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 
 interface AppShellProps {
@@ -9,9 +10,13 @@ interface AppShellProps {
 
 const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
 
   const openSidebar = () => setIsOpen(true);
   const closeSidebar = () => setIsOpen(false);
+
+  // Hide sidebar on specific pages (Owner View and Tow Driver View)
+  const shouldHideSidebar = location.pathname === '/owner' || location.pathname === '/tow-driver';
 
   // Lock body scroll when sidebar is open on mobile
   useEffect(() => {
@@ -43,55 +48,44 @@ const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
   }, [isOpen]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-neutral-200">
-      {/* Mobile top bar */}
-      <div className="sticky top-0 z-40 bg-white/5 backdrop-blur-md ring-1 ring-white/10 px-6 py-4 lg:hidden">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={openSidebar}
-            className="p-2 rounded-lg hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-400/60 transition-colors"
-            aria-expanded={isOpen}
-            aria-label="Open sidebar"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          {title && (
-            <h1 className="text-xl font-semibold text-neutral-100">{title}</h1>
-          )}
-        </div>
-      </div>
+    <div className="min-h-screen text-vizla-text-secondary">
+              {/* Mobile top bar removed since sidebar is removed */}
 
       {/* Desktop header */}
       {title && (
-        <div className="hidden lg:block sticky top-0 z-40 bg-white/5 backdrop-blur-md ring-1 ring-white/10 px-6 py-4">
-          <h1 className="text-xl font-semibold text-neutral-100">{title}</h1>
+        <div className="sticky top-0 z-40 bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder px-6 py-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={openSidebar}
+              className="p-2 rounded-lg hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+              aria-expanded={isOpen}
+              aria-label="Open navigation menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <h1 className="text-xl font-semibold text-vizla-text-primary">{title}</h1>
+          </div>
         </div>
       )}
 
-      {/* Scrim - only on mobile when open */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 z-[50] bg-black/50 backdrop-blur-sm lg:hidden"
-          onClick={closeSidebar}
-          aria-hidden="true"
-        />
-      )}
+              {/* Scrim - shows when dropdown is open */}
+              {isOpen && (
+                <div 
+                  className="fixed inset-0 z-[50] bg-black/50 backdrop-blur-sm"
+                  onClick={closeSidebar}
+                  aria-hidden="true"
+                />
+              )}
 
-      {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-40">
-        <Sidebar />
-      </div>
-
-      {/* Mobile sidebar */}
-      <div className="lg:hidden">
-        <Sidebar isOpen={isOpen} onClose={closeSidebar} />
-      </div>
+              {/* Dropdown sidebar - shows when hamburger is clicked */}
+              {isOpen && (
+                <div className="fixed top-0 left-0 z-[60] w-72 h-screen bg-vizla-elev1/95 backdrop-blur-md ring-1 ring-vizla-glassBorder text-vizla-text-secondary">
+                  <Sidebar isOpen={isOpen} onClose={closeSidebar} />
+                </div>
+              )}
 
       {/* Content area */}
-      <div className={`
-        lg:pl-72 transition-all duration-300
-        ${isOpen ? 'pointer-events-none blur-[1px] lg:pointer-events-auto lg:blur-0' : 'pointer-events-auto blur-0'}
-      `}>
+      <div className="transition-all duration-300">
         <div className="mx-auto max-w-7xl px-6 py-6">
           {children}
         </div>

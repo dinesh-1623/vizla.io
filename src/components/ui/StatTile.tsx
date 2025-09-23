@@ -29,7 +29,7 @@ const StatTile: React.FC<StatTileProps> = ({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted uppercase tracking-wider">
+        <p className="text-xs font-medium text-vizla-text-muted uppercase tracking-wider">
           {label}
         </p>
         {delta && delta.dir && (
@@ -45,7 +45,7 @@ const StatTile: React.FC<StatTileProps> = ({
         )}
       </div>
       <div className="flex items-end justify-between">
-        <div className="text-2xl font-bold text-primary">
+        <div className="text-2xl font-bold text-vizla-text-primary">
           {value}
         </div>
       </div>

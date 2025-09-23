@@ -52,17 +52,17 @@ const DataTable: React.FC<DataTableProps> = ({
   }
 
   return (
-    <div className={cn("glass rounded-2xl overflow-hidden", className)}>
+    <div className={cn("bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder rounded-2xl overflow-hidden", className)}>
       <div className="overflow-auto max-h-[70vh]">
         <table className="w-full">
-          <thead className="sticky top-0 z-10 bg-vizla-elev-1 border-b border-vizla-border-subtle">
+          <thead className="sticky top-0 z-10 bg-vizla-elev1/60 border-b border-vizla-borderSubtle">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
                   scope="col"
                   className={cn(
-                    "px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider",
+                    "px-4 py-3 text-left text-xs font-medium text-vizla-text-muted uppercase tracking-wider",
                     column.className
                   )}
                 >
@@ -71,7 +71,7 @@ const DataTable: React.FC<DataTableProps> = ({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-vizla-border-subtle">
+          <tbody className="divide-y divide-vizla-borderSubtle">
             {rows.map((row, index) => (
               <tr
                 key={index}
@@ -81,15 +81,15 @@ const DataTable: React.FC<DataTableProps> = ({
                 className={cn(
                   "h-11 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-vizla-ring-focus focus-visible:outline-none",
                   selectedRowIndex === index
-                    ? "bg-vizla-elev-2"
-                    : "hover:bg-vizla-elev-1"
+                    ? "bg-vizla-elev2"
+                    : "hover:bg-vizla-glassElev"
                 )}
               >
                 {columns.map((column) => (
                   <td
                     key={column.key}
                     className={cn(
-                      "px-4 py-3 text-sm text-primary",
+                      "px-4 py-3 text-sm text-vizla-text-primary",
                       column.className
                     )}
                   >

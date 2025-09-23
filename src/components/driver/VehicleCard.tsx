@@ -5,9 +5,10 @@ import { GLASS_SURFACE, TEXT_STYLES, STATUS_COLORS } from '@/lib/constants';
 
 interface VehicleCardProps {
   car: Car;
+  stepNumber?: number;
 }
 
-export const VehicleCard: React.FC<VehicleCardProps> = ({ car }) => {
+export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber }) => {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
@@ -21,13 +22,20 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car }) => {
   const status = getStatus();
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-white/5 backdrop-blur-md ring-1 ring-white/10 shadow-[0_2px_30px_rgba(0,0,0,0.25)] transition hover:shadow-[0_6px_40px_rgba(0,0,0,0.35)] group p-4">
-      {/* Header with status badge */}
+    <div className="overflow-hidden rounded-2xl bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder shadow-[0_2px_30px_rgba(0,0,0,0.25)] transition hover:shadow-[0_6px_40px_rgba(0,0,0,0.35)] hover:translate-y-[-1px] group p-4 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus focus-visible:outline-none">
+      {/* Header with status badge and step indicator */}
       <div className="flex items-center justify-between mb-3">
         <h3 className={`${TEXT_STYLES.HEADING_SECONDARY} truncate`}>{car.yearMakeModel}</h3>
-        <span className={`${status.color} text-white text-xs px-2 py-1 rounded-full font-medium`}>
-          {status.text}
-        </span>
+        <div className="flex items-center gap-2">
+          {stepNumber && (
+            <span className="bg-vizla-brand-primary/20 text-vizla-brand-primary text-xs px-2 py-1 rounded-full font-medium">
+              Step #{stepNumber}
+            </span>
+          )}
+          <span className={`${status.color} text-white text-xs px-2 py-1 rounded-full font-medium`}>
+            {status.text}
+          </span>
+        </div>
       </div>
 
       {/* Vehicle details */}

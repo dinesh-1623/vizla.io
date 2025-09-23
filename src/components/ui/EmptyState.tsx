@@ -18,24 +18,24 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   className
 }) => {
   // Default icon if none provided
-  const defaultIcon = icon || <Search className="w-8 h-8 text-muted" />;
+  const defaultIcon = icon || <Search className="w-8 h-8 text-vizla-text-muted" />;
 
   return (
     <div className={cn(
-      "glass rounded-2xl p-8 text-center border-2 border-dashed border-white/20",
+      "bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder rounded-2xl p-8 text-center border-2 border-dashed border-vizla-glassBorder",
       className
     )}>
       <div className="flex flex-col items-center space-y-4">
-        <div className="flex items-center justify-center w-16 h-16 rounded-full bg-white/5">
+        <div className="flex items-center justify-center w-16 h-16 rounded-full bg-vizla-glass">
           {defaultIcon}
         </div>
         
         <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-primary">
+          <h3 className="text-lg font-semibold text-vizla-text-primary">
             {title}
           </h3>
           {message && (
-            <p className="text-sm text-secondary max-w-sm">
+            <p className="text-sm text-vizla-text-secondary max-w-sm">
               {message}
             </p>
           )}

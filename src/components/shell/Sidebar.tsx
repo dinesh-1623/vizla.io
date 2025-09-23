@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { X } from 'lucide-react';
-import { mockCars } from '@/data/mockCars';
+import { getCounts, getOrderConfirmationCount, getAssignmentVersion } from '@/lib/mockState';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -23,20 +23,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const location = useLocation();
   const pathname = location.pathname;
 
-  // Compute badge counts from mock data
-  const badgeCounts = React.useMemo(() => {
-    const orderConfirmation = mockCars.filter(c => c.pendingOrder).length;
-    const toDispatch = mockCars.filter(c => !c.assignedDriver).length;
-    const dispatched = mockCars.filter(c => c.assignedDriver).length;
-    const stashed = mockCars.filter(c => c.vizlaRoute === "Cache Destination").length;
-
+  // Memoize badge counts that depend on ASSIGNMENTS
+  // This ensures badges update automatically when ASSIGNMENTS is mutated via UI
+  const badgeCounts = useMemo(() => {
+    const counts = getCounts();
+    const orderConfirmationCount = getOrderConfirmationCount();
+    
     return {
-      orderConfirmation,
-      toDispatch,
-      dispatched,
-      stashed
+      orderConfirmation: orderConfirmationCount,
+      toDispatch: counts.toDispatch,
+      dispatched: counts.dispatched,
+      stashed: counts.stashed
     };
-  }, []);
+  }, [getAssignmentVersion()]); // Re-compute when assignments are updated
 
   const NAV_SECTIONS: NavSection[] = [
     {
@@ -44,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
       items: [
         { label: "Dashboard", href: "/" },
         { label: "Order Confirmation", href: "/order-confirmation", badge: badgeCounts.orderConfirmation },
-        { label: "To Dispatch", href: "/dispatch", badge: badgeCounts.toDispatch },
+        { label: "To Dispatch", href: "/to-dispatch", badge: badgeCounts.toDispatch },
         { label: "Dispatched", href: "/dispatched", badge: badgeCounts.dispatched },
         { label: "Stashed", href: "/stashed", badge: badgeCounts.stashed }
       ]
@@ -82,7 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   return (
     <aside 
       className={`
-        fixed inset-y-0 left-0 z-[60] w-72 bg-white/5 backdrop-blur-md ring-1 ring-white/10 text-neutral-200
+        fixed inset-y-0 left-0 z-[60] w-72 bg-vizla-elev1/95 backdrop-blur-md ring-1 ring-vizla-glassBorder text-vizla-text-secondary
         lg:static lg:z-auto lg:rounded-r-2xl lg:translate-x-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         transition-transform duration-300 ease-in-out
@@ -90,13 +89,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
       role="dialog"
       aria-modal={isOpen}
     >
-      <div className="h-screen p-4 flex flex-col">
+      <div className="h-screen pt-16 px-4 pb-4 flex flex-col">
         {/* Brand row */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-neutral-100">Vizla Console</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-xl font-bold text-vizla-text-primary">Vizla Console</h1>
           <button
             onClick={onClose}
-            className="lg:hidden p-1 rounded-lg hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-400/60 transition-colors"
+            className="lg:hidden p-1 rounded-lg hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
             aria-label="Close sidebar"
           >
             <X className="w-5 h-5" />
@@ -110,7 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
               {sectionIndex > 0 && (
                 <div className="my-2 border-t border-white/10" />
               )}
-              <h2 className="text-xs font-medium text-neutral-400 px-1 mt-3 mb-1 uppercase tracking-wider">
+              <h2 className="text-xs font-medium text-vizla-text-muted px-1 mt-3 mb-1 uppercase tracking-wider">
                 {section.title}
               </h2>
               <div className="space-y-1">
@@ -120,16 +119,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
                     to={item.href}
                     className={`
                       flex items-center justify-between rounded-xl px-3 py-2 transition-colors
-                      hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-400/60
+                      hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus
                       ${isActive(item.href) 
-                        ? 'bg-white text-slate-900' 
-                        : 'text-neutral-200'
+                        ? 'bg-vizla-glassElev text-vizla-text-primary ring-1 ring-vizla-glassBorder' 
+                        : 'text-vizla-text-secondary'
                       }
                     `}
                   >
                     <span className="text-sm font-medium">{item.label}</span>
                     {item.badge !== undefined && item.badge > 0 && (
-                      <span className="min-w-[1.25rem] h-5 inline-flex items-center justify-center rounded-full bg-white text-slate-900 text-[11px] px-1.5">
+                      <span className="min-w-[1.25rem] h-5 inline-flex items-center justify-center rounded-full bg-vizla-brand-primary/20 text-vizla-brand-primary text-[11px] px-1.5">
                         {item.badge}
                       </span>
                     )}

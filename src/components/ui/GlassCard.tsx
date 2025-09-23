@@ -17,19 +17,19 @@ const GlassCard: React.FC<GlassCardProps> = ({
   return (
     <div
       className={cn(
-        "glass rounded-2xl p-4",
+        "bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder text-vizla-text-secondary rounded-2xl p-4 transition hover:translate-y-[-1px] hover:shadow-2xl/5",
         className
       )}
     >
       {(title || subtitle) && (
         <div className="mb-4">
           {title && (
-            <h3 className="text-lg font-semibold text-primary mb-1">
+            <h3 className="text-lg font-semibold text-vizla-text-primary mb-1">
               {title}
             </h3>
           )}
           {subtitle && (
-            <p className="text-sm text-muted">
+            <p className="text-sm text-vizla-text-muted">
               {subtitle}
             </p>
           )}
