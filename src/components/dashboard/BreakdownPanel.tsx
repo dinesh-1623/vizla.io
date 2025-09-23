@@ -1,16 +1,16 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Navigation } from 'lucide-react';
-import { cn, toTitleCase, formatPercent, buildGoogleMapsUrl, getMarketOrigin } from '@/lib/utils';
-import { BreakdownItem } from '@/types/dashboard';
-import { LocatedRow } from '@/lib/data/loaders';
+import { cn, toTitleCase, formatPercent } from '@/lib/utils';
+import { BreakdownItem, LocatedRow } from '@/lib/types';
 
 interface BreakdownPanelProps {
   title: string;
   items: BreakdownItem[];
   totalCount: number;
-  onItemClick: (item: BreakdownItem) => void;
+  onItemClick: (key: string) => void;
   selectedItem?: string;
   className?: string;
+  onNavigate?: (item: BreakdownItem) => void;
 }
 
 export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({
@@ -19,24 +19,13 @@ export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({
   totalCount,
   onItemClick,
   selectedItem,
-  className
+  className,
+  onNavigate
 }) => {
   const handleNavigate = (item: BreakdownItem, event: React.MouseEvent) => {
     event.stopPropagation();
-    
-    if (item.vehicles.length === 0) return;
-    
-    // Get market from first vehicle to determine origin
-    const market = item.vehicles[0]?.market || 'Maryland';
-    const origin = getMarketOrigin(market);
-    
-    const url = buildGoogleMapsUrl(origin, item.vehicles);
-    window.open(url, '_blank', 'noopener,noreferrer');
-    
-    // Show toast if more than 8 vehicles
-    if (item.vehicles.length > 8) {
-      // Simple toast notification - you can enhance this later
-      console.log(`Showing first 8 stops (${item.vehicles.length} total)`);
+    if (onNavigate) {
+      onNavigate(item);
     }
   };
 
@@ -55,7 +44,7 @@ export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({
               No {title} Data
             </h3>
             <p className="text-sm text-vizla-text-secondary mt-1">
-              No {title.toLowerCase()} breakdown data available at this time.
+              No results. Clear filters.
             </p>
           </div>
         </div>
@@ -73,41 +62,47 @@ export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({
       </div>
       
       <div className="divide-y divide-vizla-borderSubtle">
-        {items.map((item, index) => {
-          const isSelected = selectedItem === item.name;
+        {items.map((item) => {
+          const isSelected = selectedItem === item.key;
           
           return (
             <div
-              key={item.name}
+              key={item.key}
               className={cn(
                 "h-11 px-4 flex items-center justify-between cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus focus-visible:outline-none",
                 isSelected 
                   ? "bg-vizla-elev2" 
                   : "hover:bg-vizla-glassElev"
               )}
-              onClick={() => onItemClick(item)}
+              onClick={() => onItemClick(item.key)}
               tabIndex={0}
               role="button"
-              aria-label={`Filter by ${title}: ${item.name}`}
+              aria-label={`Filter by ${title}: ${item.key}`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onItemClick(item.key);
+                }
+              }}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-medium text-vizla-text-primary truncate">
-                    {toTitleCase(item.name)}
+                    {toTitleCase(item.key)}
                   </span>
                   <div className="flex items-center gap-2 ml-2">
                     <span className="text-xs text-vizla-text-secondary">
                       {item.count}
                     </span>
                     <span className="text-xs text-vizla-text-muted">
-                      ({formatPercent(item.pct)})
+                      ({formatPercent(item.percent)})
                     </span>
                   </div>
                 </div>
                 <div className="w-full h-1.5 bg-vizla-glass rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-vizla-brand-primary transition-all duration-300"
-                    style={{ width: `${Math.min(item.pct, 100)}%` }}
+                    className="h-full bg-gradient-to-r from-vizla-brand-primary to-vizla-brand-secondary transition-all duration-300"
+                    style={{ width: `${Math.min(item.percent, 100)}%` }}
                   />
                 </div>
               </div>
@@ -115,7 +110,7 @@ export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({
               <button
                 onClick={(e) => handleNavigate(item, e)}
                 className="ml-3 p-1 rounded-md hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-                aria-label={`Navigate to ${item.name} locations`}
+                aria-label={`Navigate to ${item.key} locations`}
                 title="Navigate to locations"
               >
                 <Navigation className="w-4 h-4 text-vizla-text-muted hover:text-vizla-text-secondary" />

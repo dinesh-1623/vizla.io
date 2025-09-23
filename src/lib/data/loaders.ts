@@ -5,28 +5,10 @@
  */
 
 import { parseCsv } from '../csv';
+import { LocatedRow, Status } from '../types';
 
-export type LocatedRow = {
-  id: string;
-  status: 'located' | 'blocked' | 'stashed';
-  market: string;        // Dallas, Maryland, etc.
-  client: string;
-  zone: string;          // Dallas-North/East/South/West
-  address: string;
-  lat: number;
-  lon: number;
-  driver?: string;       // spotter/assigned
-  locatedAt?: string;    // ISO or parseable date
-  year?: string;
-  make?: string;
-  model?: string;
-  color?: string;
-  tag?: string;
-  vin?: string;
-  city?: string;
-  zip?: string;
-  notes?: string;
-};
+// Re-export types for backward compatibility
+export type { LocatedRow, Status };
 
 /**
  * Flexible header mapping for CSV columns
@@ -180,24 +162,24 @@ function determineZone(city: string, market: string): string {
 /**
  * Determine status based on driver field and type
  */
-function determineStatus(driver: string, type: string): 'located' | 'blocked' | 'stashed' {
+function determineStatus(driver: string, type: string): Status {
   const driverLower = driver.toLowerCase();
   const typeLower = type.toLowerCase();
   
   if (driverLower.includes('blocked') || driverLower.includes('impound')) {
-    return 'blocked';
+    return 'Blocked';
   }
   
   if (driverLower.includes('stash') || driverLower.includes('stored')) {
-    return 'stashed';
+    return 'Stashed';
   }
   
   // Default to located if we have a driver or it's a GPS type
   if (driver || typeLower === 'gps') {
-    return 'located';
+    return 'Located';
   }
   
-  return 'located';
+  return 'Located';
 }
 
 /**

@@ -23,73 +23,97 @@ export function formatPercent(value: number): string {
 }
 
 /**
- * Build Google Maps URL with waypoints
+ * Calculate Haversine distance between two points
+ */
+export function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+/**
+ * Find nearest storage lot to a given location
+ */
+export function findNearestStorageLot(lat: number, lon: number, storageLots: Array<{lat: number; lng: number; [key: string]: any}>): any | null {
+  if (storageLots.length === 0) return null;
+  
+  let nearest = storageLots[0];
+  let minDistance = haversineDistance(lat, lon, nearest.lat, nearest.lng);
+  
+  for (let i = 1; i < storageLots.length; i++) {
+    const lot = storageLots[i];
+    const distance = haversineDistance(lat, lon, lot.lat, lot.lng);
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearest = lot;
+    }
+  }
+  
+  return nearest;
+}
+
+/**
+ * Build Google Maps URL with storage lot origin
  */
 export function buildGoogleMapsUrl(
-  origin: string,
-  vehicles: Array<{ address: string; lat: number; lon: number }>,
-  maxWaypoints: number = 8
+  destination: { lat?: number; lng?: number; address?: string },
+  storageLots: Array<{lat: number; lng: number; [key: string]: any}> = []
 ): string {
-  if (vehicles.length === 0) return '#';
+  if (!destination.lat && !destination.lng && !destination.address) {
+    return '#';
+  }
   
   const baseUrl = 'https://www.google.com/maps/dir/?api=1';
-  const encodedOrigin = encodeURIComponent(origin);
+  const params = new URLSearchParams();
   
-  // First vehicle as destination
-  const firstVehicle = vehicles[0];
-  const firstDest = firstVehicle.address || `${firstVehicle.lat},${firstVehicle.lon}`;
-  const encodedDest = encodeURIComponent(firstDest);
+  // Set destination
+  const dest = destination.lat && destination.lng 
+    ? `${destination.lat},${destination.lng}`
+    : destination.address || '';
   
-  // Remaining vehicles as waypoints (max 8 total)
-  const waypoints = vehicles
-    .slice(1, maxWaypoints)
-    .map(v => v.address || `${v.lat},${v.lon}`)
-    .join('|');
-  
-  const params = new URLSearchParams({
-    origin: encodedOrigin,
-    destination: encodedDest,
-  });
-  
-  if (waypoints) {
-    params.set('waypoints', waypoints);
+  if (dest) {
+    params.set('destination', encodeURIComponent(dest));
   }
+  
+  // Set origin from nearest storage lot if we have coordinates
+  if (destination.lat && destination.lng) {
+    const nearestLot = findNearestStorageLot(destination.lat, destination.lng, storageLots);
+    if (nearestLot) {
+      params.set('origin', encodeURIComponent(`${nearestLot.lat},${nearestLot.lng}`));
+    }
+  }
+  
+  params.set('travelmode', 'driving');
   
   return `${baseUrl}&${params.toString()}`;
 }
 
 /**
- * Get market center coordinates for origin
+ * Load global filters from localStorage
  */
-export function getMarketOrigin(market: string): string {
-  const origins: Record<string, string> = {
-    'Maryland': 'Baltimore, MD',
-    'Washington DC': 'Washington, DC',
-    'Virginia': 'Alexandria, VA',
-    'Dallas': 'Dallas, TX',
-  };
-  
-  return origins[market] || market;
-}
-
-/**
- * Load filters from localStorage
- */
-export function loadDashboardFilters(): Partial<DashboardFilters> {
+export function loadGlobalFilters(): { market: string; status: string } {
   try {
-    const stored = localStorage.getItem('vizla.dashboard.filters');
-    return stored ? JSON.parse(stored) : {};
+    const market = localStorage.getItem('vizla.market') || 'All Markets';
+    const status = localStorage.getItem('vizla.status') || 'All Statuses';
+    return { market, status };
   } catch {
-    return {};
+    return { market: 'All Markets', status: 'All Statuses' };
   }
 }
 
 /**
- * Save filters to localStorage
+ * Save global filters to localStorage
  */
-export function saveDashboardFilters(filters: Partial<DashboardFilters>): void {
+export function saveGlobalFilters(market: string, status: string): void {
   try {
-    localStorage.setItem('vizla.dashboard.filters', JSON.stringify(filters));
+    localStorage.setItem('vizla.market', market);
+    localStorage.setItem('vizla.status', status);
   } catch {
     // Ignore localStorage errors
   }

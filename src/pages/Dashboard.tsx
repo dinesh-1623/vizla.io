@@ -2,69 +2,60 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loadLocated, loadLocatedWithFilters, getUniqueValues, LocatedRow } from '@/lib/data/loaders';
-import { Truck, User, RefreshCw, Filter, AlertCircle, Navigation } from 'lucide-react';
+import { loadLocated, loadLocatedWithFilters, getUniqueValues } from '@/lib/data/loaders';
+import { Truck, User, RefreshCw, AlertCircle } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { StatTile } from '@/components/ui/StatTile';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { FilterChips as OldFilterChips } from '@/components/ui/FilterChips';
+import { FilterBar } from '@/components/dashboard/FilterBar';
 import { FilterChips } from '@/components/dashboard/FilterChips';
 import { BreakdownPanel } from '@/components/dashboard/BreakdownPanel';
-import { DataTable } from '@/components/ui/DataTable';
-import { loadDashboardFilters, saveDashboardFilters } from '@/lib/utils';
-import { DashboardFilters, BreakdownItem, FilterChip } from '@/types/dashboard';
+import { StatusLegend } from '@/components/dashboard/StatusLegend';
+import { 
+  loadGlobalFilters, 
+  saveGlobalFilters, 
+  buildGoogleMapsUrl 
+} from '@/lib/utils';
+import { 
+  LocatedRow, 
+  Status, 
+  ActiveFilters, 
+  BreakdownItem, 
+  StorageLot 
+} from '@/lib/types';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<LocatedRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [storageLots, setStorageLots] = useState<StorageLot[]>([]);
   
-  console.log('🎯 Dashboard component mounted');
-  console.log('📊 Current data length:', data.length);
-  console.log('⏳ Loading state:', isLoading);
-  console.log('❌ Error state:', error);
+  // Global filter state
+  const [market, setMarket] = useState<string>('All Markets');
+  const [status, setStatus] = useState<Status | 'All Statuses'>('All Statuses');
   
-  // Filter state
-  const [filters, setFilters] = useState({
-    market: '',
-    status: '',
-    client: '',
-    zone: '',
-    driver: ''
-  });
-
-  // Dashboard filter state for breakdown interactions
-  const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters>(() => 
-    loadDashboardFilters()
-  );
-
-  // Selection state for breakdown tables
-  const [selectedClient, setSelectedClient] = useState<string>('');
-  const [selectedZone, setSelectedZone] = useState<string>('');
-  const [selectedDriver, setSelectedDriver] = useState<string>('');
+  // Drilldown selection state
+  const [selClient, setSelClient] = useState<string | undefined>();
+  const [selZone, setSelZone] = useState<string | undefined>();
+  const [selDriver, setSelDriver] = useState<string | undefined>();
   
-  // Load data on mount
+  // Load data and storage lots on mount
   useEffect(() => {
     loadData();
+    loadStorageLots();
+    // Load global filters from localStorage
+    const savedFilters = loadGlobalFilters();
+    setMarket(savedFilters.market);
+    setStatus(savedFilters.status as Status | 'All Statuses');
   }, []);
 
-  // Log when data changes
+  // Save global filters to localStorage
   useEffect(() => {
-    console.log('📊 Data changed:', data.length, 'rows');
-    if (data.length > 0) {
-      console.log('📋 First data item:', data[0]);
-      console.log('📋 Sample clients:', data.slice(0, 5).map(d => d.client));
-    }
-  }, [data]);
-
-  // Save dashboard filters to localStorage
-  useEffect(() => {
-    saveDashboardFilters(dashboardFilters);
-  }, [dashboardFilters]);
+    saveGlobalFilters(market, status);
+  }, [market, status]);
 
   const loadData = async () => {
     try {
@@ -83,32 +74,39 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Filter data based on current filters
+  const loadStorageLots = async () => {
+    try {
+      const response = await fetch('/data/storage-lots.json');
+      const lots = await response.json();
+      setStorageLots(lots);
+    } catch (err) {
+      console.error('❌ Error loading storage lots:', err);
+    }
+  };
+
+  // Filter data based on global filters and drilldown selections
   const filteredData = useMemo(() => {
     const filtered = data.filter(row => {
-      if (filters.market && row.market !== filters.market) return false;
-      if (filters.status && row.status !== filters.status) return false;
-      if (filters.client && row.client !== filters.client) return false;
-      if (filters.zone && row.zone !== filters.zone) return false;
-      if (filters.driver && row.driver !== filters.driver) return false;
+      // Apply global filters
+      if (market !== 'All Markets' && row.zone !== market) return false;
+      if (status !== 'All Statuses' && row.status !== status) return false;
       
-      // Apply dashboard filters
-      if (dashboardFilters.client && row.client !== dashboardFilters.client) return false;
-      if (dashboardFilters.zone && row.zone !== dashboardFilters.zone) return false;
-      if (dashboardFilters.driver && row.driver !== dashboardFilters.driver) return false;
+      // Apply drilldown filters (cross-filtering - exclude own dimension)
+      if (selClient && row.client !== selClient) return false;
+      if (selZone && row.zone !== selZone) return false;
+      if (selDriver && row.driver !== selDriver) return false;
       
       return true;
     });
     console.log('🔍 Filtered data:', filtered.length, 'rows');
-    console.log('📋 Sample filtered data:', filtered.slice(0, 2));
     return filtered;
-  }, [data, filters, dashboardFilters]);
+  }, [data, market, status, selClient, selZone, selDriver]);
 
   // Compute KPIs from filtered data
   const kpis = useMemo(() => {
     const total = filteredData.length;
-    const located = filteredData.filter(r => r.status === 'located').length;
-    const blocked = filteredData.filter(r => r.status === 'blocked').length;
+    const located = filteredData.filter(r => r.status === 'Located').length;
+    const blocked = filteredData.filter(r => r.status === 'Blocked').length;
     
     // Calculate average time since located (mock calculation for now)
     const avgMins = Math.round(Math.random() * 120 + 60); // Random between 60-180 minutes
@@ -122,160 +120,148 @@ const Dashboard: React.FC = () => {
     return { total, located, blocked, avgMins, fivePlus, missedRevenue };
   }, [filteredData]);
 
-  // Compute breakdowns from filtered data
+  // Compute breakdowns from filtered data (cross-filtering logic)
   const clientBreakdown = useMemo((): BreakdownItem[] => {
-    console.log('🔢 Computing client breakdown for', filteredData.length, 'rows');
-    const counts = new Map<string, { count: number; vehicles: any[] }>();
-    
-    filteredData.forEach(row => {
-      const client = row.client;
-      if (!counts.has(client)) {
-        counts.set(client, { count: 0, vehicles: [] });
-      }
-      const entry = counts.get(client)!;
-      entry.count++;
-      entry.vehicles.push({
-        id: row.id,
-        address: row.address,
-        lat: row.lat,
-        lon: row.lon,
-        market: row.market
-      });
+    // For client breakdown, exclude client filter but apply all others
+    const clientFiltered = data.filter(row => {
+      if (market !== 'All Markets' && row.zone !== market) return false;
+      if (status !== 'All Statuses' && row.status !== status) return false;
+      if (selZone && row.zone !== selZone) return false;
+      if (selDriver && row.driver !== selDriver) return false;
+      return true;
     });
     
-    const result = Array.from(counts.entries())
-      .map(([name, data]) => ({
-        name,
-        count: data.count,
-        pct: (data.count / filteredData.length) * 100,
-        vehicles: data.vehicles
+    const counts = new Map<string, number>();
+    clientFiltered.forEach(row => {
+      const client = row.client || 'Unknown';
+      counts.set(client, (counts.get(client) || 0) + 1);
+    });
+    
+    const total = clientFiltered.length;
+    return Array.from(counts.entries())
+      .map(([key, count]) => ({
+        key,
+        count,
+        percent: total > 0 ? (count / total) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
-    
-    console.log('👥 Client breakdown result:', result.length, 'clients');
-    console.log('📋 Sample client breakdown:', result.slice(0, 3));
-    return result;
-  }, [filteredData]);
+  }, [data, market, status, selZone, selDriver]);
 
   const zoneBreakdown = useMemo((): BreakdownItem[] => {
-    const counts = new Map<string, { count: number; vehicles: any[] }>();
-    
-    filteredData.forEach(row => {
-      const zone = row.zone;
-      if (!counts.has(zone)) {
-        counts.set(zone, { count: 0, vehicles: [] });
-      }
-      const entry = counts.get(zone)!;
-      entry.count++;
-      entry.vehicles.push({
-        id: row.id,
-        address: row.address,
-        lat: row.lat,
-        lon: row.lon,
-        market: row.market
-      });
+    // For zone breakdown, exclude zone filter but apply all others
+    const zoneFiltered = data.filter(row => {
+      if (market !== 'All Markets' && row.zone !== market) return false;
+      if (status !== 'All Statuses' && row.status !== status) return false;
+      if (selClient && row.client !== selClient) return false;
+      if (selDriver && row.driver !== selDriver) return false;
+      return true;
     });
     
+    const counts = new Map<string, number>();
+    zoneFiltered.forEach(row => {
+      const zone = row.zone || 'Unknown';
+      counts.set(zone, (counts.get(zone) || 0) + 1);
+    });
+    
+    const total = zoneFiltered.length;
     return Array.from(counts.entries())
-      .map(([name, data]) => ({
-        name,
-        count: data.count,
-        pct: (data.count / filteredData.length) * 100,
-        vehicles: data.vehicles
+      .map(([key, count]) => ({
+        key,
+        count,
+        percent: total > 0 ? (count / total) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
-  }, [filteredData]);
+  }, [data, market, status, selClient, selDriver]);
 
   const driverBreakdown = useMemo((): BreakdownItem[] => {
-    const counts = new Map<string, { count: number; vehicles: any[] }>();
-    
-    filteredData.forEach(row => {
-      const driver = row.driver || 'Unassigned';
-      if (!counts.has(driver)) {
-        counts.set(driver, { count: 0, vehicles: [] });
-      }
-      const entry = counts.get(driver)!;
-      entry.count++;
-      entry.vehicles.push({
-        id: row.id,
-        address: row.address,
-        lat: row.lat,
-        lon: row.lon,
-        market: row.market
-      });
+    // For driver breakdown, exclude driver filter but apply all others
+    const driverFiltered = data.filter(row => {
+      if (market !== 'All Markets' && row.zone !== market) return false;
+      if (status !== 'All Statuses' && row.status !== status) return false;
+      if (selClient && row.client !== selClient) return false;
+      if (selZone && row.zone !== selZone) return false;
+      return true;
     });
     
+    const counts = new Map<string, number>();
+    driverFiltered.forEach(row => {
+      const driver = row.driver || 'Unassigned';
+      counts.set(driver, (counts.get(driver) || 0) + 1);
+    });
+    
+    const total = driverFiltered.length;
     return Array.from(counts.entries())
-      .map(([name, data]) => ({
-        name,
-        count: data.count,
-        pct: (data.count / filteredData.length) * 100,
-        vehicles: data.vehicles
+      .map(([key, count]) => ({
+        key,
+        count,
+        percent: total > 0 ? (count / total) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
-  }, [filteredData]);
+  }, [data, market, status, selClient, selZone]);
 
 
-  const handleRowClick = (type: 'client' | 'zone' | 'driver', value: string) => {
-    const params = new URLSearchParams();
-    if (type === 'driver') {
-      params.set('driver', value);
-    } else {
-      params.set(type, value);
+  // Handler functions
+  const handleMarketChange = (newMarket: string) => {
+    setMarket(newMarket);
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    setStatus(newStatus as Status | 'All Statuses');
+  };
+
+  const handleBreakdownItemClick = (type: 'client' | 'zone' | 'driver', key: string) => {
+    if (type === 'client') {
+      setSelClient(selClient === key ? undefined : key);
+    } else if (type === 'zone') {
+      setSelZone(selZone === key ? undefined : key);
+    } else if (type === 'driver') {
+      setSelDriver(selDriver === key ? undefined : key);
     }
-    navigate(`/tow-driver?${params.toString()}`);
   };
 
-  // New dashboard filter handlers
-  const handleBreakdownItemClick = (type: 'client' | 'zone' | 'driver', item: BreakdownItem) => {
-    setDashboardFilters(prev => ({
-      ...prev,
-      [type]: item.name
-    }));
+  const handleFilterClear = (key: keyof ActiveFilters) => {
+    if (key === 'market') setMarket('All Markets');
+    else if (key === 'status') setStatus('All Statuses');
+    else if (key === 'client') setSelClient(undefined);
+    else if (key === 'zone') setSelZone(undefined);
+    else if (key === 'driver') setSelDriver(undefined);
   };
 
-  const handleFilterRemove = (key: keyof DashboardFilters) => {
-    setDashboardFilters(prev => {
-      const newFilters = { ...prev };
-      delete newFilters[key];
-      return newFilters;
+  const handleNavigate = (item: BreakdownItem) => {
+    // Find a sample row for this item to get location info
+    const sampleRow = data.find(row => {
+      if (item.key === row.client) return true;
+      if (item.key === row.zone) return true;
+      if ((item.key === row.driver) || (item.key === 'Unassigned' && !row.driver)) return true;
+      return false;
     });
+
+    if (sampleRow) {
+      const url = buildGoogleMapsUrl(
+        { lat: sampleRow.lat, lng: sampleRow.lng, address: sampleRow.address },
+        storageLots
+      );
+      if (url !== '#') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    }
   };
 
-  const handleFilterClearAll = () => {
-    setDashboardFilters({});
-  };
+  // Computed values
+  const markets = useMemo(() => {
+    const uniqueMarkets = new Set(data.map(row => row.zone).filter(Boolean));
+    return Array.from(uniqueMarkets).sort();
+  }, [data]);
 
-  // Generate filter chips
-  const filterChips = useMemo((): FilterChip[] => {
-    const chips: FilterChip[] = [];
-    
-    if (dashboardFilters.client) {
-      chips.push({
-        key: 'client',
-        label: 'Client',
-        value: dashboardFilters.client
-      });
-    }
-    
-    if (dashboardFilters.zone) {
-      chips.push({
-        key: 'zone',
-        label: 'Zone',
-        value: dashboardFilters.zone
-      });
-    }
-    
-    if (dashboardFilters.driver) {
-      chips.push({
-        key: 'driver',
-        label: 'Driver',
-        value: dashboardFilters.driver
-      });
-    }
-    
-    return chips;
-  }, [dashboardFilters]);
+  const statuses = ['All Statuses', 'Located', 'Blocked', 'Stashed'];
+
+  const activeFilters: ActiveFilters = {
+    market: market !== 'All Markets' ? market : undefined,
+    status: status !== 'All Statuses' ? status : undefined,
+    client: selClient,
+    zone: selZone,
+    driver: selDriver
+  };
 
   // Helper function to create micro-bar visualization
   const createMicroBar = (percentage: number) => {
@@ -388,18 +374,20 @@ const Dashboard: React.FC = () => {
         }
       />
 
-      {/* Filter Chips */}
-      <OldFilterChips
-        filters={filters}
-        onClear={handleFilterClear}
-        onClearAll={handleClearAllFilters}
+      {/* Filter Bar */}
+      <FilterBar
+        markets={markets}
+        statuses={statuses}
+        selectedMarket={market}
+        selectedStatus={status}
+        onChangeMarket={handleMarketChange}
+        onChangeStatus={handleStatusChange}
       />
 
-      {/* Dashboard Filter Chips */}
+      {/* Filter Chips */}
       <FilterChips
-        chips={filterChips}
-        onRemove={handleFilterRemove}
-        onClearAll={handleFilterClearAll}
+        active={activeFilters}
+        onClear={handleFilterClear}
       />
 
       {/* Error State */}
@@ -495,6 +483,11 @@ const Dashboard: React.FC = () => {
           </GlassCard>
         </div>
 
+        {/* Status Legend */}
+        <div className="mb-4">
+          <StatusLegend />
+        </div>
+
         {/* Breakdown Panels */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* By Client */}
@@ -502,8 +495,9 @@ const Dashboard: React.FC = () => {
             title="By Client"
             items={clientBreakdown}
             totalCount={filteredData.length}
-            onItemClick={(item) => handleBreakdownItemClick('client', item)}
-            selectedItem={dashboardFilters.client}
+            onItemClick={(key) => handleBreakdownItemClick('client', key)}
+            selectedItem={selClient}
+            onNavigate={handleNavigate}
           />
 
           {/* By Zone */}
@@ -511,8 +505,9 @@ const Dashboard: React.FC = () => {
             title="By Zone / Market"
             items={zoneBreakdown}
             totalCount={filteredData.length}
-            onItemClick={(item) => handleBreakdownItemClick('zone', item)}
-            selectedItem={dashboardFilters.zone}
+            onItemClick={(key) => handleBreakdownItemClick('zone', key)}
+            selectedItem={selZone}
+            onNavigate={handleNavigate}
           />
 
           {/* By Driver */}
@@ -520,8 +515,9 @@ const Dashboard: React.FC = () => {
             title="By Driver"
             items={driverBreakdown}
             totalCount={filteredData.length}
-            onItemClick={(item) => handleBreakdownItemClick('driver', item)}
-            selectedItem={dashboardFilters.driver}
+            onItemClick={(key) => handleBreakdownItemClick('driver', key)}
+            selectedItem={selDriver}
+            onNavigate={handleNavigate}
           />
         </div>
       </div>
