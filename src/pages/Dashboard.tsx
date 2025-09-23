@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FilterChips } from '@/components/ui/FilterChips';
 import { DataTable } from '@/components/ui/DataTable';
+import DataDebugger from '@/components/DataDebugger';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -241,6 +242,8 @@ const Dashboard: React.FC = () => {
 
   return (
     <AppShell title="Dashboard">
+      {/* Debug Component */}
+      <DataDebugger />
       {/* Header */}
       <SectionHeading
         title="Dashboard"
