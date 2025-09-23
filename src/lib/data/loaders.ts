@@ -31,6 +31,12 @@ function mapToLocatedRow(row: Record<string, string>): LocatedRow {
   // Determine zone based on city/region
   const zone = determineZone(city, market);
   
+  // Map source from DRIVER column
+  const source = (row.DRIVER || row.driver || '-').trim();
+  
+  // Find assigned driver
+  const assignedDriver = findAssignedDriver(row);
+  
   // Map status based on driver field and other indicators
   const status = determineStatus(row.DRIVER || row.driver || '', row.TYPE || row.type || '');
   
@@ -43,7 +49,9 @@ function mapToLocatedRow(row: Record<string, string>): LocatedRow {
     address: address || (coords ? `${coords.lat}, ${coords.lon}` : 'Unknown Location'),
     lat: coords ? coords.lat : 0,
     lon: coords ? coords.lon : 0,
-    driver: row.SPOTTER || row.Spotter || row.DRIVER || row.driver || undefined,
+    driver: row.SPOTTER || row.Spotter || row.DRIVER || row.driver || undefined, // Keep for backward compatibility
+    source,
+    assignedDriver,
     locatedAt: undefined, // No date in clean CSV
     year: row.YEAR || row.year || undefined,
     make: row.MAKE || row.make || undefined,
@@ -55,6 +63,38 @@ function mapToLocatedRow(row: Record<string, string>): LocatedRow {
     zip: zip || undefined,
     notes: row.NOTES || row.notes || undefined,
   };
+}
+
+/**
+ * Find assigned driver from first non-empty of SPOTTER, DRIVER NAME, ASSIGNED TO
+ */
+function findAssignedDriver(row: Record<string, string>): string {
+  const candidates = [
+    row.SPOTTER,
+    row['DRIVER NAME'],
+    row['ASSIGNED TO'],
+    row.Spotter,
+    row['Driver Name'],
+    row['Assigned To']
+  ];
+  
+  for (const candidate of candidates) {
+    if (candidate && candidate.trim() !== '' && candidate.trim() !== '-') {
+      return toTitleCase(candidate.trim());
+    }
+  }
+  
+  return 'Unassigned';
+}
+
+/**
+ * Convert string to Title Case
+ */
+function toTitleCase(str: string): string {
+  return str
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
 }
 
 /**
