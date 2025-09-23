@@ -10,7 +10,8 @@ import { DataTable } from '@/components/ui/DataTable';
 import { BreakdownPanel } from '@/components/dashboard/BreakdownPanel';
 import { FilterChips } from '@/components/dashboard/FilterChips';
 import { SkeletonDashboard } from '@/components/ui/SkeletonLoader';
-import { NotificationToastContainer } from '@/components/ui/NotificationToast';
+import { Toaster } from '@/components/ui/toaster';
+import { ToastProvider } from '@/components/ui/ToastProvider';
 import { loadLocated } from '@/lib/data/loaders';
 import { loadFilters, saveFilters, applyFilters, hasActiveFilters, clearFilters, updateFilter, removeFilter } from '@/lib/filters';
 import { buildMultiStopURL, getNavigationSettings } from '@/lib/navigation';
@@ -242,15 +243,18 @@ const Dashboard: React.FC = () => {
   if (isLoading) {
     return (
       <AppShell title="Dashboard">
-        <NotificationToastContainer />
-        <SkeletonDashboard />
+        <ToastProvider>
+          <Toaster />
+          <SkeletonDashboard />
+        </ToastProvider>
       </AppShell>
     );
   }
 
   return (
     <AppShell title="Dashboard">
-      <NotificationToastContainer />
+      <ToastProvider>
+        <Toaster />
       
       {/* Header */}
       <SectionHeading
@@ -418,6 +422,7 @@ const Dashboard: React.FC = () => {
           className="mt-6"
         />
       )}
+      </ToastProvider>
     </AppShell>
   );
 };

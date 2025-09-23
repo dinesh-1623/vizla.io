@@ -1,36 +1,39 @@
 /**
- * Simple toast notification system
+ * Toast notification system using shadcn/ui
  */
 
-import { toast, type ToastMessage } from '@/types/dashboard';
+import { useToast } from '@/hooks/use-toast';
 
-let toastId = 0;
+// Global toast functions for use outside React components
+let globalToast: ReturnType<typeof useToast>['toast'] | null = null;
 
-export function showToast(message: string, type: ToastMessage['type'] = 'info', duration = 3000) {
-  const id = `toast-${++toastId}`;
-  const toastData: ToastMessage = {
-    id,
-    message,
-    type,
-    duration,
-  };
-  
-  // Dispatch custom event for toast system
-  window.dispatchEvent(new CustomEvent('toast', { detail: toastData }));
+export function setGlobalToast(toastFn: ReturnType<typeof useToast>['toast']) {
+  globalToast = toastFn;
+}
+
+export function showToast(message: string, type: 'default' | 'destructive' = 'default') {
+  if (globalToast) {
+    globalToast({
+      description: message,
+      variant: type,
+    });
+  } else {
+    console.warn('Toast system not initialized. Call setGlobalToast() first.');
+  }
 }
 
 export function showSuccess(message: string) {
-  showToast(message, 'success');
+  showToast(message, 'default');
 }
 
 export function showError(message: string) {
-  showToast(message, 'error');
+  showToast(message, 'destructive');
 }
 
 export function showWarning(message: string) {
-  showToast(message, 'warning');
+  showToast(message, 'default');
 }
 
 export function showInfo(message: string) {
-  showToast(message, 'info');
+  showToast(message, 'default');
 }
