@@ -1,93 +1,19 @@
-﻿Markets,Time Periods,Total Located,AVG Time Since Located,Missed Revenue,Located 5+ Days ,
-"All, Houston, Maryland, DC, Virginia","Today, Yesterday",88,2.2 hours,,,
-,,,,,,
-,,,,,,
-Market,Number of Located Vehicles,,,,,
-All ,176,,,,,
-Houston,35,,,,,
-Maryland,28,,,,,
-DC,15,,,,,
-Virginia,10,,,,,
-Total,88,,,,,
-,,,,,,
-Zone,Number of Located Vehicles,,,,,
-Zone 1,25,,,,,
-Zone 2,20,,,,,
-Zone 3,18,,,,,
-Zone 4,15,,,,,
-Zone 5,10,,,,,
-Total,88,,,,,
-,,,,,,
-Client,Number of Located Vehicles,,,,,
-Client A,30,,,,,
-Client B,25,,,,,
-Client C,18,,,,,
-Client D,15,,,,,
-Total,88,,,,,
-,,,,,,
-Tow Driver,Number of Located Vehicles,,,,,
-Tow Driver 1,22,,,,,
-Tow Driver 2,20,,,,,
-Tow Driver 3,25,,,,,
-Tow Driver 4,21,,,,,
-Total,88,,,,,
-,,,,,,
-Status,Number of Vehicles,,,,,
-Located,88,,,,,
-Stashed,5,,,,,
-Blocked in,3,,,,,
-Moved,2,,,,,
-Total,98,,,,,
-,,,,,,
-Status,Houston,Maryland,DC,Virginia,All Markets,
-Located,35,28,15,10,88,
-Stashed,2,1,1,1,5,
-Blocked in,1,1,1,0,3,
-Moved,1,0,1,0,2,
-,,,,,,
-Zone,Houston,Maryland,DC,Virginia,All Markets,
-Zone 1,10,8,5,2,25,
-Zone 2,8,6,4,2,20,
-Zone 3,7,5,3,3,18,
-Zone 4,5,5,2,3,15,
-Zone 5,5,4,1,0,10,
-,,,,,,
-Tow Driver,Client A,Client B,Client C,Client D,All Clients,
-Tow Driver 1,7,6,5,4,22,
-Tow Driver 2,6,6,4,4,20,
-Tow Driver 3,10,7,6,2,25,
-Tow Driver 4,12,9,0,0,21,
-,,,,,,
-Client,Zone 1,Zone 2,Zone 3,Zone 4,Zone 5,Total by Client
-Client A,10,8,7,5,0,30
-Client B,5,7,4,5,4,25
-Client C,4,3,5,3,3,18
-Client D,6,2,2,2,3,15
-Total by Zone,25,20,18,15,10,88
-,,,,,,
-Client,Zone,Tow Driver 1,Tow Driver 2,Tow Driver 3,Tow Driver 4,Total by Client & Zone
-Client A,Zone 1,5,3,2,0,10
-,Zone 2,3,2,3,0,8
-,Zone 3,2,2,2,1,7
-,Zone 4,1,1,2,1,5
-,Zone 5,0,0,0,0,0
-,Total by Client,11,8,9,2,30
-Client B,Zone 1,2,2,1,0,5
-,Zone 2,2,2,3,0,7
-,Zone 3,1,1,2,0,4
-,Zone 4,2,2,1,0,5
-,Zone 5,1,1,1,1,4
-,Total by Client,8,8,8,1,25
-Client C,Zone 1,1,1,2,0,4
-,Zone 2,1,1,1,0,3
-,Zone 3,1,1,2,1,5
-,Zone 4,1,1,1,0,3
-,Zone 5,1,1,1,0,3
-,Total by Client,5,5,7,1,18
-Client D,Zone 1,2,1,2,1,6
-,Zone 2,1,1,0,0,2
-,Zone 3,1,1,0,0,2
-,Zone 4,0,1,1,0,2
-,Zone 5,1,0,1,1,3
-,Total by Client,5,4,4,2,15
-GRAND TOTALS,,22,20,28,6,88
+﻿Market,Status,Client,Zone,Tow Driver 1,Tow Driver 2,Tow Driver 3,Tow Driver 4
+Dallas,Located,Acme Corp,North Dallas,5,3,2,1
+Dallas,Located,Acme Corp,South Dallas,2,4,3,0
+Dallas,Blocked,Global Motors,Downtown,1,2,5,3
+Dallas,Stashed,Global Motors,East Dallas,0,1,2,4
+Dallas,Located,Texas Fleet,North Dallas,3,2,1,2
+Dallas,Located,Texas Fleet,West Dallas,2,3,4,1
+Houston,Located,Acme Corp,North Houston,4,2,3,2
+Houston,Located,Acme Corp,South Houston,1,3,2,4
+Houston,Blocked,Global Motors,Downtown,2,1,3,2
+Houston,Stashed,Global Motors,East Houston,0,2,1,3
+Houston,Located,Texas Fleet,North Houston,3,4,1,2
+Houston,Located,Texas Fleet,West Houston,2,1,4,3
+Austin,Located,Acme Corp,North Austin,2,3,1,2
+Austin,Located,Acme Corp,South Austin,1,2,3,1
+Austin,Blocked,Global Motors,Downtown,3,1,2,1
+Austin,Stashed,Global Motors,East Austin,0,1,1,2
+Austin,Located,Texas Fleet,North Austin,2,2,2,2
+Austin,Located,Texas Fleet,West Austin,1,3,1,3

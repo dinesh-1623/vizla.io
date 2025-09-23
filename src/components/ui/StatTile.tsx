@@ -10,13 +10,17 @@ interface StatTileProps {
     text: string;
   };
   className?: string;
+  onClick?: () => void;
+  clickable?: boolean;
 }
 
 const StatTile: React.FC<StatTileProps> = ({
   label,
   value,
   delta,
-  className
+  className,
+  onClick,
+  clickable = false
 }) => {
   const deltaColor = delta?.dir === 'up' 
     ? 'text-vizla-success' 
@@ -26,8 +30,26 @@ const StatTile: React.FC<StatTileProps> = ({
 
   const DeltaIcon = delta?.dir === 'up' ? ChevronUp : ChevronDown;
 
+  const Component = clickable ? 'button' : 'div';
+  
   return (
-    <div className={cn("space-y-2", className)}>
+    <Component
+      className={cn(
+        "space-y-2 text-left w-full",
+        clickable && "cursor-pointer hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors rounded-lg p-1 -m-1",
+        className
+      )}
+      onClick={clickable ? onClick : undefined}
+      onKeyDown={clickable ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      } : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      role={clickable ? 'button' : undefined}
+      aria-label={clickable ? `View details for ${label}` : undefined}
+    >
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium text-vizla-text-muted uppercase tracking-wider">
           {label}
@@ -49,7 +71,7 @@ const StatTile: React.FC<StatTileProps> = ({
           {value}
         </div>
       </div>
-    </div>
+    </Component>
   );
 };
 

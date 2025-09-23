@@ -386,6 +386,8 @@ const Dashboard: React.FC = () => {
                 label="Total Located"
                 value={kpis.total}
                 delta={{ dir: 'up', text: `+${kpis.located}` }}
+                clickable
+                onClick={() => navigate('/located')}
               />
             )}
           </GlassCard>
