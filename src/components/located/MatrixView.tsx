@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Pivot, PivotCell } from '@/lib/csv/vizlaDashboard';
+import { getColorForCount, type PaletteType } from '@/lib/palette';
 
 interface MatrixViewProps {
   pivot: Pivot;
   onCellClick: (cell: PivotCell) => void;
+  currentPalette: PaletteType;
   className?: string;
 }
 
@@ -18,6 +20,7 @@ interface SelectedCell {
 export const MatrixView: React.FC<MatrixViewProps> = ({
   pivot,
   onCellClick,
+  currentPalette,
   className
 }) => {
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
@@ -28,15 +31,6 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
 
   // Calculate max count for color scaling
   const maxCount = Math.max(...cells.map(cell => cell.count), 1);
-
-  // Get color for count
-  const getColorForCount = (count: number) => {
-    if (count === 0) {
-      return 'rgba(255, 255, 255, 0.03)'; // glass-elevated
-    }
-    const opacity = count / maxCount;
-    return `rgba(59, 130, 246, ${Math.max(opacity, 0.1)})`; // accent-primary with minimum opacity
-  };
 
   // Handle cell click
   const handleCellClick = (cell: PivotCell) => {
@@ -254,6 +248,8 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                                       focusedCell?.zone === zone && 
                                       focusedCell?.driverKey === driverKey;
 
+                      const colorData = getColorForCount(count, maxCount, currentPalette);
+
                       return (
                         <td
                           key={`${zoneKey}|${driverKey}`}
@@ -267,8 +263,8 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                             isFocused && "ring-1 ring-vizla-ring-focus"
                           )}
                           style={{
-                            backgroundColor: getColorForCount(count),
-                            color: count > maxCount * 0.5 ? 'white' : '#cbd5e1'
+                            backgroundColor: colorData.color,
+                            color: colorData.textColor
                           }}
                           onClick={() => handleCellClick(cell || { client, zone, driverKey, count })}
                           onKeyDown={(e) => handleKeyDown(e, cell || { client, zone, driverKey, count })}

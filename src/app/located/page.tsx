@@ -19,6 +19,11 @@ import {
   type VizFilters,
   type PivotCell
 } from '@/lib/csv/vizlaDashboard';
+import { 
+  loadPalettePreference, 
+  savePalettePreference, 
+  type PaletteType 
+} from '@/lib/palette';
 
 const LocatedPage: React.FC = () => {
   const navigate = useNavigate();
@@ -30,6 +35,7 @@ const LocatedPage: React.FC = () => {
   const [market, setMarket] = useState<string>('All');
   const [status, setStatus] = useState<string>('All');
   const [viewMode, setViewMode] = useState<'matrix' | 'stacked'>('matrix');
+  const [currentPalette, setCurrentPalette] = useState<PaletteType>('lagoon');
 
   // Load data and filters on mount
   useEffect(() => {
@@ -38,12 +44,18 @@ const LocatedPage: React.FC = () => {
     setMarket(savedFilters.market);
     setStatus(savedFilters.status);
     setViewMode(savedFilters.view as 'matrix' | 'stacked');
+    setCurrentPalette(loadPalettePreference());
   }, []);
 
   // Save filters to localStorage
   useEffect(() => {
     saveLocatedFilters(market, status, viewMode);
   }, [market, status, viewMode]);
+
+  // Save palette preference to localStorage
+  useEffect(() => {
+    savePalettePreference(currentPalette);
+  }, [currentPalette]);
 
   const loadData = async () => {
     try {
@@ -103,6 +115,10 @@ const LocatedPage: React.FC = () => {
   const handleSegmentClick = (client: string, driverKey: string) => {
     console.log('Segment clicked:', { client, driverKey });
     // TODO: Implement filter chips based on segment selection
+  };
+
+  const handlePaletteChange = (palette: PaletteType) => {
+    setCurrentPalette(palette);
   };
 
   // Calculate max count for legend
@@ -219,7 +235,11 @@ const LocatedPage: React.FC = () => {
         {!isLoading && !error && pivot.cells.length > 0 && (
           <div className="space-y-6">
             {/* Legend */}
-            <Legend maxCount={maxCount} />
+            <Legend 
+              maxCount={maxCount} 
+              currentPalette={currentPalette}
+              onPaletteChange={handlePaletteChange}
+            />
 
             {/* Matrix View */}
             {viewMode === 'matrix' && (
@@ -227,6 +247,7 @@ const LocatedPage: React.FC = () => {
                 <MatrixView
                   pivot={pivot}
                   onCellClick={handleCellClick}
+                  currentPalette={currentPalette}
                 />
               </GlassCard>
             )}

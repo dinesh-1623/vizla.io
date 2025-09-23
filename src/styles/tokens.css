@@ -1,0 +1,97 @@
+/* Vizla Color System Tokens */
+
+:root {
+  /* Canvas & Surfaces */
+  --vizla-canvas: #0a0e14;
+  --vizla-elev1: rgba(255, 255, 255, 0.03);
+  --vizla-elev2: rgba(255, 255, 255, 0.06);
+  --vizla-glass: rgba(255, 255, 255, 0.03);
+  --vizla-glassElev: rgba(255, 255, 255, 0.06);
+  --vizla-glassBorder: rgba(255, 255, 255, 0.06);
+  
+  /* Text Colors */
+  --vizla-text-primary: #f8fafc;
+  --vizla-text-secondary: #cbd5e1;
+  --vizla-text-muted: #94a3b8;
+  
+  /* Brand Colors */
+  --vizla-brand-primary: #06b6d4; /* mist teal */
+  --vizla-brand-secondary: #3b82f6;
+  --vizla-accent-mist: #06b6d4;
+  
+  /* Semantic Colors */
+  --vizla-success: #10b981;
+  --vizla-danger: #ef4444;
+  --vizla-warning: #f59e0b;
+  --vizla-info: #3b82f6;
+  
+  /* Interactive States */
+  --vizla-ring-focus: #06b6d4;
+  --vizla-border-subtle: rgba(255, 255, 255, 0.08);
+  
+  /* Heatmap Palettes - Vizla Lagoon (Default) */
+  --vizla-lagoon-1: #0a1a1f;
+  --vizla-lagoon-2: #0f2a2f;
+  --vizla-lagoon-3: #1a4a4f;
+  --vizla-lagoon-4: #2a6a6f;
+  --vizla-lagoon-5: #3a8a8f;
+  --vizla-lagoon-6: #4aaaaa;
+  --vizla-lagoon-7: #5acacf;
+  
+  /* Heatmap Palettes - Indigo */
+  --vizla-indigo-1: #0f0f23;
+  --vizla-indigo-2: #1a1a3a;
+  --vizla-indigo-3: #2a2a5a;
+  --vizla-indigo-4: #3a3a7a;
+  --vizla-indigo-5: #4a4a9a;
+  --vizla-indigo-6: #5a5aba;
+  --vizla-indigo-7: #6a6ada;
+  
+  /* Heatmap Palettes - Neutral */
+  --vizla-neutral-1: #0f0f0f;
+  --vizla-neutral-2: #1a1a1a;
+  --vizla-neutral-3: #2a2a2a;
+  --vizla-neutral-4: #3a3a3a;
+  --vizla-neutral-5: #4a4a4a;
+  --vizla-neutral-6: #5a5a5a;
+  --vizla-neutral-7: #6a6a6a;
+  
+  /* Text Colors for Heatmap Steps */
+  --vizla-text-light: #E6EDF5; /* steps 1-4 */
+  --vizla-text-dark: #0B111A;  /* steps 5-7 */
+}
+
+/* Dark theme application */
+html, body, #root {
+  background: var(--vizla-canvas);
+  color: var(--vizla-text-primary);
+}
+
+/* Utility classes for heatmap colors */
+.vizla-lagoon-1 { background-color: var(--vizla-lagoon-1); }
+.vizla-lagoon-2 { background-color: var(--vizla-lagoon-2); }
+.vizla-lagoon-3 { background-color: var(--vizla-lagoon-3); }
+.vizla-lagoon-4 { background-color: var(--vizla-lagoon-4); }
+.vizla-lagoon-5 { background-color: var(--vizla-lagoon-5); }
+.vizla-lagoon-6 { background-color: var(--vizla-lagoon-6); }
+.vizla-lagoon-7 { background-color: var(--vizla-lagoon-7); }
+
+.vizla-indigo-1 { background-color: var(--vizla-indigo-1); }
+.vizla-indigo-2 { background-color: var(--vizla-indigo-2); }
+.vizla-indigo-3 { background-color: var(--vizla-indigo-3); }
+.vizla-indigo-4 { background-color: var(--vizla-indigo-4); }
+.vizla-indigo-5 { background-color: var(--vizla-indigo-5); }
+.vizla-indigo-6 { background-color: var(--vizla-indigo-6); }
+.vizla-indigo-7 { background-color: var(--vizla-indigo-7); }
+
+.vizla-neutral-1 { background-color: var(--vizla-neutral-1); }
+.vizla-neutral-2 { background-color: var(--vizla-neutral-2); }
+.vizla-neutral-3 { background-color: var(--vizla-neutral-3); }
+.vizla-neutral-4 { background-color: var(--vizla-neutral-4); }
+.vizla-neutral-5 { background-color: var(--vizla-neutral-5); }
+.vizla-neutral-6 { background-color: var(--vizla-neutral-6); }
+.vizla-neutral-7 { background-color: var(--vizla-neutral-7); }
+
+/* Text color utilities for heatmap */
+.vizla-text-heatmap-light { color: var(--vizla-text-light); }
+.vizla-text-heatmap-dark { color: var(--vizla-text-dark); }

@@ -1,3 +1,5 @@
+@import './styles/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,34 +10,34 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Canvas & elevations */
-    --bg-canvas: #0a0e14;
-    --bg-elev-1: #141a21;
-    --bg-elev-2: #1f252d;
+    /* Canvas & elevations - using Vizla tokens */
+    --bg-canvas: var(--vizla-canvas);
+    --bg-elev-1: var(--vizla-elev1);
+    --bg-elev-2: var(--vizla-elev2);
 
-    /* Glass */
-    --glass-bg: rgba(255, 255, 255, 0.03);
-    --glass-border: rgba(255, 255, 255, 0.06);
-    --glass-elevated: rgba(255, 255, 255, 0.08);
+    /* Glass - using Vizla tokens */
+    --glass-bg: var(--vizla-glass);
+    --glass-border: var(--vizla-glassBorder);
+    --glass-elevated: var(--vizla-glassElev);
 
-    /* Text */
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #64748b;
+    /* Text - using Vizla tokens */
+    --text-primary: var(--vizla-text-primary);
+    --text-secondary: var(--vizla-text-secondary);
+    --text-muted: var(--vizla-text-muted);
     --text-disabled: #475569;
 
-    /* Brand & semantics */
-    --accent-primary: #3b82f6;  /* blue */
-    --accent-secondary: #06b6d4; /* cyan */
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger:  #ef4444;
-    --info:    #6366f1;
+    /* Brand & semantics - using Vizla tokens */
+    --accent-primary: var(--vizla-brand-primary);  /* mist teal */
+    --accent-secondary: var(--vizla-brand-secondary);
+    --success: var(--vizla-success);
+    --warning: var(--vizla-warning);
+    --danger: var(--vizla-danger);
+    --info: var(--vizla-info);
 
-    /* Interactions */
-    --ring-focus: #3b82f6;
+    /* Interactions - using Vizla tokens */
+    --ring-focus: var(--vizla-ring-focus);
     --ring-hover: #60a5fa;
-    --border-subtle: rgba(148, 163, 184, 0.10);
+    --border-subtle: var(--vizla-border-subtle);
 
     /* Legacy shadcn variables for compatibility */
     --background: 222.2 84% 4.9%;
