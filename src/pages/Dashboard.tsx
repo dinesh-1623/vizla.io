@@ -48,6 +48,7 @@ const Dashboard: React.FC = () => {
     console.log('📊 Data changed:', data.length, 'rows');
     if (data.length > 0) {
       console.log('📋 First data item:', data[0]);
+      console.log('📋 Sample clients:', data.slice(0, 5).map(d => d.client));
     }
   }, [data]);
 
@@ -119,6 +120,7 @@ const Dashboard: React.FC = () => {
     
     console.log('👥 Client breakdown result:', result.length, 'clients');
     console.log('📋 Sample client breakdown:', result.slice(0, 3));
+    console.log('🔍 All clients in filtered data:', filteredData.map(d => d.client));
     return result;
   }, [filteredData]);
 
