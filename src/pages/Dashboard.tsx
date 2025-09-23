@@ -43,6 +43,14 @@ const Dashboard: React.FC = () => {
     loadData();
   }, []);
 
+  // Log when data changes
+  useEffect(() => {
+    console.log('📊 Data changed:', data.length, 'rows');
+    if (data.length > 0) {
+      console.log('📋 First data item:', data[0]);
+    }
+  }, [data]);
+
   const loadData = async () => {
     try {
       setIsLoading(true);
@@ -95,18 +103,23 @@ const Dashboard: React.FC = () => {
 
   // Compute breakdowns from filtered data
   const clientBreakdown = useMemo(() => {
+    console.log('🔢 Computing client breakdown for', filteredData.length, 'rows');
     const counts = new Map<string, number>();
     filteredData.forEach(row => {
       counts.set(row.client, (counts.get(row.client) || 0) + 1);
     });
     
-    return Array.from(counts.entries())
+    const result = Array.from(counts.entries())
       .map(([name, count]) => ({
         name,
         count,
         pct: Math.round((count / filteredData.length) * 100)
       }))
       .sort((a, b) => b.count - a.count);
+    
+    console.log('👥 Client breakdown result:', result.length, 'clients');
+    console.log('📋 Sample client breakdown:', result.slice(0, 3));
+    return result;
   }, [filteredData]);
 
   const zoneBreakdown = useMemo(() => {

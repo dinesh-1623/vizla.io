@@ -229,8 +229,8 @@ export async function loadLocated(): Promise<LocatedRow[]> {
     // Filter out empty rows and map to LocatedRow format
     const validRows = rows.filter(row => {
       // Skip rows without essential data
-      const hasClient = row.CLIENT && row.CLIENT.trim() !== '';
-      const hasType = row.TYPE && row.TYPE.trim() !== '';
+      const hasClient = row.CLIENT && row.CLIENT.trim() !== '' && row.CLIENT.trim() !== '';
+      const hasType = row.TYPE && row.TYPE.trim() !== '' && row.TYPE.trim() !== '';
       const hasVIN = row.VIN && row.VIN.trim() !== '';
       
       return hasClient && hasType && hasVIN;
