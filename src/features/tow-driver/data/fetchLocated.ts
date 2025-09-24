@@ -34,7 +34,9 @@ function normalizeField(value: any): string {
 /**
  * Map status from sheet terms to our standard status
  */
-function mapStatus(statusText: string): 'Located' | 'Blocked' | 'Stashed' {
+function mapStatus(statusText: string | undefined | null): 'Located' | 'Blocked' | 'Stashed' {
+  if (!statusText) return 'Located'; // Default for undefined/null
+  
   const status = normalizeField(statusText).toLowerCase();
   
   if (status.includes('block') || status.includes('hold')) {
@@ -61,7 +63,7 @@ function shouldFilterOut(row: Record<string, any>): boolean {
   ];
   
   return textFields.some(field => 
-    field.toLowerCase().includes('do not touch')
+    field && field.toLowerCase().includes('do not touch')
   );
 }
 
@@ -252,6 +254,9 @@ async function fetchFallbackData(date: string): Promise<FetchResult> {
     console.log(`📊 Fallback: Parsed ${rows.length} jobs from ${parseResult.data.length} rows for ${date}`);
     if (rows.length > 0) {
       console.log('Sample fallback job:', rows[0]);
+    } else {
+      console.log('No jobs parsed. Sample CSV row:', parseResult.data[0]);
+      console.log('CSV headers:', Object.keys(parseResult.data[0] || {}));
     }
     
     console.log(`✅ Loaded ${rows.length} fallback jobs for ${date}`);
