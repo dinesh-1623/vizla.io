@@ -248,11 +248,12 @@ const Dashboard: React.FC = () => {
 
   const handleNavigate = (item: BreakdownItem) => {
     // Find a sample row for this item to get location info
-    const sampleRow = data.find(row => {
+    if (!dataSource?.rows) return;
+    
+    const sampleRow = dataSource.rows.find(row => {
       if (item.key === row.client) return true;
       if (item.key === row.zone) return true;
-      if (driverViewMode === 'source' && item.key === row.source) return true;
-      if (driverViewMode === 'assigned' && item.key === row.assignedDriver) return true;
+      if (item.key === row.driver) return true;
       return false;
     });
 
@@ -537,7 +538,7 @@ const Dashboard: React.FC = () => {
                       onClick={() => handleBreakdownItemClick('driver', item.key)}
                       tabIndex={0}
                       role="button"
-                      aria-label={`Filter by ${driverViewMode === 'source' ? 'Source' : 'Driver'}: ${item.key}`}
+                      aria-label={`Filter by Driver: ${item.key}`}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();

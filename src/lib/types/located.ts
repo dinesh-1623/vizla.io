@@ -13,6 +13,9 @@ export type LocatedRow = {
   makeModel?: string;
   street?: string;
   city?: string;
+  lat?: number;
+  lng?: number;
+  address?: string;
 }
 
 /**

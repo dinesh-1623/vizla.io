@@ -145,6 +145,19 @@ export function fromCsvRecord(record: CsvRecord): LocatedRow {
   const explicitZone = getString('ZONE', '');
   const zone = explicitZone || cityToZone(city);
   
+  // Parse coordinates if available
+  const latStr = getString('LAT', getString('LATITUDE', ''));
+  const lngStr = getString('LNG', getString('LONGITUDE', getString('LON', '')));
+  const lat = latStr ? parseFloat(latStr) : undefined;
+  const lng = lngStr ? parseFloat(lngStr) : undefined;
+
+  // Build address from available fields
+  const streetField = getString('STREET', getString('ADDRESS', ''));
+  const addressParts = [];
+  if (streetField) addressParts.push(streetField);
+  if (city) addressParts.push(city);
+  const address = addressParts.length > 0 ? addressParts.join(', ') : undefined;
+
   return {
     client,
     market: cityToMarket(city),
@@ -155,7 +168,10 @@ export function fromCsvRecord(record: CsvRecord): LocatedRow {
     tag: getString('TAG', undefined),
     color: getString('COLOR', undefined),
     makeModel: getString('MAKE MODEL', getString('MAKE', undefined)),
-    street: getString('STREET', getString('ADDRESS', undefined)),
+    street: streetField || undefined,
     city: city || undefined,
+    lat,
+    lng,
+    address,
   };
 }
