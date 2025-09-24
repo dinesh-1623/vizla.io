@@ -2,10 +2,12 @@ import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 import { cn } from '@/lib/utils';
 import { Pivot, PivotCell } from '@/lib/csv/vizlaDashboard';
+import { getChartColors, type PaletteType } from '@/lib/palette';
 
 interface StackedViewProps {
   pivot: Pivot;
   onSegmentClick: (client: string, driverKey: string) => void;
+  currentPalette: PaletteType;
   className?: string;
 }
 
@@ -23,12 +25,16 @@ interface ChartData {
 export const StackedView: React.FC<StackedViewProps> = ({
   pivot,
   onSegmentClick,
+  currentPalette,
   className
 }) => {
   const { clients, driverKeys, totals } = pivot;
 
   // Calculate grand total
   const grandTotal = Object.values(totals.byClient).reduce((sum, total) => sum + total, 0);
+
+  // Get chart colors for current palette
+  const chartColors = getChartColors(currentPalette);
 
   // Prepare chart data
   const chartData: ChartData[] = clients.map(client => {
@@ -48,20 +54,10 @@ export const StackedView: React.FC<StackedViewProps> = ({
           return sum + zoneCells.reduce((s, cell) => s + cell.count, 0);
         }, 0);
 
-      // Color palette for drivers
-      const colors = [
-        'rgba(59, 130, 246, 0.8)',   // blue
-        'rgba(16, 185, 129, 0.8)',   // emerald
-        'rgba(245, 158, 11, 0.8)',   // amber
-        'rgba(239, 68, 68, 0.8)',    // red
-        'rgba(139, 92, 246, 0.8)',   // violet
-        'rgba(236, 72, 153, 0.8)'    // pink
-      ];
-
       return {
         driverKey,
         count: clientDriverCount,
-        fill: colors[index % colors.length]
+        fill: chartColors[index % chartColors.length]
       };
     });
 

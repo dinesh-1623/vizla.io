@@ -8,6 +8,13 @@ export interface PaletteStep {
 export interface HeatmapPalette {
   name: string;
   steps: PaletteStep[];
+  chartColors: string[];
+}
+
+export interface ChartColors {
+  lagoon: string[];
+  indigo: string[];
+  neutral: string[];
 }
 
 export const HEATMAP_PALETTES: Record<PaletteType, HeatmapPalette> = {
@@ -21,6 +28,14 @@ export const HEATMAP_PALETTES: Record<PaletteType, HeatmapPalette> = {
       { color: 'var(--vizla-lagoon-5)', textColor: 'var(--vizla-text-dark)' },
       { color: 'var(--vizla-lagoon-6)', textColor: 'var(--vizla-text-dark)' },
       { color: 'var(--vizla-lagoon-7)', textColor: 'var(--vizla-text-dark)' },
+    ],
+    chartColors: [
+      'rgba(6, 182, 212, 0.8)',   // mist teal
+      'rgba(16, 185, 129, 0.8)',  // emerald
+      'rgba(245, 158, 11, 0.8)',  // amber
+      'rgba(139, 92, 246, 0.8)',  // violet
+      'rgba(236, 72, 153, 0.8)',  // pink
+      'rgba(99, 102, 241, 0.8)'   // indigo
     ]
   },
   indigo: {
@@ -33,6 +48,14 @@ export const HEATMAP_PALETTES: Record<PaletteType, HeatmapPalette> = {
       { color: 'var(--vizla-indigo-5)', textColor: 'var(--vizla-text-dark)' },
       { color: 'var(--vizla-indigo-6)', textColor: 'var(--vizla-text-dark)' },
       { color: 'var(--vizla-indigo-7)', textColor: 'var(--vizla-text-dark)' },
+    ],
+    chartColors: [
+      'rgba(59, 130, 246, 0.8)',   // blue
+      'rgba(99, 102, 241, 0.8)',   // indigo
+      'rgba(139, 92, 246, 0.8)',   // violet
+      'rgba(168, 85, 247, 0.8)',   // purple
+      'rgba(236, 72, 153, 0.8)',   // pink
+      'rgba(6, 182, 212, 0.8)'     // cyan
     ]
   },
   neutral: {
@@ -45,6 +68,14 @@ export const HEATMAP_PALETTES: Record<PaletteType, HeatmapPalette> = {
       { color: 'var(--vizla-neutral-5)', textColor: 'var(--vizla-text-dark)' },
       { color: 'var(--vizla-neutral-6)', textColor: 'var(--vizla-text-dark)' },
       { color: 'var(--vizla-neutral-7)', textColor: 'var(--vizla-text-dark)' },
+    ],
+    chartColors: [
+      'rgba(107, 114, 128, 0.8)',  // gray
+      'rgba(156, 163, 175, 0.8)',  // gray-400
+      'rgba(209, 213, 219, 0.8)',  // gray-300
+      'rgba(229, 231, 235, 0.8)',  // gray-200
+      'rgba(243, 244, 246, 0.8)',  // gray-100
+      'rgba(249, 250, 251, 0.8)'   // gray-50
     ]
   }
 };
@@ -95,6 +126,13 @@ export function savePalettePreference(palette: PaletteType): void {
   } catch {
     // Ignore localStorage errors
   }
+}
+
+/**
+ * Get chart colors for the specified palette
+ */
+export function getChartColors(palette: PaletteType): string[] {
+  return HEATMAP_PALETTES[palette].chartColors;
 }
 
 /**

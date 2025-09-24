@@ -8,7 +8,7 @@ import { SectionHeading } from '@/components/ui/SectionHeading';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { FilterBar } from '@/components/located/FilterBar';
 import { MatrixView } from '@/components/located/MatrixView';
-import { StackedView } from '@/components/located/StackedView';
+import { ChartView } from '@/components/located/ChartView';
 import { Legend } from '@/components/located/Legend';
 import {
   loadVizlaDashboard,
@@ -34,7 +34,8 @@ const LocatedPage: React.FC = () => {
   // Filter state
   const [market, setMarket] = useState<string>('All');
   const [status, setStatus] = useState<string>('All');
-  const [viewMode, setViewMode] = useState<'matrix' | 'stacked'>('matrix');
+  const [viewMode, setViewMode] = useState<'matrix' | 'charts'>('matrix');
+  const [chartType, setChartType] = useState<'stacked' | 'grouped' | 'pie' | 'line' | 'area'>('stacked');
   const [currentPalette, setCurrentPalette] = useState<PaletteType>('lagoon');
 
   // Load data and filters on mount
@@ -43,7 +44,7 @@ const LocatedPage: React.FC = () => {
     const savedFilters = loadLocatedFilters();
     setMarket(savedFilters.market);
     setStatus(savedFilters.status);
-    setViewMode(savedFilters.view as 'matrix' | 'stacked');
+    setViewMode(savedFilters.view as 'matrix' | 'charts');
     setCurrentPalette(loadPalettePreference());
   }, []);
 
@@ -103,8 +104,12 @@ const LocatedPage: React.FC = () => {
     setStatus(newStatus);
   };
 
-  const handleViewChange = (newView: 'matrix' | 'stacked') => {
+  const handleViewChange = (newView: 'matrix' | 'charts') => {
     setViewMode(newView);
+  };
+
+  const handleChartTypeChange = (type: 'stacked' | 'grouped' | 'pie' | 'line' | 'area') => {
+    setChartType(type);
   };
 
   const handleCellClick = (cell: PivotCell) => {
@@ -127,7 +132,7 @@ const LocatedPage: React.FC = () => {
   }, [pivot.cells]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-neutral-200">
+    <div className="min-h-screen bg-vizla-canvas text-vizla-text-primary">
       <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
         {/* Header */}
         <div className="sticky top-0 z-30">
@@ -144,10 +149,12 @@ const LocatedPage: React.FC = () => {
                 </button>
                 
                 <div>
-                  <SectionHeading
-                    title="Located — Client × Zone × Driver"
-                    subtitle="Mock data from vizla-dashboard.csv"
-                  />
+                  <h1 className="text-2xl font-bold text-vizla-text-primary">
+                    Located — Client × Zone × Driver
+                  </h1>
+                  <p className="text-sm text-vizla-text-secondary mt-1">
+                    Mock data from vizla-dashboard.csv
+                  </p>
                 </div>
               </div>
 
@@ -173,9 +180,11 @@ const LocatedPage: React.FC = () => {
           selectedMarket={market}
           selectedStatus={status}
           viewMode={viewMode}
+          chartType={chartType}
           onChangeMarket={handleMarketChange}
           onChangeStatus={handleStatusChange}
           onChangeView={handleViewChange}
+          onChangeChartType={handleChartTypeChange}
         />
 
         {/* Error State */}
@@ -252,11 +261,13 @@ const LocatedPage: React.FC = () => {
               </GlassCard>
             )}
 
-            {/* Stacked View */}
-            {viewMode === 'stacked' && (
-              <StackedView
+            {/* Chart Views */}
+            {viewMode === 'charts' && (
+              <ChartView
                 pivot={pivot}
                 onSegmentClick={handleSegmentClick}
+                currentPalette={currentPalette}
+                chartType={chartType}
               />
             )}
           </div>

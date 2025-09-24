@@ -9,10 +9,12 @@ interface FilterBarProps {
   statuses: string[];
   selectedMarket: string;
   selectedStatus: string;
-  viewMode: 'matrix' | 'stacked';
+  viewMode: 'matrix' | 'charts';
+  chartType: 'stacked' | 'grouped' | 'pie' | 'line' | 'area';
   onChangeMarket: (market: string) => void;
   onChangeStatus: (status: string) => void;
-  onChangeView: (view: 'matrix' | 'stacked') => void;
+  onChangeView: (view: 'matrix' | 'charts') => void;
+  onChangeChartType: (chartType: 'stacked' | 'grouped' | 'pie' | 'line' | 'area') => void;
 }
 
 interface FilterChipProps {
@@ -40,9 +42,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   selectedMarket,
   selectedStatus,
   viewMode,
+  chartType,
   onChangeMarket,
   onChangeStatus,
-  onChangeView
+  onChangeView,
+  onChangeChartType
 }) => {
   const activeFilters: Array<{ label: string; value: string; onRemove: () => void }> = [];
 
@@ -121,11 +125,33 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           <SegmentedToggle
             options={[
               { value: 'matrix', label: 'Matrix' },
-              { value: 'stacked', label: 'Stacked' }
+              { value: 'charts', label: 'Charts' }
             ]}
             value={viewMode}
-            onChange={(value) => onChangeView(value as 'matrix' | 'stacked')}
+            onChange={(value) => onChangeView(value as 'matrix' | 'charts')}
           />
+        </div>
+      </div>
+
+      {/* Chart Type Selection */}
+      {viewMode === 'charts' && (
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-vizla-text-muted uppercase tracking-wider mb-1">
+              Chart Type
+            </label>
+            <SegmentedToggle
+              options={[
+                { value: 'stacked', label: 'Stacked' },
+                { value: 'grouped', label: 'Grouped' },
+                { value: 'pie', label: 'Pie' },
+                { value: 'line', label: 'Line' },
+                { value: 'area', label: 'Area' }
+              ]}
+              value={chartType}
+              onChange={(value) => onChangeChartType(value as 'stacked' | 'grouped' | 'pie' | 'line' | 'area')}
+            />
+          </div>
         </div>
       </div>
 
