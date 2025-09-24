@@ -15,11 +15,15 @@ import { FilterChips } from '@/components/dashboard/FilterChips';
 import { BreakdownPanel } from '@/components/dashboard/BreakdownPanel';
 import { StatusLegend } from '@/components/dashboard/StatusLegend';
 import { SegmentedToggle } from '@/components/dashboard/SegmentedToggle';
+import { DateRangePicker } from '@/components/filters/DateRangePicker';
+import { ShareableUrlButton } from '@/components/filters/ShareableUrlButton';
+import { useGlobalFilters } from '@/lib/hooks/useGlobalFilters';
 import { 
   loadGlobalFilters, 
   saveGlobalFilters, 
   buildGoogleMapsUrl 
 } from '@/lib/utils';
+import { isWithinRange, hasDate } from '@/lib/data/normalize';
 import { 
   LocatedRow, 
   Status, 
@@ -36,9 +40,8 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [storageLots, setStorageLots] = useState<StorageLot[]>([]);
   
-  // Global filter state
-  const [market, setMarket] = useState<string>('All Markets');
-  const [status, setStatus] = useState<Status | 'All Statuses'>('All Statuses');
+  // Global filters from context
+  const { market, status, dateRange, includeMissingDates } = useGlobalFilters();
   
   // Drilldown selection state
   const [selClient, setSelClient] = useState<string | undefined>();
@@ -50,16 +53,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     loadData();
     loadStorageLots();
-    // Load global filters from localStorage
-    const savedFilters = loadGlobalFilters();
-    setMarket(savedFilters.market);
-    setStatus(savedFilters.status as Status | 'All Statuses');
   }, []);
-
-  // Save global filters to localStorage
-  useEffect(() => {
-    saveGlobalFilters(market, status);
-  }, [market, status]);
 
   const loadData = async () => {
     try {
@@ -100,6 +94,13 @@ const Dashboard: React.FC = () => {
     if (!dataSource?.rows) return [];
     
     const filtered = dataSource.rows.filter(row => {
+      // Apply date filtering first
+      const hasValidDate = hasDate(row);
+      const isInRange = hasValidDate && isWithinRange(row, dateRange.from, dateRange.to);
+      const includeMissing = includeMissingDates && row._missingDate;
+      
+      if (!isInRange && !includeMissing) return false;
+
       // Apply global filters
       if (market !== 'All Markets' && row.market !== market) return false;
       if (status !== 'All Statuses' && row.status !== status) return false;
@@ -113,24 +114,40 @@ const Dashboard: React.FC = () => {
     });
     console.log('🔍 Filtered data:', filtered.length, 'rows');
     return filtered;
-  }, [dataSource?.rows, market, status, selClient, selZone, selDriver]);
+  }, [dataSource?.rows, market, status, dateRange, includeMissingDates, selClient, selZone, selDriver]);
 
   // Compute KPIs from filtered data
   const kpis = useMemo(() => {
     const total = filteredData.length;
     const located = filteredData.filter(r => r.status === 'Located').length;
     const blocked = filteredData.filter(r => r.status === 'Blocked').length;
-    
-    // Calculate average time since located (mock calculation for now)
-    const avgMins = Math.round(Math.random() * 120 + 60); // Random between 60-180 minutes
-    
-    // Calculate 5+ days (mock calculation)
-    const fivePlus = Math.round(total * 0.15); // Assume 15% are 5+ days
-    
+
+    // Calculate average time since located (only for rows with valid dates)
+    const rowsWithDates = filteredData.filter(r => hasDate(r));
+    let avgMins = 0;
+    if (rowsWithDates.length > 0) {
+      const now = new Date();
+      const totalMinutes = rowsWithDates.reduce((sum, row) => {
+        const locatedDate = new Date(row.locatedAt!);
+        const diffMs = now.getTime() - locatedDate.getTime();
+        return sum + Math.floor(diffMs / (1000 * 60)); // Convert to minutes
+      }, 0);
+      avgMins = Math.round(totalMinutes / rowsWithDates.length);
+    }
+
+    // Calculate 5+ days (only for rows with valid dates)
+    const now = new Date();
+    const fivePlus = filteredData.filter(r => {
+      if (!hasDate(r)) return false;
+      const locatedDate = new Date(r.locatedAt!);
+      const diffDays = Math.floor((now.getTime() - locatedDate.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays >= 5;
+    }).length;
+
     // Calculate missed revenue (mock calculation)
     const missedRevenue = blocked * 150; // $150 per blocked vehicle
-    
-    return { total, located, blocked, avgMins, fivePlus, missedRevenue };
+
+    return { total, located, blocked, avgMins, fivePlus, missedRevenue, rowsWithDates: rowsWithDates.length };
   }, [filteredData]);
 
   // Compute breakdowns from filtered data (cross-filtering logic)
@@ -139,6 +156,13 @@ const Dashboard: React.FC = () => {
     
     // For client breakdown, exclude client filter but apply all others
     const clientFiltered = dataSource.rows.filter(row => {
+      // Apply date filtering first
+      const hasValidDate = hasDate(row);
+      const isInRange = hasValidDate && isWithinRange(row, dateRange.from, dateRange.to);
+      const includeMissing = includeMissingDates && row._missingDate;
+      
+      if (!isInRange && !includeMissing) return false;
+
       if (market !== 'All Markets' && row.market !== market) return false;
       if (status !== 'All Statuses' && row.status !== status) return false;
       if (selZone && row.zone !== selZone) return false;
@@ -160,13 +184,20 @@ const Dashboard: React.FC = () => {
         percent: total > 0 ? (count / total) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
-  }, [dataSource?.rows, market, status, selZone, selDriver]);
+  }, [dataSource?.rows, market, status, dateRange, includeMissingDates, selZone, selDriver]);
 
   const zoneBreakdown = useMemo((): BreakdownItem[] => {
     if (!dataSource?.rows) return [];
     
     // For zone breakdown, exclude zone filter but apply all others
     const zoneFiltered = dataSource.rows.filter(row => {
+      // Apply date filtering first
+      const hasValidDate = hasDate(row);
+      const isInRange = hasValidDate && isWithinRange(row, dateRange.from, dateRange.to);
+      const includeMissing = includeMissingDates && row._missingDate;
+      
+      if (!isInRange && !includeMissing) return false;
+
       if (market !== 'All Markets' && row.market !== market) return false;
       if (status !== 'All Statuses' && row.status !== status) return false;
       if (selClient && row.client !== selClient) return false;
@@ -188,13 +219,20 @@ const Dashboard: React.FC = () => {
         percent: total > 0 ? (count / total) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
-  }, [dataSource?.rows, market, status, selClient, selDriver]);
+  }, [dataSource?.rows, market, status, dateRange, includeMissingDates, selClient, selDriver]);
 
   const driverBreakdown = useMemo((): BreakdownItem[] => {
     if (!dataSource?.rows) return [];
     
     // For driver breakdown, exclude driver filter but apply all others
     const driverFiltered = dataSource.rows.filter(row => {
+      // Apply date filtering first
+      const hasValidDate = hasDate(row);
+      const isInRange = hasValidDate && isWithinRange(row, dateRange.from, dateRange.to);
+      const includeMissing = includeMissingDates && row._missingDate;
+      
+      if (!isInRange && !includeMissing) return false;
+
       if (market !== 'All Markets' && row.market !== market) return false;
       if (status !== 'All Statuses' && row.status !== status) return false;
       if (selClient && row.client !== selClient) return false;
@@ -216,8 +254,11 @@ const Dashboard: React.FC = () => {
         percent: total > 0 ? (count / total) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
-  }, [dataSource?.rows, market, status, selClient, selZone]);
+  }, [dataSource?.rows, market, status, dateRange, includeMissingDates, selClient, selZone]);
 
+
+  // Global filter actions
+  const { setMarket, setStatus } = useGlobalFilters();
 
   // Handler functions
   const handleMarketChange = (newMarket: string) => {
@@ -322,18 +363,19 @@ const Dashboard: React.FC = () => {
               title="Dashboard"
               subtitle="Overview of vehicle recovery operations"
               actionSlot={
-                <div className="flex items-center gap-4">
-                  {/* Data Source Badge */}
-                  {dataSource && (
-                    <div className={`px-3 py-1 rounded-full text-xs font-medium ring-1 ${
-                      dataSource.source === 'live' 
-                        ? 'bg-vizla-success/10 text-vizla-success ring-vizla-success/20' 
-                        : 'bg-vizla-warning/10 text-vizla-warning ring-vizla-warning/20'
-                    }`}>
-                      {dataSource.source === 'live' ? 'Data Source: Google Sheets' : 'Data Source: Fallback'}
-                    </div>
-                  )}
-                  <button
+                     <div className="flex items-center gap-4">
+                       {/* Data Source Badge */}
+                       {dataSource && (
+                         <div className={`px-3 py-1 rounded-full text-xs font-medium ring-1 ${
+                           dataSource.source === 'live' 
+                             ? 'bg-vizla-success/10 text-vizla-success ring-vizla-success/20' 
+                             : 'bg-vizla-warning/10 text-vizla-warning ring-vizla-warning/20'
+                         }`}>
+                           {dataSource.source === 'live' ? 'Data Source: Google Sheets' : 'Data Source: Fallback'}
+                         </div>
+                       )}
+                       <ShareableUrlButton />
+                       <button
               onClick={loadData}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
               aria-label="Refresh Data"
@@ -364,15 +406,28 @@ const Dashboard: React.FC = () => {
               }
             />
 
-      {/* Filter Bar */}
-      <FilterBar
-        markets={markets}
-        statuses={statuses}
-        selectedMarket={market}
-        selectedStatus={status}
-        onChangeMarket={handleMarketChange}
-        onChangeStatus={handleStatusChange}
-      />
+            {/* Filter Bar */}
+            <div className="space-y-4">
+              <FilterBar
+                markets={markets}
+                statuses={statuses}
+                selectedMarket={market}
+                selectedStatus={status}
+                onChangeMarket={handleMarketChange}
+                onChangeStatus={handleStatusChange}
+              />
+              
+              {/* Date Range Filter */}
+              <div className="flex items-center gap-4">
+                <DateRangePicker />
+                {kpis.rowsWithDates > 0 && (
+                  <div className="text-xs text-vizla-text-muted">
+                    Range: {new Date(dateRange.from).toLocaleDateString()} → {new Date(dateRange.to).toLocaleDateString()}
+                    {kpis.rowsWithDates < filteredData.length && ` • incl. ${filteredData.length - kpis.rowsWithDates} without dates`}
+                  </div>
+                )}
+              </div>
+            </div>
 
       {/* Filter Chips */}
       <FilterChips

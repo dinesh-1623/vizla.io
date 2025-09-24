@@ -1,4 +1,5 @@
 import { LocatedRow, CsvRecord } from '@/lib/types/located';
+import { parse, format, isValid } from 'date-fns';
 
 /**
  * City to market mapping
@@ -126,6 +127,71 @@ export function deriveStatus(record: CsvRecord): 'Located' | 'Blocked' | 'Stashe
 }
 
 /**
+ * Parse date from various formats
+ */
+function parseLocatedDate(dateStr: string): string | undefined {
+  if (!dateStr || dateStr.trim() === '') return undefined;
+  
+  const trimmed = dateStr.trim();
+  
+  // Try different date formats
+  const formats = [
+    'M/d/yy',           // 9/22/25
+    'M/d/yyyy',         // 9/22/2025
+    'MM/dd/yy',         // 09/22/25
+    'MM/dd/yyyy',       // 09/22/2025
+    'yyyy-MM-dd',       // 2025-09-22
+    'M/d/yy HH:mm',     // 9/22/25 14:05
+    'M/d/yyyy HH:mm',   // 9/22/2025 14:05
+    'MM/dd/yy HH:mm',   // 09/22/25 14:05
+    'MM/dd/yyyy HH:mm', // 09/22/2025 14:05
+  ];
+  
+  for (const formatStr of formats) {
+    try {
+      const parsed = parse(trimmed, formatStr, new Date());
+      if (isValid(parsed)) {
+        return parsed.toISOString();
+      }
+    } catch (error) {
+      // Continue to next format
+    }
+  }
+  
+  // Try native Date parsing as fallback
+  try {
+    const parsed = new Date(trimmed);
+    if (isValid(parsed)) {
+      return parsed.toISOString();
+    }
+  } catch (error) {
+    // Ignore parsing errors
+  }
+  
+  return undefined;
+}
+
+/**
+ * Check if row has a valid date
+ */
+export function hasDate(row: LocatedRow): boolean {
+  return !!(row.locatedAt && !row._missingDate);
+}
+
+/**
+ * Check if row is within date range
+ */
+export function isWithinRange(row: LocatedRow, from: string, to: string): boolean {
+  if (!row.locatedAt || row._missingDate) return false;
+  
+  const rowDate = new Date(row.locatedAt);
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+  
+  return rowDate >= fromDate && rowDate <= toDate;
+}
+
+/**
  * Convert CSV record to LocatedRow with normalization
  */
 export function fromCsvRecord(record: CsvRecord): LocatedRow {
@@ -145,6 +211,10 @@ export function fromCsvRecord(record: CsvRecord): LocatedRow {
   const explicitZone = getString('ZONE', '');
   const zone = explicitZone || cityToZone(city);
   
+  // Parse date from various column names
+  const dateStr = getString('LOCATED DATE', getString('Located', getString('Last Ping', getString('DATE', getString('UPDATED', '')))));
+  const locatedAt = parseLocatedDate(dateStr);
+
   // Parse coordinates if available
   const latStr = getString('LAT', getString('LATITUDE', ''));
   const lngStr = getString('LNG', getString('LONGITUDE', getString('LON', '')));
@@ -158,12 +228,15 @@ export function fromCsvRecord(record: CsvRecord): LocatedRow {
   if (city) addressParts.push(city);
   const address = addressParts.length > 0 ? addressParts.join(', ') : undefined;
 
+  const missingDate = !locatedAt;
+
   return {
     client,
     market: cityToMarket(city),
     zone,
     driver,
     status,
+    locatedAt,
     vin: getString('VIN', undefined),
     tag: getString('TAG', undefined),
     color: getString('COLOR', undefined),
@@ -173,5 +246,6 @@ export function fromCsvRecord(record: CsvRecord): LocatedRow {
     lat,
     lng,
     address,
+    _missingDate: missingDate,
   };
 }

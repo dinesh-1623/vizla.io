@@ -7,6 +7,7 @@ export type LocatedRow = {
   zone: string;            // e.g. 'North Austin' or 'Zone 1..5'
   driver: string;          // normalized: 'Gps' | 'Rotors' | 'Imp' | 'Fuel' | 'Unassigned'
   status: 'Located' | 'Blocked' | 'Stashed';
+  locatedAt?: string;      // ISO date string
   vin?: string;
   tag?: string;
   color?: string;
@@ -16,6 +17,8 @@ export type LocatedRow = {
   lat?: number;
   lng?: number;
   address?: string;
+  // Internal fields
+  _missingDate?: boolean;  // true if no locatedAt
 }
 
 /**
