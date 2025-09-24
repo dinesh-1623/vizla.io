@@ -10,15 +10,10 @@ import { FilterBar } from '@/components/located/FilterBar';
 import { MatrixView } from '@/components/located/MatrixView';
 import { ChartView } from '@/components/located/ChartView';
 import { Legend } from '@/components/located/Legend';
-import {
-  loadVizlaDashboard,
-  buildPivot,
-  loadLocatedFilters,
-  saveLocatedFilters,
-  type VizRow,
-  type VizFilters,
-  type PivotCell
-} from '@/lib/csv/vizlaDashboard';
+import { loadLocatedRows } from '@/lib/data/sheetLoader';
+import { fromCsvRecord } from '@/lib/data/normalize';
+import { buildPivotFromLocated, type Pivot, type PivotCell, type PivotFilters } from '@/lib/data/pivot';
+import { DataSource } from '@/lib/types/located';
 import { 
   loadPalettePreference, 
   savePalettePreference, 
@@ -28,7 +23,7 @@ import {
 const LocatedPage: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<VizRow[]>([]);
+  const [dataSource, setDataSource] = useState<DataSource | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Filter state
@@ -41,17 +36,8 @@ const LocatedPage: React.FC = () => {
   // Load data and filters on mount
   useEffect(() => {
     loadData();
-    const savedFilters = loadLocatedFilters();
-    setMarket(savedFilters.market);
-    setStatus(savedFilters.status);
-    setViewMode(savedFilters.view as 'matrix' | 'charts');
     setCurrentPalette(loadPalettePreference());
   }, []);
-
-  // Save filters to localStorage
-  useEffect(() => {
-    saveLocatedFilters(market, status, viewMode);
-  }, [market, status, viewMode]);
 
   // Save palette preference to localStorage
   useEffect(() => {
@@ -62,13 +48,19 @@ const LocatedPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('🔄 Loading vizla-dashboard.csv...');
-      const loadedData = await loadVizlaDashboard();
-      console.log('✅ Loaded data:', loadedData.length, 'rows');
-      console.log('📊 Sample data:', loadedData.slice(0, 2));
-      setData(loadedData);
+      console.log('🔄 Loading Located page data...');
+      
+      const dataSource = await loadLocatedRows();
+      const normalizedRows = dataSource.rows.map(fromCsvRecord);
+      
+      console.log('✅ Loaded Located page data:', normalizedRows.length, 'rows from', dataSource.source);
+      
+      setDataSource({
+        ...dataSource,
+        rows: normalizedRows,
+      });
     } catch (err) {
-      console.error('❌ Error loading data:', err);
+      console.error('❌ Error loading Located page data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setIsLoading(false);
@@ -77,23 +69,26 @@ const LocatedPage: React.FC = () => {
 
   // Build pivot table with current filters
   const pivot = useMemo(() => {
-    const filters: VizFilters = {};
+    if (!dataSource?.rows) return { clients: [], zonesByClient: {}, drivers: [], cells: [], totals: { byClient: {}, byClientZone: {} } };
+    
+    const filters: PivotFilters = {};
     if (market !== 'All') filters.market = market;
     if (status !== 'All') filters.status = status;
-    
-    return buildPivot(data, filters);
-  }, [data, market, status]);
+    return buildPivotFromLocated(dataSource.rows, filters);
+  }, [dataSource?.rows, market, status]);
 
   // Get unique values for filters
   const markets = useMemo(() => {
-    const uniqueMarkets = new Set(data.map(row => row.market));
-    return Array.from(uniqueMarkets).sort();
-  }, [data]);
+    if (!dataSource?.rows) return [];
+    const uniqueMarkets = new Set(dataSource.rows.map(row => row.market));
+    return ['All', ...Array.from(uniqueMarkets).sort()];
+  }, [dataSource?.rows]);
 
   const statuses = useMemo(() => {
-    const uniqueStatuses = new Set(data.map(row => row.status));
+    if (!dataSource?.rows) return [];
+    const uniqueStatuses = new Set(dataSource.rows.map(row => row.status));
     return ['All', ...Array.from(uniqueStatuses).sort()];
-  }, [data]);
+  }, [dataSource?.rows]);
 
   // Handler functions
   const handleMarketChange = (newMarket: string) => {
@@ -206,7 +201,7 @@ const LocatedPage: React.FC = () => {
         )}
 
         {/* Loading State */}
-        {isLoading && data.length === 0 && !error && (
+        {isLoading && !dataSource && !error && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {Array.from({ length: 3 }).map((_, i) => (

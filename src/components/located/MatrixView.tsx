@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Pivot, PivotCell } from '@/lib/csv/vizlaDashboard';
+import { Pivot, PivotCell } from '@/lib/data/pivot';
 import { getColorForCount, type PaletteType } from '@/lib/palette';
 
 interface MatrixViewProps {
@@ -27,7 +27,7 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
   const [focusedCell, setFocusedCell] = useState<{ client: string; zone: string; driverKey: string } | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
 
-  const { clients, zonesByClient, driverKeys, cells } = pivot;
+  const { clients, zonesByClient, drivers, cells } = pivot;
 
   // Calculate max count for color scaling
   const maxCount = Math.max(...cells.map(cell => cell.count), 1);
@@ -180,13 +180,13 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
               >
                 Client ▸ Zone
               </th>
-              {driverKeys.map((driverKey) => (
+              {drivers.map((driver) => (
                 <th
-                  key={driverKey}
+                  key={driver}
                   scope="col"
                   className="px-4 py-3 text-center text-sm font-medium text-vizla-text-primary min-w-[80px]"
                 >
-                  {driverKey}
+                  {driver}
                 </th>
               ))}
               <th
@@ -238,24 +238,24 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                     </td>
 
                     {/* Driver Cells */}
-                    {driverKeys.map((driverKey) => {
-                      const cell = zoneCells.find(c => c.driverKey === driverKey);
+                    {drivers.map((driver) => {
+                      const cell = zoneCells.find(c => c.driver === driver);
                       const count = cell?.count || 0;
                       const isSelected = selectedCell?.client === client && 
                                        selectedCell?.zone === zone && 
-                                       selectedCell?.driverKey === driverKey;
+                                       selectedCell?.driverKey === driver;
                       const isFocused = focusedCell?.client === client && 
                                       focusedCell?.zone === zone && 
-                                      focusedCell?.driverKey === driverKey;
+                                      focusedCell?.driverKey === driver;
 
                       const colorData = getColorForCount(count, maxCount, currentPalette);
 
                       return (
                         <td
-                          key={`${zoneKey}|${driverKey}`}
+                          key={`${zoneKey}|${driver}`}
                           data-client={client}
                           data-zone={zone}
-                          data-driver={driverKey}
+                          data-driver={driver}
                           className={cn(
                             "px-2 py-3 text-center text-xs font-medium cursor-pointer transition-all",
                             "focus-visible:ring-2 focus-visible:ring-vizla-ring-focus focus-visible:outline-none",
@@ -266,12 +266,12 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                             backgroundColor: colorData.color,
                             color: colorData.textColor
                           }}
-                          onClick={() => handleCellClick(cell || { client, zone, driverKey, count })}
-                          onKeyDown={(e) => handleKeyDown(e, cell || { client, zone, driverKey, count })}
+                          onClick={() => handleCellClick(cell || { client, zone, driver, count })}
+                          onKeyDown={(e) => handleKeyDown(e, cell || { client, zone, driver, count })}
                           tabIndex={0}
                           role="gridcell"
-                          aria-label={`${client} ${zone} ${driverKey}: ${count}`}
-                          title={`${client} • ${zone} • ${driverKey}: ${count}`}
+                          aria-label={`${client} ${zone} ${driver}: ${count}`}
+                          title={`${client} • ${zone} • ${driver}: ${count}`}
                         >
                           {count}
                         </td>

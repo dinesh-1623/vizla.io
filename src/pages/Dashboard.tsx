@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loadLocated } from '@/lib/data/loaders';
+import { loadLocatedRows } from '@/lib/data/sheetLoader';
+import { fromCsvRecord } from '@/lib/data/normalize';
 import { Truck, User, RefreshCw, AlertCircle, Navigation } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { StatTile } from '@/components/ui/StatTile';
@@ -26,11 +27,12 @@ import {
   BreakdownItem, 
   StorageLot 
 } from '@/lib/types';
+import { DataSource } from '@/lib/types/located';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<LocatedRow[]>([]);
+  const [dataSource, setDataSource] = useState<DataSource | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [storageLots, setStorageLots] = useState<StorageLot[]>([]);
   
@@ -43,8 +45,6 @@ const Dashboard: React.FC = () => {
   const [selZone, setSelZone] = useState<string | undefined>();
   const [selDriver, setSelDriver] = useState<string | undefined>();
   
-  // Driver/Source toggle state
-  const [driverViewMode, setDriverViewMode] = useState<'source' | 'assigned'>('source');
   
   // Load data and storage lots on mount
   useEffect(() => {
@@ -65,11 +65,18 @@ const Dashboard: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('🔄 Loading CSV data...');
-      const loadedData = await loadLocated();
-      console.log('✅ Loaded data:', loadedData.length, 'rows');
-      console.log('📊 Sample data:', loadedData.slice(0, 2));
-      setData(loadedData);
+      console.log('🔄 Loading data...');
+      
+      const dataSource = await loadLocatedRows();
+      const normalizedRows = dataSource.rows.map(fromCsvRecord);
+      
+      console.log('✅ Loaded data:', normalizedRows.length, 'rows from', dataSource.source);
+      console.log('📊 Sample data:', normalizedRows.slice(0, 2));
+      
+      setDataSource({
+        ...dataSource,
+        rows: normalizedRows,
+      });
     } catch (err) {
       console.error('❌ Error loading data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -90,21 +97,23 @@ const Dashboard: React.FC = () => {
 
   // Filter data based on global filters and drilldown selections
   const filteredData = useMemo(() => {
-    const filtered = data.filter(row => {
+    if (!dataSource?.rows) return [];
+    
+    const filtered = dataSource.rows.filter(row => {
       // Apply global filters
-      if (market !== 'All Markets' && row.zone !== market) return false;
+      if (market !== 'All Markets' && row.market !== market) return false;
       if (status !== 'All Statuses' && row.status !== status) return false;
-      
+
       // Apply drilldown filters (cross-filtering - exclude own dimension)
       if (selClient && row.client !== selClient) return false;
       if (selZone && row.zone !== selZone) return false;
       if (selDriver && row.driver !== selDriver) return false;
-      
+
       return true;
     });
     console.log('🔍 Filtered data:', filtered.length, 'rows');
     return filtered;
-  }, [data, market, status, selClient, selZone, selDriver]);
+  }, [dataSource?.rows, market, status, selClient, selZone, selDriver]);
 
   // Compute KPIs from filtered data
   const kpis = useMemo(() => {
@@ -126,21 +135,23 @@ const Dashboard: React.FC = () => {
 
   // Compute breakdowns from filtered data (cross-filtering logic)
   const clientBreakdown = useMemo((): BreakdownItem[] => {
+    if (!dataSource?.rows) return [];
+    
     // For client breakdown, exclude client filter but apply all others
-    const clientFiltered = data.filter(row => {
-      if (market !== 'All Markets' && row.zone !== market) return false;
+    const clientFiltered = dataSource.rows.filter(row => {
+      if (market !== 'All Markets' && row.market !== market) return false;
       if (status !== 'All Statuses' && row.status !== status) return false;
       if (selZone && row.zone !== selZone) return false;
       if (selDriver && row.driver !== selDriver) return false;
       return true;
     });
-    
+
     const counts = new Map<string, number>();
     clientFiltered.forEach(row => {
       const client = row.client || 'Unknown';
       counts.set(client, (counts.get(client) || 0) + 1);
     });
-    
+
     const total = clientFiltered.length;
     return Array.from(counts.entries())
       .map(([key, count]) => ({
@@ -149,24 +160,26 @@ const Dashboard: React.FC = () => {
         percent: total > 0 ? (count / total) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
-  }, [data, market, status, selZone, selDriver]);
+  }, [dataSource?.rows, market, status, selZone, selDriver]);
 
   const zoneBreakdown = useMemo((): BreakdownItem[] => {
+    if (!dataSource?.rows) return [];
+    
     // For zone breakdown, exclude zone filter but apply all others
-    const zoneFiltered = data.filter(row => {
-      if (market !== 'All Markets' && row.zone !== market) return false;
+    const zoneFiltered = dataSource.rows.filter(row => {
+      if (market !== 'All Markets' && row.market !== market) return false;
       if (status !== 'All Statuses' && row.status !== status) return false;
       if (selClient && row.client !== selClient) return false;
       if (selDriver && row.driver !== selDriver) return false;
       return true;
     });
-    
+
     const counts = new Map<string, number>();
     zoneFiltered.forEach(row => {
       const zone = row.zone || 'Unknown';
       counts.set(zone, (counts.get(zone) || 0) + 1);
     });
-    
+
     const total = zoneFiltered.length;
     return Array.from(counts.entries())
       .map(([key, count]) => ({
@@ -175,24 +188,26 @@ const Dashboard: React.FC = () => {
         percent: total > 0 ? (count / total) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
-  }, [data, market, status, selClient, selDriver]);
+  }, [dataSource?.rows, market, status, selClient, selDriver]);
 
   const driverBreakdown = useMemo((): BreakdownItem[] => {
+    if (!dataSource?.rows) return [];
+    
     // For driver breakdown, exclude driver filter but apply all others
-    const driverFiltered = data.filter(row => {
-      if (market !== 'All Markets' && row.zone !== market) return false;
+    const driverFiltered = dataSource.rows.filter(row => {
+      if (market !== 'All Markets' && row.market !== market) return false;
       if (status !== 'All Statuses' && row.status !== status) return false;
       if (selClient && row.client !== selClient) return false;
       if (selZone && row.zone !== selZone) return false;
       return true;
     });
-    
+
     const counts = new Map<string, number>();
     driverFiltered.forEach(row => {
-      const key = driverViewMode === 'source' ? row.source : row.assignedDriver;
+      const key = row.driver; // Use normalized driver field
       counts.set(key, (counts.get(key) || 0) + 1);
     });
-    
+
     const total = driverFiltered.length;
     return Array.from(counts.entries())
       .map(([key, count]) => ({
@@ -201,7 +216,7 @@ const Dashboard: React.FC = () => {
         percent: total > 0 ? (count / total) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
-  }, [data, market, status, selClient, selZone, driverViewMode]);
+  }, [dataSource?.rows, market, status, selClient, selZone]);
 
 
   // Handler functions
@@ -254,9 +269,10 @@ const Dashboard: React.FC = () => {
 
   // Computed values
   const markets = useMemo(() => {
-    const uniqueMarkets = new Set(data.map(row => row.zone).filter(Boolean));
+    if (!dataSource?.rows) return [];
+    const uniqueMarkets = new Set(dataSource.rows.map(row => row.market).filter(Boolean));
     return Array.from(uniqueMarkets).sort();
-  }, [data]);
+  }, [dataSource?.rows]);
 
   const statuses = ['All Statuses', 'Located', 'Blocked', 'Stashed'];
 
@@ -268,11 +284,12 @@ const Dashboard: React.FC = () => {
     driver: selDriver
   };
 
-  // Check if all assigned drivers are "Unassigned"
-  const allAssignedDriversUnassigned = useMemo(() => {
-    const assignedDrivers = new Set(data.map(row => row.assignedDriver));
-    return assignedDrivers.size === 1 && assignedDrivers.has('Unassigned');
-  }, [data]);
+  // Check if all drivers are "Unassigned"
+  const allDriversUnassigned = useMemo(() => {
+    if (!dataSource?.rows) return false;
+    const drivers = new Set(dataSource.rows.map(row => row.driver));
+    return drivers.size === 1 && drivers.has('Unassigned');
+  }, [dataSource?.rows]);
 
   // Helper function to create micro-bar visualization
   const createMicroBar = (percentage: number) => {
@@ -300,12 +317,22 @@ const Dashboard: React.FC = () => {
   return (
     <AppShell title="Dashboard">
       {/* Header */}
-      <SectionHeading
-        title="Dashboard"
-        subtitle="Overview of vehicle recovery operations"
-        actionSlot={
-          <>
-            <button
+            <SectionHeading
+              title="Dashboard"
+              subtitle="Overview of vehicle recovery operations"
+              actionSlot={
+                <div className="flex items-center gap-4">
+                  {/* Data Source Badge */}
+                  {dataSource && (
+                    <div className={`px-3 py-1 rounded-full text-xs font-medium ring-1 ${
+                      dataSource.source === 'live' 
+                        ? 'bg-vizla-success/10 text-vizla-success ring-vizla-success/20' 
+                        : 'bg-vizla-warning/10 text-vizla-warning ring-vizla-warning/20'
+                    }`}>
+                      {dataSource.source === 'live' ? 'Data Source: Google Sheets' : 'Data Source: Fallback'}
+                    </div>
+                  )}
+                  <button
               onClick={loadData}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
               aria-label="Refresh Data"
@@ -332,9 +359,9 @@ const Dashboard: React.FC = () => {
               <Truck className="w-4 h-4" />
               <span className="text-sm font-medium text-vizla-text-secondary">Tow Driver View</span>
             </button>
-          </>
-        }
-      />
+                </div>
+              }
+            />
 
       {/* Filter Bar */}
       <FilterBar
@@ -479,18 +506,10 @@ const Dashboard: React.FC = () => {
             <div className="sticky top-0 z-10 bg-vizla-elev1/60 border-b border-vizla-borderSubtle px-4 py-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-vizla-text-primary">By Driver</h3>
-                <SegmentedToggle
-                  options={[
-                    { value: 'source', label: 'Source' },
-                    { value: 'assigned', label: 'Assigned driver' }
-                  ]}
-                  value={driverViewMode}
-                  onChange={(value) => setDriverViewMode(value as 'source' | 'assigned')}
-                />
               </div>
             </div>
             
-            {driverViewMode === 'assigned' && allAssignedDriversUnassigned ? (
+                 {allDriversUnassigned ? (
               <div className="p-6 text-center">
                 <div className="flex flex-col items-center space-y-3">
                   <div className="w-12 h-12 rounded-full bg-vizla-glass flex items-center justify-center">

@@ -15,7 +15,7 @@ import {
   AreaChart
 } from 'recharts';
 import { cn } from '@/lib/utils';
-import { Pivot } from '@/lib/csv/vizlaDashboard';
+import { Pivot } from '@/lib/data/pivot';
 import { getChartColors, type PaletteType } from '@/lib/palette';
 
 export type ChartType = 'stacked' | 'grouped' | 'pie' | 'line' | 'area';
@@ -52,7 +52,7 @@ export const ChartView: React.FC<ChartViewProps> = ({
   chartType,
   className
 }) => {
-  const { clients, driverKeys, totals } = pivot;
+  const { clients, drivers, totals } = pivot;
 
   // Calculate grand total
   const grandTotal = Object.values(totals.byClient).reduce((sum, total) => sum + total, 0);
@@ -66,20 +66,14 @@ export const ChartView: React.FC<ChartViewProps> = ({
     const percentage = grandTotal > 0 ? (clientTotal / grandTotal) * 100 : 0;
     
     // Get segments for this client
-    const segments = driverKeys.map((driverKey, index) => {
+    const segments = drivers.map((driver, index) => {
       // Calculate count for this client + driver combination
-      const clientDriverCount = Object.keys(totals.byClientZone)
-        .filter(key => key.startsWith(`${client}|`))
-        .reduce((sum, key) => {
-          const zone = key.split('|')[1];
-          const zoneCells = pivot.cells.filter(cell => 
-            cell.client === client && cell.zone === zone && cell.driverKey === driverKey
-          );
-          return sum + zoneCells.reduce((s, cell) => s + cell.count, 0);
-        }, 0);
+      const clientDriverCount = pivot.cells
+        .filter(cell => cell.client === client && cell.driver === driver)
+        .reduce((sum, cell) => sum + cell.count, 0);
 
       return {
-        driverKey,
+        driverKey: driver,
         count: clientDriverCount,
         fill: chartColors[index % chartColors.length]
       };
@@ -171,13 +165,13 @@ export const ChartView: React.FC<ChartViewProps> = ({
               tick={{ fill: '#cbd5e1', fontSize: 12 }}
             />
             <Tooltip content={<CustomTooltip />} />
-            {driverKeys.map((driverKey, index) => (
+            {drivers.map((driver, index) => (
               <Bar
-                key={driverKey}
+                key={driver}
                 dataKey={`segments.${index}.count`}
                 stackId="a"
                 fill={chartColors[index % chartColors.length]}
-                radius={index === driverKeys.length - 1 ? [4, 4, 0, 0] : 0}
+                radius={index === drivers.length - 1 ? [4, 4, 0, 0] : 0}
               />
             ))}
           </BarChart>
@@ -204,9 +198,9 @@ export const ChartView: React.FC<ChartViewProps> = ({
               tick={{ fill: '#cbd5e1', fontSize: 12 }}
             />
             <Tooltip content={<CustomTooltip />} />
-            {driverKeys.map((driverKey, index) => (
+            {drivers.map((driver, index) => (
               <Bar
-                key={driverKey}
+                key={driver}
                 dataKey={`segments.${index}.count`}
                 fill={chartColors[index % chartColors.length]}
                 radius={[4, 4, 0, 0]}
@@ -262,9 +256,9 @@ export const ChartView: React.FC<ChartViewProps> = ({
               tick={{ fill: '#cbd5e1', fontSize: 12 }}
             />
             <Tooltip content={<CustomTooltip />} />
-            {driverKeys.map((driverKey, index) => (
+            {drivers.map((driver, index) => (
               <Line
-                key={driverKey}
+                key={driver}
                 type="monotone"
                 dataKey={`segments.${index}.count`}
                 stroke={chartColors[index % chartColors.length]}
@@ -297,9 +291,9 @@ export const ChartView: React.FC<ChartViewProps> = ({
               tick={{ fill: '#cbd5e1', fontSize: 12 }}
             />
             <Tooltip content={<CustomTooltip />} />
-            {driverKeys.map((driverKey, index) => (
+            {drivers.map((driver, index) => (
               <Area
-                key={driverKey}
+                key={driver}
                 type="monotone"
                 dataKey={`segments.${index}.count`}
                 stackId="1"
