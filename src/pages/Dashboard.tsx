@@ -95,6 +95,18 @@ const Dashboard: React.FC = () => {
       const isInRange = hasValidDate && isWithinRange(row, dateRange.from, dateRange.to);
       const includeMissing = includeMissingDates && row._missingDate;
       
+      // Debug logging
+      if (row === dataSource.rows[0]) { // Only log for first row to avoid spam
+        console.log('🔍 Date filtering debug:', {
+          hasValidDate,
+          isInRange,
+          includeMissing,
+          locatedAt: row.locatedAt,
+          _missingDate: row._missingDate,
+          dateRange: { from: dateRange.from, to: dateRange.to }
+        });
+      }
+      
       if (!isInRange && !includeMissing) return false;
 
       // Apply global filters

@@ -211,8 +211,9 @@ export function fromCsvRecord(record: CsvRecord): LocatedRow {
   const explicitZone = getString('ZONE', '');
   const zone = explicitZone || cityToZone(city);
   
-  // Parse date from various column names
-  const dateStr = getString('LOCATED DATE', getString('Located', getString('Last Ping', getString('DATE', getString('UPDATED', '')))));
+  // Parse date from various column names (including first column which often contains dates)
+  const firstColumnValue = Object.values(record)[0]; // Get first column value
+  const dateStr = getString('LOCATED DATE', getString('Located', getString('Last Ping', getString('DATE', getString('UPDATED', typeof firstColumnValue === 'string' ? firstColumnValue : '')))));
   const locatedAt = parseLocatedDate(dateStr);
 
   // Parse coordinates if available
@@ -229,6 +230,11 @@ export function fromCsvRecord(record: CsvRecord): LocatedRow {
   const address = addressParts.length > 0 ? addressParts.join(', ') : undefined;
 
   const missingDate = !locatedAt;
+  
+  // Debug logging for date parsing
+  if (missingDate && dateStr) {
+    console.log('🔍 Failed to parse date:', dateStr, 'from record:', record);
+  }
 
   return {
     client,
