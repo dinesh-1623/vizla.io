@@ -216,13 +216,27 @@ const TowDriverPage: React.FC = () => {
   const filteredJobs = useMemo(() => {
     if (!data?.rows) return [];
     
-    return data.rows.filter(job => {
+    console.log('🔍 Filtering jobs:', {
+      totalJobs: data.rows.length,
+      selectedStatuses: Array.from(selectedStatuses),
+      filters,
+      sampleJob: data.rows[0]
+    });
+    
+    const filtered = data.rows.filter(job => {
       if (filters.client && job.client !== filters.client) return false;
       if (filters.zone && job.zone !== filters.zone) return false;
       if (filters.driver && (job.driver === '-' ? 'Unassigned' : job.driver) !== filters.driver) return false;
       if (selectedStatuses.size > 0 && !selectedStatuses.has(job.status)) return false;
       return true;
     });
+    
+    console.log('✅ Filtered jobs result:', {
+      filteredCount: filtered.length,
+      sampleFilteredJob: filtered[0]
+    });
+    
+    return filtered;
   }, [data?.rows, filters, selectedStatuses]);
 
   // Get selected jobs in order

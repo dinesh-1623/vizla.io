@@ -26,6 +26,12 @@ export const JobList: React.FC<JobListProps> = ({
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
 
+  console.log('📋 JobList render:', {
+    jobsCount: jobs.length,
+    sampleJob: jobs[0],
+    selectedJobIds: selectedJobIds.size
+  });
+
   const virtualizer = useVirtualizer({
     count: jobs.length,
     getScrollElement: () => parentRef.current,
