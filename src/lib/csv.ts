@@ -9,7 +9,7 @@ import { Vehicle } from '@/types/vehicle';
  * @param csvText - Raw CSV text
  * @returns Array of parsed records
  */
-export function parseCSV(csvText: string): Record<string, string>[] {
+export function parseCsv(csvText: string): Record<string, string>[] {
   const lines = csvText.trim().split('\n');
   if (lines.length < 2) return [];
   
@@ -100,7 +100,7 @@ export async function loadVehicles(): Promise<Vehicle[]> {
   try {
     const response = await fetch('/data/located-vehicles.csv');
     const csvText = await response.text();
-    const records = parseCSV(csvText);
+    const records = parseCsv(csvText);
     
     const vehicles: Vehicle[] = records
       .map((record, index) => {
@@ -125,6 +125,8 @@ export async function loadVehicles(): Promise<Vehicle[]> {
         const reachable = (record.REACHABLE || record.reachable || 'true').toLowerCase() === 'true';
         const rusted = (record.RUSTED || record.rusted || 'false').toLowerCase() === 'true';
         const imageUrl = record.IMAGE_URL || record.image_url || undefined;
+        const lat = record.LAT || record.lat ? parseFloat(record.LAT || record.lat) : undefined;
+        const lng = record.LNG || record.lng || record.LON || record.lon ? parseFloat(record.LNG || record.lng || record.LON || record.lon) : undefined;
         
         return {
           id,
@@ -143,7 +145,9 @@ export async function loadVehicles(): Promise<Vehicle[]> {
           locatedTimeAgo,
           reachable,
           rusted,
-          imageUrl
+          imageUrl,
+          lat,
+          lng
         };
       })
       .filter(vehicle => vehicle.id && vehicle.locatedDate); // Filter out invalid records

@@ -21,6 +21,8 @@ export interface Vehicle {
   reachable: boolean;
   rusted: boolean;
   imageUrl?: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface StorageLot {
