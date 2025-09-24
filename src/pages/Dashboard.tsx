@@ -9,7 +9,7 @@ import AppShell from '@/components/shell/AppShell';
 import { StatTile } from '@/components/ui/StatTile';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { FilterBar } from '@/components/dashboard/FilterBar';
 import { FilterChips } from '@/components/dashboard/FilterChips';
 import { BreakdownPanel } from '@/components/dashboard/BreakdownPanel';
@@ -61,16 +61,12 @@ const Dashboard: React.FC = () => {
       setError(null);
       console.log('🔄 Loading data...');
       
-      const dataSource = await loadLocatedRows();
-      const normalizedRows = dataSource.rows.map(fromCsvRecord);
+             const dataSource = await loadLocatedRows();
       
-      console.log('✅ Loaded data:', normalizedRows.length, 'rows from', dataSource.source);
-      console.log('📊 Sample data:', normalizedRows.slice(0, 2));
+      console.log('✅ Loaded data:', dataSource.rows.length, 'rows from', dataSource.source);
+      console.log('📊 Sample data:', dataSource.rows.slice(0, 2));
       
-      setDataSource({
-        ...dataSource,
-        rows: normalizedRows,
-      });
+      setDataSource(dataSource);
     } catch (err) {
       console.error('❌ Error loading data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
