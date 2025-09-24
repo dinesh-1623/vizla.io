@@ -102,9 +102,11 @@ const Dashboard: React.FC = () => {
           hasValidDate,
           isInRange,
           includeMissing,
+          includeMissingDates,
           locatedAt: row.locatedAt,
           _missingDate: row._missingDate,
-          dateRange: { from: dateRange.from, to: dateRange.to }
+          dateRange: { from: dateRange.from, to: dateRange.to },
+          rowData: { client: row.client, market: row.market, status: row.status, driver: row.driver }
         });
       }
       
@@ -112,13 +114,28 @@ const Dashboard: React.FC = () => {
       // if (!isInRange && !includeMissing) return false;
 
       // Apply global filters
-      if (market !== 'All Markets' && row.market !== market) return false;
-      if (status !== 'All Statuses' && row.status !== status) return false;
+      if (market !== 'All Markets' && row.market !== market) {
+        console.log('🔍 Filtered out by market:', { market, rowMarket: row.market });
+        return false;
+      }
+      if (status !== 'All Statuses' && row.status !== status) {
+        console.log('🔍 Filtered out by status:', { status, rowStatus: row.status });
+        return false;
+      }
 
       // Apply drilldown filters (cross-filtering - exclude own dimension)
-      if (selClient && row.client !== selClient) return false;
-      if (selZone && row.zone !== selZone) return false;
-      if (selDriver && row.driver !== selDriver) return false;
+      if (selClient && row.client !== selClient) {
+        console.log('🔍 Filtered out by client:', { selClient, rowClient: row.client });
+        return false;
+      }
+      if (selZone && row.zone !== selZone) {
+        console.log('🔍 Filtered out by zone:', { selZone, rowZone: row.zone });
+        return false;
+      }
+      if (selDriver && row.driver !== selDriver) {
+        console.log('🔍 Filtered out by driver:', { selDriver, rowDriver: row.driver });
+        return false;
+      }
 
       return true;
     });
