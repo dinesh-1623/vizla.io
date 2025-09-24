@@ -22,6 +22,7 @@ import Reports from "./pages/admin/Reports";
 import ActionItems from "./pages/admin/ActionItems";
 import StorageLots from "./pages/admin/StorageLots";
 import LocatedPage from "./app/located/page";
+import TowDriverPage from "./app/tow-driver/page";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,7 +36,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/located" element={<LocatedPage />} />
-          <Route path="/tow-driver" element={<TowDriver />} />
+          <Route path="/tow-driver" element={<TowDriverPage />} />
+          <Route path="/tow-driver-legacy" element={<TowDriver />} />
           <Route path="/owner" element={<Owner />} />
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
           <Route path="/to-dispatch" element={<ToDispatch />} />
