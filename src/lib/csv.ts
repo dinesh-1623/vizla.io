@@ -83,7 +83,25 @@ function parseLocatedDate(dateStr: string): string {
   if (!dateStr) return '';
   
   try {
-    // Handle various date formats
+    // Handle M/D format (like "1/2", "2/3", "5/28")
+    if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length === 2) {
+        const month = parseInt(parts[0]);
+        const day = parseInt(parts[1]);
+        
+        // Assume 2024 for the pilot year
+        const year = 2024;
+        
+        // Validate month and day
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          const date = new Date(year, month - 1, day);
+          return date.toISOString().split('T')[0];
+        }
+      }
+    }
+    
+    // Handle other date formats
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return '';
     
@@ -104,29 +122,41 @@ export async function loadVehicles(): Promise<Vehicle[]> {
     
     const vehicles: Vehicle[] = records
       .map((record, index) => {
-        // Map CSV columns to Vehicle interface
-        const id = record.ID || record.id || record.VIN || record.vin || `vehicle_${index}`;
-        const client = record.CLIENT || record.client || 'Unknown';
-        const zone = normalizeZone(record.ZONE || record.zone || record.MARKET || record.market || '');
-        const year = record.YEAR || record.year || '';
-        const make = record.MAKE || record.make || '';
-        const model = record.MODEL || record.model || '';
+        // Map CSV columns to Vehicle interface based on actual CSV structure
+        const id = record.VIN || record.TAG || `vehicle_${index}`;
+        const client = record.CLIENT || 'Unknown';
+        const zone = normalizeZone(record.RCM || 'unknown');
+        const year = record.YEAR || '';
+        const make = record.MAKE || '';
+        const model = record.MODEL || '';
         const yearMakeModel = [year, make, model].filter(Boolean).join(' ');
-        const color = record.COLOR || record.color || '';
-        const plate = record.PLATE || record.plate || record.TAG || record.tag || '';
-        const vin = record.VIN || record.vin || '';
-        const address = record.ADDRESS || record.address || '';
-        const city = record.CITY || record.city || '';
-        const state = record.STATE || record.state || '';
-        const zip = record.ZIP || record.zip || '';
-        const driver = normalizeDriver(record.DRIVER || record.driver || '');
-        const locatedDate = parseLocatedDate(record.LOCATED_DATE || record.located_date || record.DATE || record.date || '');
-        const locatedTimeAgo = record.LOCATED_TIME_AGO || record.located_time_ago || record.TIME_AGO || record.time_ago || '';
-        const reachable = (record.REACHABLE || record.reachable || 'true').toLowerCase() === 'true';
-        const rusted = (record.RUSTED || record.rusted || 'false').toLowerCase() === 'true';
-        const imageUrl = record.IMAGE_URL || record.image_url || undefined;
-        const lat = record.LAT || record.lat ? parseFloat(record.LAT || record.lat) : undefined;
-        const lng = record.LNG || record.lng || record.LON || record.lon ? parseFloat(record.LNG || record.lng || record.LON || record.lon) : undefined;
+        const color = record.COLOR || '';
+        const plate = record.TAG || '';
+        const vin = record.VIN || '';
+        const address = record.STREET || '';
+        const city = record.CITY || '';
+        const state = record.ZIP ? (record.ZIP.length > 5 ? 'MD' : 'DC') : 'MD'; // Infer state from zip
+        const zip = record.ZIP || '';
+        const driver = normalizeDriver(record.DRIVER || record.SPOTTER || '');
+        
+        // Parse date from first column (format like "1/2", "2/3", etc.)
+        const rawDate = Object.keys(record)[0] || ''; // First column value
+        const locatedDate = parseLocatedDate(rawDate);
+        const locatedTimeAgo = 'Recently located'; // Default value
+        
+        const reachable = record.TYPE === 'GPS'; // GPS type means reachable
+        const rusted = false; // Default to not rusted
+        const imageUrl = undefined;
+        
+        // Parse coordinates from NOTES column (format like "38.56498, -77.00248    8/18")
+        let lat, lng;
+        if (record.NOTES) {
+          const coordMatch = record.NOTES.match(/(\d+\.\d+),\s*(-?\d+\.\d+)/);
+          if (coordMatch) {
+            lat = parseFloat(coordMatch[1]);
+            lng = parseFloat(coordMatch[2]);
+          }
+        }
         
         return {
           id,
