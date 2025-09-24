@@ -106,37 +106,71 @@ function parseCoordinates(row: Record<string, any>): { lat?: number; lng?: numbe
 }
 
 /**
+ * Parse date from CSV row (Column A format: "2/3", "9/22", etc.)
+ */
+function parseRowDate(rowDate: string, year: string): string | null {
+  if (!rowDate || !year) return null;
+  
+  // Parse MM/DD format
+  const parts = rowDate.split('/');
+  if (parts.length !== 2) return null;
+  
+  const month = parts[0].padStart(2, '0');
+  const day = parts[1].padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Transform CSV row to LocatedJob
  */
-function transformRow(row: Record<string, any>, date: string, rowIndex: number): LocatedJob | null {
+function transformRow(row: Record<string, any>, selectedDate: string, rowIndex: number): LocatedJob | null {
   // Filter out rows with "do not touch"
   if (shouldFilterOut(row)) {
     return null;
   }
+
+  // Parse the date from the row and filter by selected date
+  const rowDateStr = normalizeField(row[Object.keys(row)[0]]); // First column is usually the date
+  const year = normalizeField(row.YEAR || row.year || '2025'); // Default to 2025
+  const rowDate = parseRowDate(rowDateStr, year);
   
+  // Only include rows that match the selected date
+  if (!rowDate || rowDate !== selectedDate) {
+    return null;
+  }
+
   const coords = parseCoordinates(row);
-  
+
   // Build make/model string
-  const year = normalizeField(row.YEAR || row.year || '');
   const make = normalizeField(row.MAKE || row.make || '');
   const model = normalizeField(row.MODEL || row.model || '');
   const makeModel = [year, make, model].filter(Boolean).join(' ') || 'Unknown Vehicle';
-  
+
   // Build address
-  const street = normalizeField(row.STREET || row.street || row.ADDRESS || row.address || '');
-  const city = normalizeField(row.CITY || row.city || '');
-  const address = [street, city].filter(Boolean).join(', ') || 'Unknown Location';
-  
+  const street = normalizeField(row['STREET CITY'] || row.STREET || row.street || row.ADDRESS || row.address || '');
+  const address = street || 'Unknown Location';
+
   // Determine zone from TYPE or use default
   const zone = normalizeField(row.TYPE || row.type || row.ZONE || row.zone || row.MARKET || row.market || 'Unknown');
+
+  // Map status from DRIVER column (contains status info like "UPDATED", "WRECKED", etc.)
+  const driverStatus = normalizeField(row.DRIVER || row.driver || '');
+  let status: 'Located' | 'Blocked' | 'Stashed' = 'Located';
   
+  if (driverStatus.toLowerCase().includes('wrecked') || driverStatus.toLowerCase().includes('damage')) {
+    status = 'Blocked';
+  } else if (driverStatus.toLowerCase().includes('stash') || driverStatus.toLowerCase().includes('store')) {
+    status = 'Stashed';
+  }
+
   return {
     id: createStableId(
       normalizeField(row.VIN || row.vin || ''),
       normalizeField(row.TAG || row.tag || row.PLATE || row.plate || ''),
       rowIndex
     ),
-    date,
+    date: selectedDate,
     client: normalizeField(row.CLIENT || row.client || row.Client || 'Unknown'),
     zone,
     driver: normalizeField(row.DRIVER || row.driver || row.DRIVER_NAME || row.driver_name || row.SPOTTER || row.spotter || '-'),
@@ -147,7 +181,7 @@ function transformRow(row: Record<string, any>, date: string, rowIndex: number):
     address,
     ...coords,
     notes: normalizeField(row.NOTES || row.notes || row.COMMENTS || row.comments || ''),
-    status: mapStatus(row.STATUS || row.status || 'Located')
+    status
   };
 }
 
@@ -255,8 +289,14 @@ async function fetchFallbackData(date: string): Promise<FetchResult> {
     if (rows.length > 0) {
       console.log('Sample fallback job:', rows[0]);
     } else {
-      console.log('No jobs parsed. Sample CSV row:', parseResult.data[0]);
+      console.log('No jobs parsed for date:', date);
+      console.log('Sample CSV row:', parseResult.data[0]);
       console.log('CSV headers:', Object.keys(parseResult.data[0] || {}));
+      console.log('Available dates in CSV:', parseResult.data.slice(0, 10).map((row: any) => ({
+        dateCol: row[Object.keys(row)[0]],
+        year: row.YEAR,
+        parsed: parseRowDate(row[Object.keys(row)[0]], row.YEAR || '2025')
+      })));
     }
     
     console.log(`✅ Loaded ${rows.length} fallback jobs for ${date}`);
