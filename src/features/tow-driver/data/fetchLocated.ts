@@ -65,8 +65,10 @@ function mapStatus(statusText: string): 'Located' | 'Blocked' | 'Stashed' {
     return 'Blocked';
   } else if (status.includes('stash') || status.includes('store')) {
     return 'Stashed';
+  } else if (status.includes('unknown')) {
+    return 'Located'; // Unknown → Located
   } else {
-    return 'Located'; // Default
+    return 'Located'; // Default to Located
   }
 }
 

@@ -13,6 +13,14 @@ import { BatchPanel } from '@/features/tow-driver/components/BatchPanel';
 import { fetchLocatedByDate, fetchDefaultLocated } from '@/features/tow-driver/data/fetchLocated';
 import { getDefaultGid, getTodayDate, getMostRecentDate, getAvailableDates } from '@/data/dateTabMap';
 import { LocatedJob, FetchResult } from '@/lib/types';
+import { 
+  loadTowDriverState, 
+  saveSelectedDate, 
+  saveDestinationMode, 
+  saveSelectedStorageLot, 
+  saveSelectedStatuses, 
+  saveBatchState 
+} from '@/lib/storage';
 
 const TowDriverPage: React.FC = () => {
   const navigate = useNavigate();
@@ -23,22 +31,26 @@ const TowDriverPage: React.FC = () => {
   const [filters, setFilters] = useState({
     client: '',
     zone: '',
-    driver: '',
-    status: ''
+    driver: ''
   });
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set(['Located', 'Stashed']));
   const [destinationMode, setDestinationMode] = useState<'storage' | 'stash'>('storage');
   const [selectedStorageLot, setSelectedStorageLot] = useState('White Marsh');
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
 
-  // Initialize default date
+  // Initialize state from localStorage
   useEffect(() => {
+    const savedState = loadTowDriverState();
     const today = getTodayDate();
     const availableDates = getAvailableDates();
     
-    // Default selection logic: today if available, otherwise most recent
+    // Initialize date from localStorage or default logic
     let defaultDate = today;
-    if (!availableDates.includes(today)) {
+    if (savedState.selectedDate && availableDates.includes(savedState.selectedDate)) {
+      defaultDate = savedState.selectedDate;
+    } else if (!availableDates.includes(today)) {
       const mostRecent = getMostRecentDate();
       if (mostRecent) {
         defaultDate = mostRecent;
@@ -48,6 +60,23 @@ const TowDriverPage: React.FC = () => {
     }
     
     setSelectedDate(defaultDate);
+
+    // Initialize other state from localStorage
+    if (savedState.destinationMode) {
+      setDestinationMode(savedState.destinationMode);
+    }
+    if (savedState.selectedStorageLot) {
+      setSelectedStorageLot(savedState.selectedStorageLot);
+    }
+    if (savedState.selectedStatuses) {
+      setSelectedStatuses(new Set(savedState.selectedStatuses));
+    }
+    if (savedState.batchJobIds) {
+      setSelectedJobIds(new Set(savedState.batchJobIds));
+    }
+    if (savedState.currentJobIndex !== undefined) {
+      setCurrentJobIndex(savedState.currentJobIndex);
+    }
   }, []);
 
   // Load data when date changes
@@ -57,6 +86,29 @@ const TowDriverPage: React.FC = () => {
     }
   }, [selectedDate]);
 
+  // Persist state changes to localStorage
+  useEffect(() => {
+    if (selectedDate) {
+      saveSelectedDate(selectedDate);
+    }
+  }, [selectedDate]);
+
+  useEffect(() => {
+    saveDestinationMode(destinationMode);
+  }, [destinationMode]);
+
+  useEffect(() => {
+    saveSelectedStorageLot(selectedStorageLot);
+  }, [selectedStorageLot]);
+
+  useEffect(() => {
+    saveSelectedStatuses(selectedStatuses);
+  }, [selectedStatuses]);
+
+  useEffect(() => {
+    saveBatchState(selectedJobIds, currentJobIndex);
+  }, [selectedJobIds, currentJobIndex]);
+
   const loadData = async (date: string) => {
     try {
       setIsLoading(true);
@@ -65,6 +117,7 @@ const TowDriverPage: React.FC = () => {
       
       const result = await fetchLocatedByDate(date);
       setData(result);
+      setLastFetchTime(new Date());
       
       console.log(`✅ Loaded ${result.meta.count} jobs from ${result.meta.source}`);
     } catch (err) {
@@ -103,8 +156,20 @@ const TowDriverPage: React.FC = () => {
     setFilters({
       client: '',
       zone: '',
-      driver: '',
-      status: ''
+      driver: ''
+    });
+    setSelectedStatuses(new Set(['Located', 'Stashed']));
+  };
+
+  const handleStatusToggle = (status: string) => {
+    setSelectedStatuses(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(status)) {
+        newSet.delete(status);
+      } else {
+        newSet.add(status);
+      }
+      return newSet;
     });
   };
 
@@ -155,10 +220,10 @@ const TowDriverPage: React.FC = () => {
       if (filters.client && job.client !== filters.client) return false;
       if (filters.zone && job.zone !== filters.zone) return false;
       if (filters.driver && (job.driver === '-' ? 'Unassigned' : job.driver) !== filters.driver) return false;
-      if (filters.status && job.status !== filters.status) return false;
+      if (selectedStatuses.size > 0 && !selectedStatuses.has(job.status)) return false;
       return true;
     });
-  }, [data?.rows, filters]);
+  }, [data?.rows, filters, selectedStatuses]);
 
   // Get selected jobs in order
   const selectedJobs = useMemo(() => {
@@ -216,17 +281,29 @@ const TowDriverPage: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                onClick={handleRefresh}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-                aria-label="Refresh Data"
-                disabled={isLoading}
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                <span className="text-sm font-medium text-vizla-text-secondary">
-                  {isLoading ? 'Loading...' : 'Refresh Data'}
-                </span>
-              </button>
+              <div className="flex items-center gap-4">
+                {/* Data Freshness Pill */}
+                {lastFetchTime && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder">
+                    <div className="w-2 h-2 rounded-full bg-vizla-success"></div>
+                    <span className="text-xs text-vizla-text-muted">
+                      Updated {lastFetchTime.toLocaleTimeString()}
+                    </span>
+                  </div>
+                )}
+                
+                <button
+                  onClick={handleRefresh}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                  aria-label="Refresh Data"
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <span className="text-sm font-medium text-vizla-text-secondary">
+                    {isLoading ? 'Loading...' : 'Refresh Data'}
+                  </span>
+                </button>
+              </div>
             </div>
           </GlassCard>
         </div>
@@ -279,8 +356,10 @@ const TowDriverPage: React.FC = () => {
               <span className="text-sm font-medium text-vizla-danger">Error loading data: {error}</span>
               <button
                 onClick={handleRefresh}
-                className="ml-auto px-3 py-1 rounded-md bg-vizla-danger text-white text-sm font-medium hover:bg-vizla-danger/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                className="ml-auto flex items-center gap-2 px-3 py-2 rounded-md bg-vizla-danger text-white text-sm font-medium hover:bg-vizla-danger/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                aria-label="Retry loading data"
               >
+                <RefreshCw className="w-4 h-4" />
                 Retry
               </button>
             </div>
@@ -368,9 +447,11 @@ const TowDriverPage: React.FC = () => {
               <JobFilters
                 jobs={data.rows}
                 filters={filters}
+                selectedStatuses={selectedStatuses}
                 destinationMode={destinationMode}
                 selectedStorageLot={selectedStorageLot}
                 onFilterChange={handleFilterChange}
+                onStatusToggle={handleStatusToggle}
                 onClearFilter={handleClearFilter}
                 onClearAll={handleClearAllFilters}
                 onDestinationModeChange={handleDestinationModeChange}

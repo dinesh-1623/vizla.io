@@ -93,6 +93,12 @@ export const JobRow: React.FC<JobRowProps> = ({
       tabIndex={0}
       role="row"
       aria-label={`Job: ${job.makeModel} for ${job.client}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleStartNav();
+        }
+      }}
     >
       {/* Vehicle Info */}
       <div className="flex-1 min-w-0">
