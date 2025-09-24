@@ -7,8 +7,10 @@ interface JobListProps {
   jobs: LocatedJob[];
   destinationMode: 'storage' | 'stash';
   selectedStorageLot: string;
+  selectedJobIds: Set<string>;
   onStartNav: (job: LocatedJob) => void;
   onAddToBatch: (job: LocatedJob) => void;
+  onRemoveFromBatch: (job: LocatedJob) => void;
   className?: string;
 }
 
@@ -16,8 +18,10 @@ export const JobList: React.FC<JobListProps> = ({
   jobs,
   destinationMode,
   selectedStorageLot,
+  selectedJobIds,
   onStartNav,
   onAddToBatch,
+  onRemoveFromBatch,
   className
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -92,8 +96,10 @@ export const JobList: React.FC<JobListProps> = ({
                     job={job}
                     destinationMode={destinationMode}
                     selectedStorageLot={selectedStorageLot}
+                    isInBatch={selectedJobIds.has(job.id)}
                     onStartNav={onStartNav}
                     onAddToBatch={onAddToBatch}
+                    onRemoveFromBatch={onRemoveFromBatch}
                   />
                 </div>
               </div>

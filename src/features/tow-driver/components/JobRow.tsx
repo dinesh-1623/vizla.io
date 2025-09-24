@@ -9,8 +9,10 @@ interface JobRowProps {
   job: LocatedJob;
   destinationMode: 'storage' | 'stash';
   selectedStorageLot: string;
+  isInBatch: boolean;
   onStartNav: (job: LocatedJob) => void;
   onAddToBatch: (job: LocatedJob) => void;
+  onRemoveFromBatch: (job: LocatedJob) => void;
   className?: string;
 }
 
@@ -18,8 +20,10 @@ export const JobRow: React.FC<JobRowProps> = ({
   job,
   destinationMode,
   selectedStorageLot,
+  isInBatch,
   onStartNav,
   onAddToBatch,
+  onRemoveFromBatch,
   className
 }) => {
   const getStatusColor = (status: string) => {
@@ -70,8 +74,12 @@ export const JobRow: React.FC<JobRowProps> = ({
     }
   };
 
-  const handleAddToBatch = () => {
-    onAddToBatch(job);
+  const handleBatchAction = () => {
+    if (isInBatch) {
+      onRemoveFromBatch(job);
+    } else {
+      onAddToBatch(job);
+    }
   };
 
   return (
@@ -146,13 +154,20 @@ export const JobRow: React.FC<JobRowProps> = ({
         </button>
         
         <button
-          onClick={handleAddToBatch}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-vizla-glass ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-          aria-label={`Add ${job.makeModel} to batch`}
-          title="Add to Batch"
+          onClick={handleBatchAction}
+          className={cn(
+            "flex items-center gap-1 px-3 py-1.5 rounded-md ring-1 transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus",
+            isInBatch 
+              ? "bg-vizla-brand-primary/20 text-vizla-brand-primary ring-vizla-brand-primary/30 hover:bg-vizla-brand-primary/30"
+              : "bg-vizla-glass ring-vizla-glassBorder hover:bg-vizla-glassElev text-vizla-text-secondary"
+          )}
+          aria-label={isInBatch ? `Remove ${job.makeModel} from batch` : `Add ${job.makeModel} to batch`}
+          title={isInBatch ? "Remove from Batch" : "Add to Batch"}
         >
           <Plus className="w-3 h-3" />
-          <span className="text-xs font-medium text-vizla-text-secondary">Add to Batch</span>
+          <span className="text-xs font-medium">
+            {isInBatch ? "Remove from Batch" : "Add to Batch"}
+          </span>
         </button>
       </div>
     </div>

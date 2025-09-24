@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { DatePicker } from '@/components/tow-driver/DatePicker';
 import { JobList } from '@/features/tow-driver/components/JobList';
 import { JobFilters } from '@/features/tow-driver/components/JobFilters';
+import { BatchPanel } from '@/features/tow-driver/components/BatchPanel';
 import { fetchLocatedByDate, fetchDefaultLocated } from '@/features/tow-driver/data/fetchLocated';
 import { getDefaultGid, getTodayDate, getMostRecentDate, getAvailableDates } from '@/data/dateTabMap';
 import { LocatedJob, FetchResult } from '@/lib/types';
@@ -27,6 +28,8 @@ const TowDriverPage: React.FC = () => {
   });
   const [destinationMode, setDestinationMode] = useState<'storage' | 'stash'>('storage');
   const [selectedStorageLot, setSelectedStorageLot] = useState('White Marsh');
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const [currentJobIndex, setCurrentJobIndex] = useState(0);
 
   // Initialize default date
   useEffect(() => {
@@ -119,8 +122,29 @@ const TowDriverPage: React.FC = () => {
   };
 
   const handleAddToBatch = (job: LocatedJob) => {
-    console.log('Adding to batch:', job);
-    // TODO: Implement batch functionality
+    setSelectedJobIds(prev => new Set([...prev, job.id]));
+  };
+
+  const handleRemoveFromBatch = (job: LocatedJob) => {
+    setSelectedJobIds(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(job.id);
+      return newSet;
+    });
+  };
+
+  const handleClearBatch = () => {
+    setSelectedJobIds(new Set());
+    setCurrentJobIndex(0);
+  };
+
+  const handleStartRoute = (jobs: LocatedJob[]) => {
+    console.log('Starting route for jobs:', jobs);
+    setCurrentJobIndex(0);
+  };
+
+  const handleNextStop = (index: number) => {
+    setCurrentJobIndex(index);
   };
 
   // Filter jobs based on current filters
@@ -135,6 +159,12 @@ const TowDriverPage: React.FC = () => {
       return true;
     });
   }, [data?.rows, filters]);
+
+  // Get selected jobs in order
+  const selectedJobs = useMemo(() => {
+    if (!data?.rows) return [];
+    return data.rows.filter(job => selectedJobIds.has(job.id));
+  }, [data?.rows, selectedJobIds]);
 
   // Compute stats from filtered data
   const stats = useMemo(() => {
@@ -350,19 +380,47 @@ const TowDriverPage: React.FC = () => {
           </GlassCard>
         )}
 
-        {/* Virtualized Jobs List */}
+        {/* Main Content - Two Column Layout */}
         {!isLoading && data && (
-          <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
-            <div className="p-6">
-              <JobList
-                jobs={filteredJobs}
-                destinationMode={destinationMode}
-                selectedStorageLot={selectedStorageLot}
-                onStartNav={handleStartNav}
-                onAddToBatch={handleAddToBatch}
-              />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column - Jobs List */}
+            <div className="lg:col-span-2">
+              <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
+                <div className="p-6">
+                  <JobList
+                    jobs={filteredJobs}
+                    destinationMode={destinationMode}
+                    selectedStorageLot={selectedStorageLot}
+                    selectedJobIds={selectedJobIds}
+                    onStartNav={handleStartNav}
+                    onAddToBatch={handleAddToBatch}
+                    onRemoveFromBatch={handleRemoveFromBatch}
+                  />
+                </div>
+              </GlassCard>
             </div>
-          </GlassCard>
+
+            {/* Right Column - Batch Panel */}
+            <div className="lg:col-span-1">
+              <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder h-fit">
+                <div className="p-6">
+                  <BatchPanel
+                    selectedJobs={selectedJobs}
+                    destinationMode={destinationMode}
+                    selectedStorageLot={selectedStorageLot}
+                    onRemoveJob={(jobId) => {
+                      const job = selectedJobs.find(j => j.id === jobId);
+                      if (job) handleRemoveFromBatch(job);
+                    }}
+                    onClearBatch={handleClearBatch}
+                    onStartRoute={handleStartRoute}
+                    onNextStop={handleNextStop}
+                    currentJobIndex={currentJobIndex}
+                  />
+                </div>
+              </GlassCard>
+            </div>
+          </div>
         )}
 
         {/* Empty State */}
