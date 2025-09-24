@@ -2,9 +2,13 @@ import React from 'react';
 import { Navigation, Plus, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LocatedJob } from '@/lib/types';
+import { buildJobRouteUrl } from '@/lib/googleMaps';
+import { STORAGE_LOTS } from '@/data/storageLots';
 
 interface JobRowProps {
   job: LocatedJob;
+  destinationMode: 'storage' | 'stash';
+  selectedStorageLot: string;
   onStartNav: (job: LocatedJob) => void;
   onAddToBatch: (job: LocatedJob) => void;
   className?: string;
@@ -12,6 +16,8 @@ interface JobRowProps {
 
 export const JobRow: React.FC<JobRowProps> = ({
   job,
+  destinationMode,
+  selectedStorageLot,
   onStartNav,
   onAddToBatch,
   className
@@ -29,21 +35,38 @@ export const JobRow: React.FC<JobRowProps> = ({
     }
   };
 
-  const buildGoogleMapsUrl = (job: LocatedJob) => {
-    if (job.lat && job.lng) {
-      return `https://www.google.com/maps/dir/?api=1&destination=${job.lat},${job.lng}`;
-    } else if (job.address) {
-      const encodedAddress = encodeURIComponent(job.address);
-      return `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-    }
-    return null;
-  };
-
   const handleStartNav = () => {
     onStartNav(job);
-    const mapsUrl = buildGoogleMapsUrl(job);
-    if (mapsUrl) {
+    
+    try {
+      let destination: string;
+      
+      if (destinationMode === 'storage') {
+        // Find the selected storage lot
+        const storageLot = STORAGE_LOTS.find(lot => lot.name === selectedStorageLot);
+        if (!storageLot) {
+          throw new Error('Selected storage lot not found');
+        }
+        destination = storageLot.address;
+      } else {
+        // For stash mode, use the job's own address as destination
+        destination = job.address;
+      }
+      
+      // Build Google Maps directions URL
+      const mapsUrl = buildJobRouteUrl(
+        { lat: job.lat, lng: job.lng, address: job.address },
+        destination
+      );
+      
       window.open(mapsUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('Failed to build navigation URL:', error);
+      // Fallback to simple search
+      if (job.address) {
+        const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`;
+        window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+      }
     }
   };
 

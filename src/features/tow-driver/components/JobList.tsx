@@ -5,6 +5,8 @@ import { LocatedJob } from '@/lib/types';
 
 interface JobListProps {
   jobs: LocatedJob[];
+  destinationMode: 'storage' | 'stash';
+  selectedStorageLot: string;
   onStartNav: (job: LocatedJob) => void;
   onAddToBatch: (job: LocatedJob) => void;
   className?: string;
@@ -12,6 +14,8 @@ interface JobListProps {
 
 export const JobList: React.FC<JobListProps> = ({
   jobs,
+  destinationMode,
+  selectedStorageLot,
   onStartNav,
   onAddToBatch,
   className
@@ -86,6 +90,8 @@ export const JobList: React.FC<JobListProps> = ({
                 <div className="p-2">
                   <JobRow
                     job={job}
+                    destinationMode={destinationMode}
+                    selectedStorageLot={selectedStorageLot}
                     onStartNav={onStartNav}
                     onAddToBatch={onAddToBatch}
                   />

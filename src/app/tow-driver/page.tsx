@@ -25,6 +25,8 @@ const TowDriverPage: React.FC = () => {
     driver: '',
     status: ''
   });
+  const [destinationMode, setDestinationMode] = useState<'storage' | 'stash'>('storage');
+  const [selectedStorageLot, setSelectedStorageLot] = useState('White Marsh');
 
   // Initialize default date
   useEffect(() => {
@@ -101,6 +103,14 @@ const TowDriverPage: React.FC = () => {
       driver: '',
       status: ''
     });
+  };
+
+  const handleDestinationModeChange = (mode: 'storage' | 'stash') => {
+    setDestinationMode(mode);
+  };
+
+  const handleStorageLotChange = (lot: string) => {
+    setSelectedStorageLot(lot);
   };
 
   const handleStartNav = (job: LocatedJob) => {
@@ -328,9 +338,13 @@ const TowDriverPage: React.FC = () => {
               <JobFilters
                 jobs={data.rows}
                 filters={filters}
+                destinationMode={destinationMode}
+                selectedStorageLot={selectedStorageLot}
                 onFilterChange={handleFilterChange}
                 onClearFilter={handleClearFilter}
                 onClearAll={handleClearAllFilters}
+                onDestinationModeChange={handleDestinationModeChange}
+                onStorageLotChange={handleStorageLotChange}
               />
             </div>
           </GlassCard>
@@ -342,6 +356,8 @@ const TowDriverPage: React.FC = () => {
             <div className="p-6">
               <JobList
                 jobs={filteredJobs}
+                destinationMode={destinationMode}
+                selectedStorageLot={selectedStorageLot}
                 onStartNav={handleStartNav}
                 onAddToBatch={handleAddToBatch}
               />

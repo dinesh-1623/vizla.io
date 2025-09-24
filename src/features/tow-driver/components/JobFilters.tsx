@@ -2,6 +2,8 @@ import React, { useMemo } from 'react';
 import { X, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LocatedJob } from '@/lib/types';
+import { STORAGE_LOTS } from '@/data/storageLots';
+import { SegmentedToggle } from '@/components/dashboard/SegmentedToggle';
 
 interface JobFiltersProps {
   jobs: LocatedJob[];
@@ -11,18 +13,26 @@ interface JobFiltersProps {
     driver?: string;
     status?: string;
   };
+  destinationMode: 'storage' | 'stash';
+  selectedStorageLot: string;
   onFilterChange: (key: string, value: string) => void;
   onClearFilter: (key: string) => void;
   onClearAll: () => void;
+  onDestinationModeChange: (mode: 'storage' | 'stash') => void;
+  onStorageLotChange: (lot: string) => void;
   className?: string;
 }
 
 export const JobFilters: React.FC<JobFiltersProps> = ({
   jobs,
   filters,
+  destinationMode,
+  selectedStorageLot,
   onFilterChange,
   onClearFilter,
   onClearAll,
+  onDestinationModeChange,
+  onStorageLotChange,
   className
 }) => {
   // Get unique values for filter options
@@ -61,6 +71,43 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
 
   return (
     <div className={cn("space-y-4", className)}>
+      {/* Destination Control */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-vizla-text-muted uppercase tracking-wider">
+              Destination:
+            </span>
+          </div>
+          
+          <SegmentedToggle
+            options={[
+              { value: 'storage', label: 'Storage Lot' },
+              { value: 'stash', label: 'Stash (Cache)' }
+            ]}
+            value={destinationMode}
+            onChange={onDestinationModeChange}
+          />
+          
+          {destinationMode === 'storage' && (
+            <select
+              value={selectedStorageLot}
+              onChange={(e) => onStorageLotChange(e.target.value)}
+              className={cn(
+                "bg-vizla-glass text-vizla-text-primary ring-1 ring-vizla-glassBorder rounded-xl px-3 py-2 pr-8 text-sm shadow-sm",
+                "placeholder:text-vizla-text-muted focus:outline-none focus:ring-2 focus:ring-vizla-ring-focus transition-all appearance-none"
+              )}
+            >
+              {STORAGE_LOTS.map((lot) => (
+                <option key={lot.name} value={lot.name} className="bg-vizla-elev1">
+                  {lot.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      </div>
+
       {/* Filter Controls */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Client Filter */}
