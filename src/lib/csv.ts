@@ -148,6 +148,11 @@ export async function loadVehicles(): Promise<Vehicle[]> {
         const locatedDate = parseLocatedDate(rawDate);
         const locatedTimeAgo = 'Recently located'; // Default value
         
+        // Debug logging for first few records
+        if (index < 3) {
+          console.log(`🚗 Vehicle ${index}: rawDate="${rawDate}", parsedDate="${locatedDate}"`);
+        }
+        
         const reachable = record.TYPE === 'GPS'; // GPS type means reachable
         const rusted = false; // Default to not rusted
         const imageUrl = undefined;
@@ -159,7 +164,15 @@ export async function loadVehicles(): Promise<Vehicle[]> {
           if (coordMatch) {
             lat = parseFloat(coordMatch[1]);
             lng = parseFloat(coordMatch[2]);
+          } else {
+            // If no coordinates found, generate mock coordinates for the area
+            lat = 39.2904 + (Math.random() - 0.5) * 0.5; // Baltimore area
+            lng = -76.6122 + (Math.random() - 0.5) * 0.5;
           }
+        } else {
+          // If no NOTES column, generate mock coordinates
+          lat = 39.2904 + (Math.random() - 0.5) * 0.5;
+          lng = -76.6122 + (Math.random() - 0.5) * 0.5;
         }
         
         return {

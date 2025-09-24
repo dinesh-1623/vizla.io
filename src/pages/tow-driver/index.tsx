@@ -68,7 +68,12 @@ const TowDriverPage: React.FC = () => {
 
       // Load vehicles and filter to pilot date range
       const allVehicles = await loadVehicles();
+      console.log('🔍 All vehicles loaded:', allVehicles.length);
+      console.log('📅 Pilot date range:', PILOT_START_DATE, 'to', PILOT_END_DATE);
+      console.log('📊 Sample vehicle dates:', allVehicles.slice(0, 3).map(v => ({ id: v.id, date: v.locatedDate })));
+      
       const sixDayData = allVehicles.filter(v => isWithin(v.locatedDate, PILOT_START_DATE, PILOT_END_DATE));
+      console.log('✅ Vehicles in pilot period:', sixDayData.length);
       
       // Load and geocode storage lots
       const lots = await loadLots();
