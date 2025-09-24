@@ -2,28 +2,23 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loadLocatedRows } from '@/lib/data/sheetLoader';
-import { fromCsvRecord } from '@/lib/data/normalize';
+import { loadLocated } from '@/lib/data/loaders';
 import { Truck, User, RefreshCw, AlertCircle, Navigation } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { StatTile } from '@/components/ui/StatTile';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { FilterBar } from '@/components/dashboard/FilterBar';
 import { FilterChips } from '@/components/dashboard/FilterChips';
 import { BreakdownPanel } from '@/components/dashboard/BreakdownPanel';
 import { StatusLegend } from '@/components/dashboard/StatusLegend';
 import { SegmentedToggle } from '@/components/dashboard/SegmentedToggle';
-import { DateRangePicker } from '@/components/filters/DateRangePicker';
-import { ShareableUrlButton } from '@/components/filters/ShareableUrlButton';
-import { useGlobalFilters } from '@/lib/hooks/useGlobalFilters';
 import { 
   loadGlobalFilters, 
   saveGlobalFilters, 
   buildGoogleMapsUrl 
 } from '@/lib/utils';
-import { isWithinRange, hasDate } from '@/lib/data/normalize';
 import { 
   LocatedRow, 
   Status, 
@@ -31,42 +26,50 @@ import {
   BreakdownItem, 
   StorageLot 
 } from '@/lib/types';
-import { DataSource } from '@/lib/types/located';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [dataSource, setDataSource] = useState<DataSource | null>(null);
+  const [data, setData] = useState<LocatedRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [storageLots, setStorageLots] = useState<StorageLot[]>([]);
   
-  // Global filters from context
-  const { market, status, dateRange, includeMissingDates } = useGlobalFilters();
+  // Global filter state
+  const [market, setMarket] = useState<string>('All Markets');
+  const [status, setStatus] = useState<Status | 'All Statuses'>('All Statuses');
   
   // Drilldown selection state
   const [selClient, setSelClient] = useState<string | undefined>();
   const [selZone, setSelZone] = useState<string | undefined>();
   const [selDriver, setSelDriver] = useState<string | undefined>();
   
+  // Driver/Source toggle state
+  const [driverViewMode, setDriverViewMode] = useState<'source' | 'assigned'>('source');
   
   // Load data and storage lots on mount
   useEffect(() => {
     loadData();
     loadStorageLots();
+    // Load global filters from localStorage
+    const savedFilters = loadGlobalFilters();
+    setMarket(savedFilters.market);
+    setStatus(savedFilters.status as Status | 'All Statuses');
   }, []);
+
+  // Save global filters to localStorage
+  useEffect(() => {
+    saveGlobalFilters(market, status);
+  }, [market, status]);
 
   const loadData = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('🔄 Loading data...');
-      
-             const dataSource = await loadLocatedRows();
-      
-      console.log('✅ Loaded data:', dataSource.rows.length, 'rows from', dataSource.source);
-      console.log('📊 Sample data:', dataSource.rows.slice(0, 2));
-      
-      setDataSource(dataSource);
+      console.log('🔄 Loading CSV data...');
+      const loadedData = await loadLocated();
+      console.log('✅ Loaded data:', loadedData.length, 'rows');
+      console.log('📊 Sample data:', loadedData.slice(0, 2));
+      setData(loadedData);
     } catch (err) {
       console.error('❌ Error loading data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -87,122 +90,57 @@ const Dashboard: React.FC = () => {
 
   // Filter data based on global filters and drilldown selections
   const filteredData = useMemo(() => {
-    if (!dataSource?.rows) return [];
-    
-    const filtered = dataSource.rows.filter(row => {
-      // TEMPORARILY DISABLE DATE FILTERING FOR DEBUGGING
-      // Apply date filtering first
-      const hasValidDate = hasDate(row);
-      const isInRange = hasValidDate && isWithinRange(row, dateRange.from, dateRange.to);
-      const includeMissing = includeMissingDates && row._missingDate;
-      
-      // Debug logging
-      if (row === dataSource.rows[0]) { // Only log for first row to avoid spam
-        console.log('🔍 Date filtering debug:', {
-          hasValidDate,
-          isInRange,
-          includeMissing,
-          includeMissingDates,
-          locatedAt: row.locatedAt,
-          _missingDate: row._missingDate,
-          dateRange: { from: dateRange.from, to: dateRange.to },
-          rowData: { client: row.client, market: row.market, status: row.status, driver: row.driver }
-        });
-      }
-      
-      // TEMPORARILY DISABLE DATE FILTERING
-      // if (!isInRange && !includeMissing) return false;
-
+    const filtered = data.filter(row => {
       // Apply global filters
-      if (market !== 'All Markets' && row.market !== market) {
-        console.log('🔍 Filtered out by market:', { market, rowMarket: row.market });
-        return false;
-      }
-      if (status !== 'All Statuses' && row.status !== status) {
-        console.log('🔍 Filtered out by status:', { status, rowStatus: row.status });
-        return false;
-      }
-
+      if (market !== 'All Markets' && row.zone !== market) return false;
+      if (status !== 'All Statuses' && row.status !== status) return false;
+      
       // Apply drilldown filters (cross-filtering - exclude own dimension)
-      if (selClient && row.client !== selClient) {
-        console.log('🔍 Filtered out by client:', { selClient, rowClient: row.client });
-        return false;
-      }
-      if (selZone && row.zone !== selZone) {
-        console.log('🔍 Filtered out by zone:', { selZone, rowZone: row.zone });
-        return false;
-      }
-      if (selDriver && row.driver !== selDriver) {
-        console.log('🔍 Filtered out by driver:', { selDriver, rowDriver: row.driver });
-        return false;
-      }
-
+      if (selClient && row.client !== selClient) return false;
+      if (selZone && row.zone !== selZone) return false;
+      if (selDriver && row.driver !== selDriver) return false;
+      
       return true;
     });
     console.log('🔍 Filtered data:', filtered.length, 'rows');
     return filtered;
-  }, [dataSource?.rows, market, status, dateRange, includeMissingDates, selClient, selZone, selDriver]);
+  }, [data, market, status, selClient, selZone, selDriver]);
 
   // Compute KPIs from filtered data
   const kpis = useMemo(() => {
     const total = filteredData.length;
     const located = filteredData.filter(r => r.status === 'Located').length;
     const blocked = filteredData.filter(r => r.status === 'Blocked').length;
-
-    // Calculate average time since located (only for rows with valid dates)
-    const rowsWithDates = filteredData.filter(r => hasDate(r));
-    let avgMins = 0;
-    if (rowsWithDates.length > 0) {
-      const now = new Date();
-      const totalMinutes = rowsWithDates.reduce((sum, row) => {
-        const locatedDate = new Date(row.locatedAt!);
-        const diffMs = now.getTime() - locatedDate.getTime();
-        return sum + Math.floor(diffMs / (1000 * 60)); // Convert to minutes
-      }, 0);
-      avgMins = Math.round(totalMinutes / rowsWithDates.length);
-    }
-
-    // Calculate 5+ days (only for rows with valid dates)
-    const now = new Date();
-    const fivePlus = filteredData.filter(r => {
-      if (!hasDate(r)) return false;
-      const locatedDate = new Date(r.locatedAt!);
-      const diffDays = Math.floor((now.getTime() - locatedDate.getTime()) / (1000 * 60 * 60 * 24));
-      return diffDays >= 5;
-    }).length;
-
+    
+    // Calculate average time since located (mock calculation for now)
+    const avgMins = Math.round(Math.random() * 120 + 60); // Random between 60-180 minutes
+    
+    // Calculate 5+ days (mock calculation)
+    const fivePlus = Math.round(total * 0.15); // Assume 15% are 5+ days
+    
     // Calculate missed revenue (mock calculation)
     const missedRevenue = blocked * 150; // $150 per blocked vehicle
-
-    return { total, located, blocked, avgMins, fivePlus, missedRevenue, rowsWithDates: rowsWithDates.length };
+    
+    return { total, located, blocked, avgMins, fivePlus, missedRevenue };
   }, [filteredData]);
 
   // Compute breakdowns from filtered data (cross-filtering logic)
   const clientBreakdown = useMemo((): BreakdownItem[] => {
-    if (!dataSource?.rows) return [];
-    
     // For client breakdown, exclude client filter but apply all others
-    const clientFiltered = dataSource.rows.filter(row => {
-      // Apply date filtering first
-      const hasValidDate = hasDate(row);
-      const isInRange = hasValidDate && isWithinRange(row, dateRange.from, dateRange.to);
-      const includeMissing = includeMissingDates && row._missingDate;
-      
-      if (!isInRange && !includeMissing) return false;
-
-      if (market !== 'All Markets' && row.market !== market) return false;
+    const clientFiltered = data.filter(row => {
+      if (market !== 'All Markets' && row.zone !== market) return false;
       if (status !== 'All Statuses' && row.status !== status) return false;
       if (selZone && row.zone !== selZone) return false;
       if (selDriver && row.driver !== selDriver) return false;
       return true;
     });
-
+    
     const counts = new Map<string, number>();
     clientFiltered.forEach(row => {
       const client = row.client || 'Unknown';
       counts.set(client, (counts.get(client) || 0) + 1);
     });
-
+    
     const total = clientFiltered.length;
     return Array.from(counts.entries())
       .map(([key, count]) => ({
@@ -211,33 +149,24 @@ const Dashboard: React.FC = () => {
         percent: total > 0 ? (count / total) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
-  }, [dataSource?.rows, market, status, dateRange, includeMissingDates, selZone, selDriver]);
+  }, [data, market, status, selZone, selDriver]);
 
   const zoneBreakdown = useMemo((): BreakdownItem[] => {
-    if (!dataSource?.rows) return [];
-    
     // For zone breakdown, exclude zone filter but apply all others
-    const zoneFiltered = dataSource.rows.filter(row => {
-      // Apply date filtering first
-      const hasValidDate = hasDate(row);
-      const isInRange = hasValidDate && isWithinRange(row, dateRange.from, dateRange.to);
-      const includeMissing = includeMissingDates && row._missingDate;
-      
-      if (!isInRange && !includeMissing) return false;
-
-      if (market !== 'All Markets' && row.market !== market) return false;
+    const zoneFiltered = data.filter(row => {
+      if (market !== 'All Markets' && row.zone !== market) return false;
       if (status !== 'All Statuses' && row.status !== status) return false;
       if (selClient && row.client !== selClient) return false;
       if (selDriver && row.driver !== selDriver) return false;
       return true;
     });
-
+    
     const counts = new Map<string, number>();
     zoneFiltered.forEach(row => {
       const zone = row.zone || 'Unknown';
       counts.set(zone, (counts.get(zone) || 0) + 1);
     });
-
+    
     const total = zoneFiltered.length;
     return Array.from(counts.entries())
       .map(([key, count]) => ({
@@ -246,33 +175,24 @@ const Dashboard: React.FC = () => {
         percent: total > 0 ? (count / total) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
-  }, [dataSource?.rows, market, status, dateRange, includeMissingDates, selClient, selDriver]);
+  }, [data, market, status, selClient, selDriver]);
 
   const driverBreakdown = useMemo((): BreakdownItem[] => {
-    if (!dataSource?.rows) return [];
-    
     // For driver breakdown, exclude driver filter but apply all others
-    const driverFiltered = dataSource.rows.filter(row => {
-      // Apply date filtering first
-      const hasValidDate = hasDate(row);
-      const isInRange = hasValidDate && isWithinRange(row, dateRange.from, dateRange.to);
-      const includeMissing = includeMissingDates && row._missingDate;
-      
-      if (!isInRange && !includeMissing) return false;
-
-      if (market !== 'All Markets' && row.market !== market) return false;
+    const driverFiltered = data.filter(row => {
+      if (market !== 'All Markets' && row.zone !== market) return false;
       if (status !== 'All Statuses' && row.status !== status) return false;
       if (selClient && row.client !== selClient) return false;
       if (selZone && row.zone !== selZone) return false;
       return true;
     });
-
+    
     const counts = new Map<string, number>();
     driverFiltered.forEach(row => {
-      const key = row.driver; // Use normalized driver field
+      const key = driverViewMode === 'source' ? row.source : row.assignedDriver;
       counts.set(key, (counts.get(key) || 0) + 1);
     });
-
+    
     const total = driverFiltered.length;
     return Array.from(counts.entries())
       .map(([key, count]) => ({
@@ -281,11 +201,8 @@ const Dashboard: React.FC = () => {
         percent: total > 0 ? (count / total) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
-  }, [dataSource?.rows, market, status, dateRange, includeMissingDates, selClient, selZone]);
+  }, [data, market, status, selClient, selZone, driverViewMode]);
 
-
-  // Global filter actions
-  const { setMarket, setStatus } = useGlobalFilters();
 
   // Handler functions
   const handleMarketChange = (newMarket: string) => {
@@ -316,12 +233,11 @@ const Dashboard: React.FC = () => {
 
   const handleNavigate = (item: BreakdownItem) => {
     // Find a sample row for this item to get location info
-    if (!dataSource?.rows) return;
-    
-    const sampleRow = dataSource.rows.find(row => {
+    const sampleRow = data.find(row => {
       if (item.key === row.client) return true;
       if (item.key === row.zone) return true;
-      if (item.key === row.driver) return true;
+      if (driverViewMode === 'source' && item.key === row.source) return true;
+      if (driverViewMode === 'assigned' && item.key === row.assignedDriver) return true;
       return false;
     });
 
@@ -338,10 +254,9 @@ const Dashboard: React.FC = () => {
 
   // Computed values
   const markets = useMemo(() => {
-    if (!dataSource?.rows) return [];
-    const uniqueMarkets = new Set(dataSource.rows.map(row => row.market).filter(Boolean));
+    const uniqueMarkets = new Set(data.map(row => row.zone).filter(Boolean));
     return Array.from(uniqueMarkets).sort();
-  }, [dataSource?.rows]);
+  }, [data]);
 
   const statuses = ['All Statuses', 'Located', 'Blocked', 'Stashed'];
 
@@ -353,12 +268,11 @@ const Dashboard: React.FC = () => {
     driver: selDriver
   };
 
-  // Check if all drivers are "Unassigned"
-  const allDriversUnassigned = useMemo(() => {
-    if (!dataSource?.rows) return false;
-    const drivers = new Set(dataSource.rows.map(row => row.driver));
-    return drivers.size === 1 && drivers.has('Unassigned');
-  }, [dataSource?.rows]);
+  // Check if all assigned drivers are "Unassigned"
+  const allAssignedDriversUnassigned = useMemo(() => {
+    const assignedDrivers = new Set(data.map(row => row.assignedDriver));
+    return assignedDrivers.size === 1 && assignedDrivers.has('Unassigned');
+  }, [data]);
 
   // Helper function to create micro-bar visualization
   const createMicroBar = (percentage: number) => {
@@ -386,23 +300,12 @@ const Dashboard: React.FC = () => {
   return (
     <AppShell title="Dashboard">
       {/* Header */}
-            <SectionHeading
-              title="Dashboard"
-              subtitle="Overview of vehicle recovery operations"
-              actionSlot={
-                     <div className="flex items-center gap-4">
-                       {/* Data Source Badge */}
-                       {dataSource && (
-                         <div className={`px-3 py-1 rounded-full text-xs font-medium ring-1 ${
-                           dataSource.source === 'live' 
-                             ? 'bg-vizla-success/10 text-vizla-success ring-vizla-success/20' 
-                             : 'bg-vizla-warning/10 text-vizla-warning ring-vizla-warning/20'
-                         }`}>
-                           {dataSource.source === 'live' ? 'Data Source: Google Sheets' : 'Data Source: Fallback'}
-                         </div>
-                       )}
-                       <ShareableUrlButton />
-                       <button
+      <SectionHeading
+        title="Dashboard"
+        subtitle="Overview of vehicle recovery operations"
+        actionSlot={
+          <>
+            <button
               onClick={loadData}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
               aria-label="Refresh Data"
@@ -429,32 +332,19 @@ const Dashboard: React.FC = () => {
               <Truck className="w-4 h-4" />
               <span className="text-sm font-medium text-vizla-text-secondary">Tow Driver View</span>
             </button>
-                </div>
-              }
-            />
+          </>
+        }
+      />
 
-            {/* Filter Bar */}
-            <div className="space-y-4">
-              <FilterBar
-                markets={markets}
-                statuses={statuses}
-                selectedMarket={market}
-                selectedStatus={status}
-                onChangeMarket={handleMarketChange}
-                onChangeStatus={handleStatusChange}
-              />
-              
-              {/* Date Range Filter */}
-              <div className="flex items-center gap-4">
-                <DateRangePicker />
-                {kpis.rowsWithDates > 0 && (
-                  <div className="text-xs text-vizla-text-muted">
-                    Range: {new Date(dateRange.from).toLocaleDateString()} → {new Date(dateRange.to).toLocaleDateString()}
-                    {kpis.rowsWithDates < filteredData.length && ` • incl. ${filteredData.length - kpis.rowsWithDates} without dates`}
-                  </div>
-                )}
-              </div>
-            </div>
+      {/* Filter Bar */}
+      <FilterBar
+        markets={markets}
+        statuses={statuses}
+        selectedMarket={market}
+        selectedStatus={status}
+        onChangeMarket={handleMarketChange}
+        onChangeStatus={handleStatusChange}
+      />
 
       {/* Filter Chips */}
       <FilterChips
@@ -589,10 +479,18 @@ const Dashboard: React.FC = () => {
             <div className="sticky top-0 z-10 bg-vizla-elev1/60 border-b border-vizla-borderSubtle px-4 py-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-vizla-text-primary">By Driver</h3>
+                <SegmentedToggle
+                  options={[
+                    { value: 'source', label: 'Source' },
+                    { value: 'assigned', label: 'Assigned driver' }
+                  ]}
+                  value={driverViewMode}
+                  onChange={(value) => setDriverViewMode(value as 'source' | 'assigned')}
+                />
               </div>
             </div>
             
-                 {allDriversUnassigned ? (
+            {driverViewMode === 'assigned' && allAssignedDriversUnassigned ? (
               <div className="p-6 text-center">
                 <div className="flex flex-col items-center space-y-3">
                   <div className="w-12 h-12 rounded-full bg-vizla-glass flex items-center justify-center">
@@ -620,7 +518,7 @@ const Dashboard: React.FC = () => {
                       onClick={() => handleBreakdownItemClick('driver', item.key)}
                       tabIndex={0}
                       role="button"
-                      aria-label={`Filter by Driver: ${item.key}`}
+                      aria-label={`Filter by ${driverViewMode === 'source' ? 'Source' : 'Driver'}: ${item.key}`}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();

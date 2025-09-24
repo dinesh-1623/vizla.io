@@ -10,13 +10,15 @@ import { FilterBar } from '@/components/located/FilterBar';
 import { MatrixView } from '@/components/located/MatrixView';
 import { ChartView } from '@/components/located/ChartView';
 import { Legend } from '@/components/located/Legend';
-import { DateRangePicker } from '@/components/filters/DateRangePicker';
-import { ShareableUrlButton } from '@/components/filters/ShareableUrlButton';
-import { useGlobalFilters } from '@/lib/hooks/useGlobalFilters';
-import { loadLocatedRows } from '@/lib/data/sheetLoader';
-import { fromCsvRecord, isWithinRange, hasDate } from '@/lib/data/normalize';
-import { buildPivotFromLocated, type Pivot, type PivotCell, type PivotFilters } from '@/lib/data/pivot';
-import { DataSource } from '@/lib/types/located';
+import {
+  loadVizlaDashboard,
+  buildPivot,
+  loadLocatedFilters,
+  saveLocatedFilters,
+  type VizRow,
+  type VizFilters,
+  type PivotCell
+} from '@/lib/csv/vizlaDashboard';
 import { 
   loadPalettePreference, 
   savePalettePreference, 
@@ -26,13 +28,12 @@ import {
 const LocatedPage: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [dataSource, setDataSource] = useState<DataSource | null>(null);
+  const [data, setData] = useState<VizRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Global filters from context
-  const { market, status, dateRange, includeMissingDates } = useGlobalFilters();
-  
-  // Local view state
+  // Filter state
+  const [market, setMarket] = useState<string>('All');
+  const [status, setStatus] = useState<string>('All');
   const [viewMode, setViewMode] = useState<'matrix' | 'charts'>('matrix');
   const [chartType, setChartType] = useState<'stacked' | 'grouped' | 'pie' | 'line' | 'area'>('stacked');
   const [currentPalette, setCurrentPalette] = useState<PaletteType>('lagoon');
@@ -40,8 +41,17 @@ const LocatedPage: React.FC = () => {
   // Load data and filters on mount
   useEffect(() => {
     loadData();
+    const savedFilters = loadLocatedFilters();
+    setMarket(savedFilters.market);
+    setStatus(savedFilters.status);
+    setViewMode(savedFilters.view as 'matrix' | 'charts');
     setCurrentPalette(loadPalettePreference());
   }, []);
+
+  // Save filters to localStorage
+  useEffect(() => {
+    saveLocatedFilters(market, status, viewMode);
+  }, [market, status, viewMode]);
 
   // Save palette preference to localStorage
   useEffect(() => {
@@ -52,15 +62,13 @@ const LocatedPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('🔄 Loading Located page data...');
-      
-             const dataSource = await loadLocatedRows();
-      
-      console.log('✅ Loaded Located page data:', dataSource.rows.length, 'rows from', dataSource.source);
-      
-      setDataSource(dataSource);
+      console.log('🔄 Loading vizla-dashboard.csv...');
+      const loadedData = await loadVizlaDashboard();
+      console.log('✅ Loaded data:', loadedData.length, 'rows');
+      console.log('📊 Sample data:', loadedData.slice(0, 2));
+      setData(loadedData);
     } catch (err) {
-      console.error('❌ Error loading Located page data:', err);
+      console.error('❌ Error loading data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setIsLoading(false);
@@ -69,51 +77,23 @@ const LocatedPage: React.FC = () => {
 
   // Build pivot table with current filters
   const pivot = useMemo(() => {
-    if (!dataSource?.rows) return { clients: [], zonesByClient: {}, drivers: [], cells: [], totals: { byClient: {}, byClientZone: {} } };
+    const filters: VizFilters = {};
+    if (market !== 'All') filters.market = market;
+    if (status !== 'All') filters.status = status;
     
-    // TEMPORARILY DISABLE DATE FILTERING FOR DEBUGGING
-    const dateFilteredRows = dataSource.rows.filter(row => {
-      const hasValidDate = hasDate(row);
-      const isInRange = hasValidDate && isWithinRange(row, dateRange.from, dateRange.to);
-      const includeMissing = includeMissingDates && row._missingDate;
-      
-      // Debug logging
-      if (row === dataSource.rows[0]) { // Only log for first row to avoid spam
-        console.log('🔍 Located page date filtering debug:', {
-          hasValidDate,
-          isInRange,
-          includeMissing,
-          locatedAt: row.locatedAt,
-          _missingDate: row._missingDate,
-          dateRange: { from: dateRange.from, to: dateRange.to }
-        });
-      }
-      
-      // TEMPORARILY DISABLE DATE FILTERING
-      return true; // isInRange || includeMissing;
-    });
-    
-    const filters: PivotFilters = {};
-    if (market !== 'All Markets') filters.market = market;
-    if (status !== 'All Statuses') filters.status = status;
-    return buildPivotFromLocated(dateFilteredRows, filters);
-  }, [dataSource?.rows, market, status, dateRange, includeMissingDates]);
+    return buildPivot(data, filters);
+  }, [data, market, status]);
 
   // Get unique values for filters
   const markets = useMemo(() => {
-    if (!dataSource?.rows) return [];
-    const uniqueMarkets = new Set(dataSource.rows.map(row => row.market));
-    return ['All Markets', ...Array.from(uniqueMarkets).sort()];
-  }, [dataSource?.rows]);
+    const uniqueMarkets = new Set(data.map(row => row.market));
+    return Array.from(uniqueMarkets).sort();
+  }, [data]);
 
   const statuses = useMemo(() => {
-    if (!dataSource?.rows) return [];
-    const uniqueStatuses = new Set(dataSource.rows.map(row => row.status));
-    return ['All Statuses', ...Array.from(uniqueStatuses).sort()];
-  }, [dataSource?.rows]);
-
-  // Global filter actions
-  const { setMarket, setStatus } = useGlobalFilters();
+    const uniqueStatuses = new Set(data.map(row => row.status));
+    return ['All', ...Array.from(uniqueStatuses).sort()];
+  }, [data]);
 
   // Handler functions
   const handleMarketChange = (newMarket: string) => {
@@ -121,7 +101,7 @@ const LocatedPage: React.FC = () => {
   };
 
   const handleStatusChange = (newStatus: string) => {
-    setStatus(newStatus as any);
+    setStatus(newStatus);
   };
 
   const handleViewChange = (newView: 'matrix' | 'charts') => {
@@ -178,44 +158,34 @@ const LocatedPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <ShareableUrlButton />
-                <button
-                  onClick={loadData}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-                  aria-label="Refresh Data"
-                  disabled={isLoading}
-                >
-                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  <span className="text-sm font-medium text-vizla-text-secondary">
-                    {isLoading ? 'Loading...' : 'Refresh Data'}
-                  </span>
-                </button>
-              </div>
+              <button
+                onClick={loadData}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                aria-label="Refresh Data"
+                disabled={isLoading}
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                <span className="text-sm font-medium text-vizla-text-secondary">
+                  {isLoading ? 'Loading...' : 'Refresh Data'}
+                </span>
+              </button>
             </div>
           </GlassCard>
         </div>
 
         {/* Filter Bar */}
-        <div className="space-y-4">
-          <FilterBar
-            markets={markets}
-            statuses={statuses}
-            selectedMarket={market}
-            selectedStatus={status}
-            viewMode={viewMode}
-            chartType={chartType}
-            onChangeMarket={handleMarketChange}
-            onChangeStatus={handleStatusChange}
-            onChangeView={handleViewChange}
-            onChangeChartType={handleChartTypeChange}
-          />
-          
-          {/* Date Range Filter */}
-          <div className="flex items-center gap-4">
-            <DateRangePicker />
-          </div>
-        </div>
+        <FilterBar
+          markets={markets}
+          statuses={statuses}
+          selectedMarket={market}
+          selectedStatus={status}
+          viewMode={viewMode}
+          chartType={chartType}
+          onChangeMarket={handleMarketChange}
+          onChangeStatus={handleStatusChange}
+          onChangeView={handleViewChange}
+          onChangeChartType={handleChartTypeChange}
+        />
 
         {/* Error State */}
         {error && (
@@ -236,7 +206,7 @@ const LocatedPage: React.FC = () => {
         )}
 
         {/* Loading State */}
-        {isLoading && !dataSource && !error && (
+        {isLoading && data.length === 0 && !error && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {Array.from({ length: 3 }).map((_, i) => (

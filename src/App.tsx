@@ -3,7 +3,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { GlobalFiltersProvider } from "@/lib/hooks/useGlobalFilters";
 import Dashboard from "./pages/Dashboard";
 import TowDriver from "./pages/TowDriver";
 import Owner from "./pages/Owner";
@@ -33,8 +32,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <GlobalFiltersProvider>
-          <Routes>
+        <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/located" element={<LocatedPage />} />
           <Route path="/tow-driver" element={<TowDriver />} />
@@ -57,7 +55,6 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-        </GlobalFiltersProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
