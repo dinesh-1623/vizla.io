@@ -1,125 +1,156 @@
 /**
- * RFC4180-compliant CSV Parser
- * 
- * Handles quoted fields, commas within quotes, and CRLF line endings.
- * No external dependencies, pure TypeScript implementation.
+ * CSV parsing utilities for vehicle data
  */
 
-export function parseCsv(text: string): Record<string, string>[] {
-  if (!text || text.trim() === '') {
-    return [];
-  }
+import { Vehicle } from '@/types/vehicle';
 
-  const lines = text.split(/\r?\n/);
-  if (lines.length < 2) {
-    return [];
-  }
-
-  const headers = parseCsvLine(lines[0]);
-  const rows: Record<string, string>[] = [];
-
+/**
+ * Parse CSV text into records
+ * @param csvText - Raw CSV text
+ * @returns Array of parsed records
+ */
+export function parseCSV(csvText: string): Record<string, string>[] {
+  const lines = csvText.trim().split('\n');
+  if (lines.length < 2) return [];
+  
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+  const records: Record<string, string>[] = [];
+  
   for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (line === '') continue;
-
-    const values = parseCsvLine(line);
+    const line = lines[i];
+    if (!line.trim()) continue;
     
-    // Skip rows with only empty values or problematic characters
-    const hasValidData = values.some(v => v && v.trim() !== '' && v.length > 1);
-    if (!hasValidData) {
-      continue;
-    }
-
-    const row: Record<string, string> = {};
+    const values = parseCSVLine(line);
+    if (values.length !== headers.length) continue;
     
-    // Map values to headers, handling cases where there might be more values than headers
-    for (let j = 0; j < Math.max(headers.length, values.length); j++) {
-      const header = headers[j] || `column_${j}`;
-      const value = values[j] || '';
-      row[header] = value;
-    }
-
-    rows.push(row);
+    const record: Record<string, string> = {};
+    headers.forEach((header, index) => {
+      record[header] = values[index] || '';
+    });
+    records.push(record);
   }
-
-  return rows;
+  
+  return records;
 }
 
 /**
- * Parse a single CSV line, handling quoted fields and escaped quotes
+ * Parse a single CSV line handling quoted fields and commas
  */
-function parseCsvLine(line: string): string[] {
-  const result: string[] = [];
+function parseCSVLine(line: string): string[] {
+  const values: string[] = [];
   let current = '';
   let inQuotes = false;
-  let i = 0;
-
-  while (i < line.length) {
+  
+  for (let i = 0; i < line.length; i++) {
     const char = line[i];
-    const nextChar = line[i + 1];
-
+    
     if (char === '"') {
-      if (inQuotes && nextChar === '"') {
-        // Escaped quote within quoted field
-        current += '"';
-        i += 2;
-        continue;
-      } else {
-        // Start or end of quoted field
-        inQuotes = !inQuotes;
-      }
+      inQuotes = !inQuotes;
     } else if (char === ',' && !inQuotes) {
-      // Field separator
-      result.push(current.trim());
+      values.push(current.trim());
       current = '';
     } else {
-      // Regular character
       current += char;
     }
-
-    i++;
   }
-
-  // Add the last field
-  result.push(current.trim());
-
-  return result;
+  
+  values.push(current.trim());
+  return values;
 }
 
 /**
- * Unit test for the CSV parser
+ * Normalize driver name (trim and uppercase)
  */
-export function testCsvParser(): boolean {
-  const testCases = [
-    {
-      input: 'name,age,city\n"John Doe",25,"New York"\nJane Smith,30,Chicago',
-      expected: [
-        { name: 'John Doe', age: '25', city: 'New York' },
-        { name: 'Jane Smith', age: '30', city: 'Chicago' }
-      ]
-    },
-    {
-      input: 'id,description\n1,"Item with, comma"\n2,"Item with ""quotes"""',
-      expected: [
-        { id: '1', description: 'Item with, comma' },
-        { id: '2', description: 'Item with "quotes"' }
-      ]
-    },
-    {
-      input: 'a,b,c\n1,2,3\n',
-      expected: [
-        { a: '1', b: '2', c: '3' }
-      ]
-    }
-  ];
+function normalizeDriver(driver: string): string {
+  return driver.trim().toUpperCase();
+}
 
-  for (const testCase of testCases) {
-    const result = parseCsv(testCase.input);
-    if (JSON.stringify(result) !== JSON.stringify(testCase.expected)) {
-      console.error('CSV parser test failed:', { input: testCase.input, expected: testCase.expected, actual: result });
-      return false;
-    }
+/**
+ * Normalize zone to kebab case
+ */
+function normalizeZone(zone: string): string {
+  return zone
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+/**
+ * Parse located date from various formats to YYYY-MM-DD
+ */
+function parseLocatedDate(dateStr: string): string {
+  if (!dateStr) return '';
+  
+  try {
+    // Handle various date formats
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    
+    return date.toISOString().split('T')[0];
+  } catch {
+    return '';
   }
+}
 
-  return true;
+/**
+ * Load and parse vehicles from CSV
+ */
+export async function loadVehicles(): Promise<Vehicle[]> {
+  try {
+    const response = await fetch('/data/located-vehicles.csv');
+    const csvText = await response.text();
+    const records = parseCSV(csvText);
+    
+    const vehicles: Vehicle[] = records
+      .map((record, index) => {
+        // Map CSV columns to Vehicle interface
+        const id = record.ID || record.id || record.VIN || record.vin || `vehicle_${index}`;
+        const client = record.CLIENT || record.client || 'Unknown';
+        const zone = normalizeZone(record.ZONE || record.zone || record.MARKET || record.market || '');
+        const year = record.YEAR || record.year || '';
+        const make = record.MAKE || record.make || '';
+        const model = record.MODEL || record.model || '';
+        const yearMakeModel = [year, make, model].filter(Boolean).join(' ');
+        const color = record.COLOR || record.color || '';
+        const plate = record.PLATE || record.plate || record.TAG || record.tag || '';
+        const vin = record.VIN || record.vin || '';
+        const address = record.ADDRESS || record.address || '';
+        const city = record.CITY || record.city || '';
+        const state = record.STATE || record.state || '';
+        const zip = record.ZIP || record.zip || '';
+        const driver = normalizeDriver(record.DRIVER || record.driver || '');
+        const locatedDate = parseLocatedDate(record.LOCATED_DATE || record.located_date || record.DATE || record.date || '');
+        const locatedTimeAgo = record.LOCATED_TIME_AGO || record.located_time_ago || record.TIME_AGO || record.time_ago || '';
+        const reachable = (record.REACHABLE || record.reachable || 'true').toLowerCase() === 'true';
+        const rusted = (record.RUSTED || record.rusted || 'false').toLowerCase() === 'true';
+        const imageUrl = record.IMAGE_URL || record.image_url || undefined;
+        
+        return {
+          id,
+          client,
+          zone,
+          yearMakeModel,
+          color,
+          plate,
+          vin,
+          address,
+          city,
+          state,
+          zip,
+          driver,
+          locatedDate,
+          locatedTimeAgo,
+          reachable,
+          rusted,
+          imageUrl
+        };
+      })
+      .filter(vehicle => vehicle.id && vehicle.locatedDate); // Filter out invalid records
+    
+    return vehicles;
+  } catch (error) {
+    console.error('Error loading vehicles:', error);
+    return [];
+  }
 }
