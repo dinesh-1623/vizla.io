@@ -7,6 +7,8 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { DatePicker } from '@/components/tow-driver/DatePicker';
+import { JobList } from '@/features/tow-driver/components/JobList';
+import { JobFilters } from '@/features/tow-driver/components/JobFilters';
 import { fetchLocatedByDate, fetchDefaultLocated } from '@/features/tow-driver/data/fetchLocated';
 import { getDefaultGid, getTodayDate, getMostRecentDate, getAvailableDates } from '@/data/dateTabMap';
 import { LocatedJob, FetchResult } from '@/lib/types';
@@ -17,6 +19,12 @@ const TowDriverPage: React.FC = () => {
   const [data, setData] = useState<FetchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [filters, setFilters] = useState({
+    client: '',
+    zone: '',
+    driver: '',
+    status: ''
+  });
 
   // Initialize default date
   useEffect(() => {
@@ -72,30 +80,75 @@ const TowDriverPage: React.FC = () => {
     }
   };
 
-  // Compute stats from loaded data
-  const stats = useMemo(() => {
-    if (!data?.rows) return null;
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleClearFilter = (key: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: ''
+    }));
+  };
+
+  const handleClearAllFilters = () => {
+    setFilters({
+      client: '',
+      zone: '',
+      driver: '',
+      status: ''
+    });
+  };
+
+  const handleStartNav = (job: LocatedJob) => {
+    console.log('Starting navigation to:', job);
+    // Navigation is handled in JobRow component
+  };
+
+  const handleAddToBatch = (job: LocatedJob) => {
+    console.log('Adding to batch:', job);
+    // TODO: Implement batch functionality
+  };
+
+  // Filter jobs based on current filters
+  const filteredJobs = useMemo(() => {
+    if (!data?.rows) return [];
     
-    const rows = data.rows;
-    const total = rows.length;
-    const byStatus = rows.reduce((acc, job) => {
+    return data.rows.filter(job => {
+      if (filters.client && job.client !== filters.client) return false;
+      if (filters.zone && job.zone !== filters.zone) return false;
+      if (filters.driver && (job.driver === '-' ? 'Unassigned' : job.driver) !== filters.driver) return false;
+      if (filters.status && job.status !== filters.status) return false;
+      return true;
+    });
+  }, [data?.rows, filters]);
+
+  // Compute stats from filtered data
+  const stats = useMemo(() => {
+    if (!filteredJobs.length) return null;
+    
+    const total = filteredJobs.length;
+    const byStatus = filteredJobs.reduce((acc, job) => {
       acc[job.status] = (acc[job.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     
-    const byZone = rows.reduce((acc, job) => {
+    const byZone = filteredJobs.reduce((acc, job) => {
       acc[job.zone] = (acc[job.zone] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     
-    const byDriver = rows.reduce((acc, job) => {
+    const byDriver = filteredJobs.reduce((acc, job) => {
       const driver = job.driver === '-' ? 'Unassigned' : job.driver;
       acc[driver] = (acc[driver] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     return { total, byStatus, byZone, byDriver };
-  }, [data]);
+  }, [filteredJobs]);
 
   return (
     <div className="min-h-screen bg-vizla-canvas text-vizla-text-primary">
@@ -268,62 +321,30 @@ const TowDriverPage: React.FC = () => {
           </div>
         )}
 
-        {/* Jobs List */}
+        {/* Filters */}
         {!isLoading && data && data.rows.length > 0 && (
           <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-vizla-text-primary mb-4">
-                Dispatch Jobs ({data.rows.length})
-              </h3>
-              
-              <div className="space-y-3">
-                {data.rows.map((job) => (
-                  <div
-                    key={job.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-vizla-glass ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h4 className="text-sm font-medium text-vizla-text-primary truncate">
-                          {job.makeModel}
-                        </h4>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          job.status === 'Located' ? 'bg-vizla-success/20 text-vizla-success' :
-                          job.status === 'Blocked' ? 'bg-vizla-warning/20 text-vizla-warning' :
-                          'bg-vizla-info/20 text-vizla-info'
-                        }`}>
-                          {job.status}
-                        </span>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-vizla-text-secondary">
-                        <div>
-                          <span className="text-vizla-text-muted">Client:</span> {job.client}
-                        </div>
-                        <div>
-                          <span className="text-vizla-text-muted">Zone:</span> {job.zone}
-                        </div>
-                        <div>
-                          <span className="text-vizla-text-muted">Driver:</span> {job.driver === '-' ? 'Unassigned' : job.driver}
-                        </div>
-                        <div>
-                          <span className="text-vizla-text-muted">Plate:</span> {job.plate || 'N/A'}
-                        </div>
-                      </div>
-                      
-                      <div className="mt-2 text-xs text-vizla-text-muted">
-                        {job.address}
-                      </div>
-                    </div>
-                    
-                    {job.notes && (
-                      <div className="ml-4 text-xs text-vizla-text-muted max-w-xs">
-                        {job.notes}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <JobFilters
+                jobs={data.rows}
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                onClearFilter={handleClearFilter}
+                onClearAll={handleClearAllFilters}
+              />
+            </div>
+          </GlassCard>
+        )}
+
+        {/* Virtualized Jobs List */}
+        {!isLoading && data && (
+          <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
+            <div className="p-6">
+              <JobList
+                jobs={filteredJobs}
+                onStartNav={handleStartNav}
+                onAddToBatch={handleAddToBatch}
+              />
             </div>
           </GlassCard>
         )}
