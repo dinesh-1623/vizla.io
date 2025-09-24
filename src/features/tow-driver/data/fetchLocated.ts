@@ -30,30 +30,6 @@ function normalizeField(value: any): string {
   return String(value).trim();
 }
 
-/**
- * Parse coordinates from address or lat/lng fields
- */
-function parseCoordinates(row: Record<string, any>): { lat?: number; lng?: number } {
-  // Try explicit lat/lng fields first
-  if (row.LAT && row.LNG) {
-    const lat = parseFloat(row.LAT);
-    const lng = parseFloat(row.LNG);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      return { lat, lng };
-    }
-  }
-  
-  // Try alternative field names
-  if (row.lat && row.lng) {
-    const lat = parseFloat(row.lat);
-    const lng = parseFloat(row.lng);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      return { lat, lng };
-    }
-  }
-  
-  return {};
-}
 
 /**
  * Map status from sheet terms to our standard status
@@ -90,6 +66,44 @@ function shouldFilterOut(row: Record<string, any>): boolean {
 }
 
 /**
+ * Parse coordinates from GPS column or separate lat/lng fields
+ */
+function parseCoordinates(row: Record<string, any>): { lat?: number; lng?: number } {
+  // Try explicit lat/lng fields first
+  if (row.LAT && row.LNG) {
+    const lat = parseFloat(row.LAT);
+    const lng = parseFloat(row.LNG);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng };
+    }
+  }
+  
+  // Try alternative field names
+  if (row.lat && row.lng) {
+    const lat = parseFloat(row.lat);
+    const lng = parseFloat(row.lng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng };
+    }
+  }
+  
+  // Try parsing from GPS field (format: "lat, lng" or "lat lng")
+  const gpsField = row.GPS || row.gps || '';
+  if (gpsField && typeof gpsField === 'string') {
+    const coords = gpsField.match(/(-?\d+\.?\d*)/g);
+    if (coords && coords.length >= 2) {
+      const lat = parseFloat(coords[0]);
+      const lng = parseFloat(coords[1]);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        return { lat, lng };
+      }
+    }
+  }
+  
+  return {};
+}
+
+/**
  * Transform CSV row to LocatedJob
  */
 function transformRow(row: Record<string, any>, date: string, rowIndex: number): LocatedJob | null {
@@ -107,9 +121,12 @@ function transformRow(row: Record<string, any>, date: string, rowIndex: number):
   const makeModel = [year, make, model].filter(Boolean).join(' ') || 'Unknown Vehicle';
   
   // Build address
-  const street = normalizeField(row.ADDRESS || row.address || row.STREET || row.street || '');
+  const street = normalizeField(row.STREET || row.street || row.ADDRESS || row.address || '');
   const city = normalizeField(row.CITY || row.city || '');
   const address = [street, city].filter(Boolean).join(', ') || 'Unknown Location';
+  
+  // Determine zone from TYPE or use default
+  const zone = normalizeField(row.TYPE || row.type || row.ZONE || row.zone || row.MARKET || row.market || 'Unknown');
   
   return {
     id: createStableId(
@@ -119,11 +136,11 @@ function transformRow(row: Record<string, any>, date: string, rowIndex: number):
     ),
     date,
     client: normalizeField(row.CLIENT || row.client || row.Client || 'Unknown'),
-    zone: normalizeField(row.ZONE || row.zone || row.MARKET || row.market || 'Unknown'),
-    driver: normalizeField(row.DRIVER || row.driver || row.DRIVER_NAME || row.driver_name || '-'),
+    zone,
+    driver: normalizeField(row.DRIVER || row.driver || row.DRIVER_NAME || row.driver_name || row.SPOTTER || row.spotter || '-'),
     makeModel,
     color: normalizeField(row.COLOR || row.color || ''),
-    plate: normalizeField(row.PLATE || row.plate || row.TAG || row.tag || ''),
+    plate: normalizeField(row.TAG || row.tag || row.PLATE || row.plate || ''),
     vin: normalizeField(row.VIN || row.vin || ''),
     address,
     ...coords,
@@ -231,6 +248,11 @@ async function fetchFallbackData(date: string): Promise<FetchResult> {
         rows.push(job);
       }
     });
+    
+    console.log(`📊 Fallback: Parsed ${rows.length} jobs from ${parseResult.data.length} rows for ${date}`);
+    if (rows.length > 0) {
+      console.log('Sample fallback job:', rows[0]);
+    }
     
     console.log(`✅ Loaded ${rows.length} fallback jobs for ${date}`);
     
