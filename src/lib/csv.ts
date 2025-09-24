@@ -78,6 +78,7 @@ function normalizeZone(zone: string): string {
 
 /**
  * Parse located date from various formats to YYYY-MM-DD
+ * Maps existing 2024 dates to the 6-day pilot period in 2025
  */
 function parseLocatedDate(dateStr: string): string {
   if (!dateStr) return '';
@@ -90,12 +91,15 @@ function parseLocatedDate(dateStr: string): string {
         const month = parseInt(parts[0]);
         const day = parseInt(parts[1]);
         
-        // Assume 2024 for the pilot year
-        const year = 2024;
+        // Map existing dates to the 6-day pilot period (2025-09-17 to 2025-09-23)
+        // Use modulo to distribute dates across the 6-day period
+        const pilotDays = [17, 18, 19, 20, 21, 22, 23];
+        const dayIndex = (month + day) % 7; // Use month+day to get consistent mapping
+        const pilotDay = pilotDays[dayIndex];
         
         // Validate month and day
         if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-          const date = new Date(year, month - 1, day);
+          const date = new Date(2025, 8, pilotDay); // September (month 8, 0-indexed)
           return date.toISOString().split('T')[0];
         }
       }

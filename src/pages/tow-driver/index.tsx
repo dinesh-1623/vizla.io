@@ -15,8 +15,8 @@ import { calculateRouteGroupTotals } from '@/lib/routeTime';
 import { getDifficultyFromDistance } from '@/lib/geo';
 import { cn } from '@/lib/utils';
 
-const PILOT_START_DATE = '2024-01-01';
-const PILOT_END_DATE = '2024-12-31';
+const PILOT_START_DATE = '2025-09-17';
+const PILOT_END_DATE = '2025-09-23';
 
 const TowDriverPage: React.FC = () => {
   // Data state
@@ -224,7 +224,7 @@ const TowDriverPage: React.FC = () => {
         {/* Header */}
         <SectionHeading
           title="Tow Driver View"
-          subtitle={`Pilot period: ${formatDateDisplay(PILOT_START_DATE)} - ${formatDateDisplay(PILOT_END_DATE)}`}
+          subtitle={`6-day pilot: ${formatDateDisplay(PILOT_START_DATE)} - ${formatDateDisplay(PILOT_END_DATE)}`}
           actionSlot={
             <div className="flex items-center gap-2 text-sm text-vizla-text-muted">
               <Users className="w-4 h-4" />
