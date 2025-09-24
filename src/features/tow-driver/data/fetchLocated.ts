@@ -111,14 +111,21 @@ function parseCoordinates(row: Record<string, any>): { lat?: number; lng?: numbe
 function parseRowDate(rowDate: string, year: string): string | null {
   if (!rowDate || !year) return null;
   
+  // Clean the date string (remove any extra characters)
+  const cleanDate = rowDate.trim();
+  if (!cleanDate) return null;
+  
   // Parse MM/DD format
-  const parts = rowDate.split('/');
+  const parts = cleanDate.split('/');
   if (parts.length !== 2) return null;
   
   const month = parts[0].padStart(2, '0');
   const day = parts[1].padStart(2, '0');
   
-  return `${year}-${month}-${day}`;
+  // Use 2025 as the year for all dates (based on the actual data)
+  const fullYear = '2025';
+  
+  return `${fullYear}-${month}-${day}`;
 }
 
 /**
@@ -131,8 +138,25 @@ function transformRow(row: Record<string, any>, selectedDate: string, rowIndex: 
   }
 
   // Parse the date from the row and filter by selected date
-  const rowDateStr = normalizeField(row[Object.keys(row)[0]]); // First column is usually the date
-  const year = normalizeField(row.YEAR || row.year || '2025'); // Default to 2025
+  // The date is in the first column, but we need to find the right column
+  const rowKeys = Object.keys(row);
+  let rowDateStr = '';
+  let year = '2025'; // Default to 2025 for all dates
+  
+  // Look for the date in the first few columns
+  for (let i = 0; i < Math.min(3, rowKeys.length); i++) {
+    const value = normalizeField(row[rowKeys[i]]);
+    if (value && value.includes('/') && value.match(/^\d{1,2}\/\d{1,2}$/)) {
+      rowDateStr = value;
+      break;
+    }
+  }
+  
+  // If no date found in first columns, try the YEAR column
+  if (!rowDateStr) {
+    year = normalizeField(row.YEAR || row.year || '2025');
+  }
+  
   const rowDate = parseRowDate(rowDateStr, year);
   
   // Only include rows that match the selected date
@@ -292,11 +316,21 @@ async function fetchFallbackData(date: string): Promise<FetchResult> {
       console.log('No jobs parsed for date:', date);
       console.log('Sample CSV row:', parseResult.data[0]);
       console.log('CSV headers:', Object.keys(parseResult.data[0] || {}));
-      console.log('Available dates in CSV:', parseResult.data.slice(0, 10).map((row: any) => ({
-        dateCol: row[Object.keys(row)[0]],
-        year: row.YEAR,
-        parsed: parseRowDate(row[Object.keys(row)[0]], row.YEAR || '2025')
-      })));
+      console.log('Available dates in CSV:', parseResult.data.slice(0, 10).map((row: any, index: number) => {
+        const rowKeys = Object.keys(row);
+        const firstColValue = row[rowKeys[0]];
+        const secondColValue = row[rowKeys[1]];
+        const thirdColValue = row[rowKeys[2]];
+        
+        return {
+          rowIndex: index,
+          firstCol: firstColValue,
+          secondCol: secondColValue,
+          thirdCol: thirdColValue,
+          year: row.YEAR,
+          parsed: parseRowDate(firstColValue || secondColValue || thirdColValue, '2025')
+        };
+      }));
     }
     
     console.log(`✅ Loaded ${rows.length} fallback jobs for ${date}`);
