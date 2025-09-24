@@ -153,7 +153,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             />
           </div>
         </div>
-      </div>
+      )}
 
       {/* Active Filters */}
       {activeFilters.length > 0 && (
