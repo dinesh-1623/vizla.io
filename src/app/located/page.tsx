@@ -71,7 +71,7 @@ const LocatedPage: React.FC = () => {
   const pivot = useMemo(() => {
     if (!dataSource?.rows) return { clients: [], zonesByClient: {}, drivers: [], cells: [], totals: { byClient: {}, byClientZone: {} } };
     
-    // Apply date filtering first
+    // TEMPORARILY DISABLE DATE FILTERING FOR DEBUGGING
     const dateFilteredRows = dataSource.rows.filter(row => {
       const hasValidDate = hasDate(row);
       const isInRange = hasValidDate && isWithinRange(row, dateRange.from, dateRange.to);
@@ -89,7 +89,8 @@ const LocatedPage: React.FC = () => {
         });
       }
       
-      return isInRange || includeMissing;
+      // TEMPORARILY DISABLE DATE FILTERING
+      return true; // isInRange || includeMissing;
     });
     
     const filters: PivotFilters = {};

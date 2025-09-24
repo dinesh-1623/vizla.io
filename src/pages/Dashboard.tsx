@@ -90,6 +90,7 @@ const Dashboard: React.FC = () => {
     if (!dataSource?.rows) return [];
     
     const filtered = dataSource.rows.filter(row => {
+      // TEMPORARILY DISABLE DATE FILTERING FOR DEBUGGING
       // Apply date filtering first
       const hasValidDate = hasDate(row);
       const isInRange = hasValidDate && isWithinRange(row, dateRange.from, dateRange.to);
@@ -107,7 +108,8 @@ const Dashboard: React.FC = () => {
         });
       }
       
-      if (!isInRange && !includeMissing) return false;
+      // TEMPORARILY DISABLE DATE FILTERING
+      // if (!isInRange && !includeMissing) return false;
 
       // Apply global filters
       if (market !== 'All Markets' && row.market !== market) return false;
