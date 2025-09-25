@@ -165,10 +165,10 @@ function findBankGpsSection(rows: string[][]): string[][] {
     // Only add rows that have actual data (not just empty cells)
     const hasData = row.some(cell => cell.trim() && cell.trim() !== '');
     if (hasData) {
-      console.log(`Adding row ${i} to BANK GPS data`);
+      console.log(`Adding row ${i} to BANK GPS data:`, row);
       bankGpsRows.push(row);
     } else {
-      console.log(`Row ${i} has no data, skipping`);
+      console.log(`Row ${i} has no data, skipping:`, row);
     }
   }
   
@@ -180,17 +180,23 @@ function findBankGpsSection(rows: string[][]): string[][] {
  * Map CSV row to TowItem
  */
 function mapRowToTowItem(row: string[], headers: string[], dateISO: string): TowItem | null {
+  console.log(`Mapping row:`, row);
+  console.log(`Headers:`, headers);
+  
   // Create header mapping (case-insensitive)
   const headerMap = new Map<string, number>();
   headers.forEach((header, index) => {
     const normalized = header.trim().toLowerCase();
     headerMap.set(normalized, index);
+    console.log(`Header '${header}' -> '${normalized}' at index ${index}`);
   });
   
   // Extract fields
   const getField = (fieldName: string): string => {
     const index = headerMap.get(fieldName.toLowerCase());
-    return index !== undefined ? (row[index] || '').trim() : '';
+    const value = index !== undefined ? (row[index] || '').trim() : '';
+    console.log(`Field '${fieldName}' (index ${index}): "${value}"`);
+    return value;
   };
   
   const client = getField('client');
@@ -203,6 +209,8 @@ function mapRowToTowItem(row: string[], headers: string[], dateISO: string): Tow
   const street = getField('street');
   const city = getField('city');
   const zip = getField('zip');
+  
+  console.log(`Extracted fields:`, { client, year, make, model, color, tag, vin, street, city, zip });
   
   // Skip rows without essential data
   if (!client || (!vin && !tag)) {

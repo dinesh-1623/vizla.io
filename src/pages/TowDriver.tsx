@@ -153,11 +153,18 @@ const TowDriver: React.FC = () => {
 
   // Load selectedDate from localStorage on mount
   useEffect(() => {
+    // TEMPORARY FIX: Clear invalid saved dates
     const savedDate = localStorage.getItem('vizla.driver.selectedDate');
-    if (savedDate) {
-      setSelectedDate(savedDate);
+    if (savedDate && !['2025-09-21', '2025-09-22', '2025-09-23'].includes(savedDate)) {
+      console.log(`Clearing invalid saved date: ${savedDate}`);
+      localStorage.removeItem('vizla.driver.selectedDate');
+    }
+    
+    const validSavedDate = localStorage.getItem('vizla.driver.selectedDate');
+    if (validSavedDate) {
+      setSelectedDate(validSavedDate);
       // Auto-select corresponding weekday
-      const date = parseISODate(savedDate);
+      const date = parseISODate(validSavedDate);
       const weekday = getWeekdayName(date);
       setSelectedDay(weekday as Day);
     } else {
