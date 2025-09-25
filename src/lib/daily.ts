@@ -321,14 +321,12 @@ export async function listAvailableDates(): Promise<string[]> {
     // Since we can't use import.meta.glob with CSV files, we'll return a predefined list
     // of dates that we know have CSV files, or implement a different approach
     
-    // For now, return the dates we know exist based on the sample files we created
+    // FOCUS: Only return September 23, 2025 to get it working first
     const knownDates = [
-      '2025-09-21',
-      '2025-09-22', 
       '2025-09-23'
     ];
     
-    console.log(`📅 Found ${knownDates.length} available dates:`, knownDates);
+    console.log(`📅 FOCUS MODE: Found ${knownDates.length} available date:`, knownDates);
     return knownDates;
     
   } catch (error) {

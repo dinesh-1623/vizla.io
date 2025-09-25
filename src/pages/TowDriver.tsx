@@ -153,10 +153,10 @@ const TowDriver: React.FC = () => {
 
   // Load selectedDate from localStorage on mount
   useEffect(() => {
-    // TEMPORARY FIX: Clear invalid saved dates
+    // FOCUS MODE: Clear any saved dates that aren't September 23, 2025
     const savedDate = localStorage.getItem('vizla.driver.selectedDate');
-    if (savedDate && !['2025-09-21', '2025-09-22', '2025-09-23'].includes(savedDate)) {
-      console.log(`Clearing invalid saved date: ${savedDate}`);
+    if (savedDate && savedDate !== '2025-09-23') {
+      console.log(`FOCUS MODE: Clearing non-target date: ${savedDate}`);
       localStorage.removeItem('vizla.driver.selectedDate');
     }
     
