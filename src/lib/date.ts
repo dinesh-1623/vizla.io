@@ -4,8 +4,8 @@
  */
 
 const TIMEZONE = 'America/Los_Angeles';
-const MIN_DATE = '2025-06-01';
-const MAX_DATE = '2025-09-23';
+const MIN_DATE = '2024-06-01';
+const MAX_DATE = '2024-09-23';
 
 /**
  * Convert a Date object to ISO date string in specified timezone
