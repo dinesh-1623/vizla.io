@@ -278,28 +278,18 @@ export async function loadDailyCsv(dateISO: string): Promise<TowItem[]> {
  */
 export async function listAvailableDates(): Promise<string[]> {
   try {
-    // Use Vite glob to get all CSV files
-    const files = import.meta.glob('/public/data/*.csv', { eager: true });
+    // Since we can't use import.meta.glob with CSV files, we'll return a predefined list
+    // of dates that we know have CSV files, or implement a different approach
     
-    const dates: string[] = [];
+    // For now, return the dates we know exist based on the sample files we created
+    const knownDates = [
+      '2025-09-21',
+      '2025-09-22', 
+      '2025-09-23'
+    ];
     
-    for (const filePath in files) {
-      // Extract filename from path
-      const filename = filePath.split('/').pop();
-      if (!filename) continue;
-      
-      // Convert to ISO date
-      const dateISO = filenameToISO(filename);
-      if (dateISO) {
-        dates.push(dateISO);
-      }
-    }
-    
-    // Sort dates
-    dates.sort();
-    
-    console.log(`📅 Found ${dates.length} available dates:`, dates);
-    return dates;
+    console.log(`📅 Found ${knownDates.length} available dates:`, knownDates);
+    return knownDates;
     
   } catch (error) {
     console.warn('Failed to list available dates:', error);

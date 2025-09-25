@@ -19,4 +19,5 @@ export default defineConfig(({ mode }) => ({
     // Expose environment variables to the client
     __VIZLA_SHEET_CSV_URL__: JSON.stringify(process.env.VIZLA_SHEET_CSV_URL),
   },
+  assetsInclude: ["**/*.csv"],
 }));
