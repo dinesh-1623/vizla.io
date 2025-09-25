@@ -99,7 +99,7 @@ const TowDriver: React.FC = () => {
           console.warn('No CSV URL configured, trying local CSV file');
           // Try local CSV file as fallback
           try {
-            const response = await fetch('/data/located-vehicles.csv');
+            const response = await fetch('/data/Maryland Dispatch Sheet.xlsx - 06-01-25.csv');
             if (!response.ok) {
               console.warn('Local CSV file not found, using mock data');
               setCsvItems([]);

@@ -22,12 +22,12 @@ export type TowItem = {
 };
 
 const TZ = 'America/Los_Angeles';
-const MIN = '2024-06-01';
-const MAX = '2024-09-23';
+const MIN = '2025-06-01';
+const MAX = '2025-09-23';
 
 /**
  * Parse sheet date formats: "M/D", "M/D/YY", "M/D/YYYY"
- * If year missing, assume 2024
+ * If year missing, assume 2025
  * Return ISO yyyy-mm-dd or null
  */
 function parseSheetDate(dateStr: string): string | null {
@@ -47,7 +47,7 @@ function parseSheetDate(dateStr: string): string | null {
     if (match) {
       let month = parseInt(match[1], 10);
       let day = parseInt(match[2], 10);
-      let year = match[3] ? parseInt(match[3], 10) : 2024;
+      let year = match[3] ? parseInt(match[3], 10) : 2025;
 
       // Handle 2-digit years
       if (year < 100) {
