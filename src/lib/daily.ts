@@ -143,19 +143,30 @@ function findBankGpsSection(rows: string[][]): string[][] {
     }
     
     // Stop at next all-caps header row (another section)
-    // But be more careful - don't stop on rows that look like data
+    // Look for rows that are clearly section headers (not data)
     const isHeader = row.some(cell => {
       const trimmed = cell.trim();
-      // Only consider it a header if it's a standalone all-caps word that's not GPS
-      // and doesn't contain numbers or look like data
-      return trimmed.length > 3 && 
+      // A row is a header if it has a standalone all-caps section name
+      // Examples: "TOWED VEHICLES", "ABANDONED CARS", etc.
+      // But NOT if it starts with a date like "9/23/25" or has data-like content
+      const looksLikeHeader = trimmed.length > 5 && 
              trimmed === trimmed.toUpperCase() && 
              /^[A-Z\s]+$/.test(trimmed) && 
              trimmed !== 'GPS' && 
              !trimmed.includes('BANK') &&
              !trimmed.includes('/') && // dates contain /
              !trimmed.includes(',') && // addresses contain ,
-             !/\d/.test(trimmed); // data contains numbers
+             !/\d/.test(trimmed) && // data contains numbers
+             !trimmed.includes('PRIME') && // avoid client names
+             !trimmed.includes('AMERICAN') &&
+             !trimmed.includes('MERCEDES') &&
+             !trimmed.includes('FORD') &&
+             !trimmed.includes('TOYOTA');
+      
+      if (trimmed.length > 0) {
+        console.log(`Cell "${trimmed}" looks like header: ${looksLikeHeader}`);
+      }
+      return looksLikeHeader;
     });
     if (isHeader) {
       console.log(`Row ${i} is a header, stopping`);
