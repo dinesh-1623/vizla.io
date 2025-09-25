@@ -30,9 +30,7 @@ import {
   getWeekdayName,
   isSameDay 
 } from '@/lib/date';
-import { getVizlaSheetCsvUrl } from '@/lib/env';
-import { fetchCsvRows, getCachedData, setCachedData, generateCacheHash, parseCsv } from '@/lib/csv';
-import { processRows, groupByZone, type TowItem } from '@/lib/transform';
+import { loadDailyCsv, listAvailableDates, groupByZone, type TowItem } from '@/lib/daily';
 
 const PAGE_SIZE = 12; // cards per auto-load
 
@@ -73,10 +71,11 @@ const TowDriver: React.FC = () => {
   const [routeMode, setRouteMode] = useState<'return' | 'stash'>('stash');
   const [isAssumptionsOpen, setIsAssumptionsOpen] = useState(false);
 
-  // CSV data state
-  const [csvItems, setCsvItems] = useState<TowItem[]>([]);
-  const [csvLoading, setCsvLoading] = useState(true);
+  // Daily CSV data state
+  const [dailyItems, setDailyItems] = useState<TowItem[]>([]);
+  const [csvLoading, setCsvLoading] = useState(false);
   const [csvError, setCsvError] = useState<string | null>(null);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
   
   // Assumptions management
   const { assumptions, updateAssumptions } = useAssumptions();
@@ -87,91 +86,48 @@ const TowDriver: React.FC = () => {
   const repeatParam = searchParams.get("repeat");
   const repeatTarget = Math.max(0, Math.min(100, Number(repeatParam) || 0)); // clamp 0..100
 
-  // Load CSV data on mount
+  // Load available dates on mount
   useEffect(() => {
-    const loadCsvData = async () => {
+    const loadAvailableDates = async () => {
+      try {
+        const dates = await listAvailableDates();
+        setAvailableDates(dates);
+        console.log(`📅 Found ${dates.length} available dates`);
+      } catch (error) {
+        console.warn('Failed to load available dates:', error);
+        setAvailableDates([]);
+      }
+    };
+
+    loadAvailableDates();
+  }, []);
+
+  // Load daily CSV data when selectedDate changes
+  useEffect(() => {
+    const loadDailyData = async () => {
+      if (!selectedDate) {
+        setDailyItems([]);
+        return;
+      }
+
       try {
         setCsvLoading(true);
         setCsvError(null);
-
-        const csvUrl = getVizlaSheetCsvUrl();
-        if (!csvUrl) {
-          console.warn('No CSV URL configured, trying local CSV file');
-          // Try local CSV file as fallback
-          try {
-            const response = await fetch('/data/located-vehicles.csv');
-            if (!response.ok) {
-              console.warn('Local CSV file not found, using mock data');
-              setCsvItems([]);
-              setCsvLoading(false);
-              return;
-            }
-            const csvText = await response.text();
-            const rawRows = parseCsv(csvText);
-            
-            if (rawRows.length === 0) {
-              console.warn('Local CSV file is empty');
-              setCsvItems([]);
-              setCsvLoading(false);
-              return;
-            }
-
-            // Process and cache
-            const items = processRows(rawRows);
-            const hash = generateCacheHash(JSON.stringify(rawRows.slice(0, 10)));
-            setCachedData(rawRows, hash);
-            
-            console.log(`✅ Loaded ${items.length} tow items from local CSV`);
-            setCsvItems(items);
-            setCsvLoading(false);
-            return;
-          } catch (error) {
-            console.warn('Failed to load local CSV:', error);
-            setCsvItems([]);
-            setCsvLoading(false);
-            return;
-          }
-        }
-
-        // Check cache first
-        const cached = getCachedData();
-        if (cached) {
-          console.log('📦 Using cached CSV data');
-          setCsvItems(processRows(cached.data));
-          setCsvLoading(false);
-          return;
-        }
-
-        // Fetch fresh data
-        console.log('🌐 Fetching fresh CSV data from:', csvUrl);
-        const rawRows = await fetchCsvRows(csvUrl);
         
-        if (rawRows.length === 0) {
-          console.warn('No CSV data received');
-          setCsvItems([]);
-          setCsvLoading(false);
-          return;
-        }
-
-        // Process and cache
-        const items = processRows(rawRows);
-        const hash = generateCacheHash(JSON.stringify(rawRows.slice(0, 10))); // Hash first 10 rows
-        setCachedData(rawRows, hash);
+        const items = await loadDailyCsv(selectedDate);
+        setDailyItems(items);
         
-        console.log(`✅ Loaded ${items.length} tow items from CSV`);
-        setCsvItems(items);
-
       } catch (error) {
-        console.warn('Failed to load CSV data:', error);
+        console.warn('Failed to load daily data:', error);
         setCsvError(error instanceof Error ? error.message : 'Failed to load data');
-        setCsvItems([]);
+        setDailyItems([]);
       } finally {
         setCsvLoading(false);
       }
     };
 
-    loadCsvData();
-  }, []);
+    loadDailyData();
+  }, [selectedDate]);
 
   // Read query parameters on mount
   useEffect(() => {
@@ -229,26 +185,13 @@ const TowDriver: React.FC = () => {
   const dataCountsByDate = useMemo(() => {
     const counts: Record<string, number> = {};
     
-    // Use CSV data if available, otherwise fall back to mock data
-    const dataSource = csvItems.length > 0 ? csvItems : mockCars;
-    
-    if (csvItems.length > 0) {
-      // CSV data - items have dateISO property
-      csvItems.forEach(item => {
-        counts[item.dateISO] = (counts[item.dateISO] || 0) + 1;
-      });
-    } else {
-      // Mock data - cars have locatedDate property
-      mockCars.forEach(car => {
-        if (car.locatedDate) {
-          const dateISO = toISODateInTZ(new Date(car.locatedDate));
-          counts[dateISO] = (counts[dateISO] || 0) + 1;
-        }
-      });
-    }
+    // Use available dates to show which days have data
+    availableDates.forEach(dateISO => {
+      counts[dateISO] = 1; // We know data exists for these dates
+    });
     
     return counts;
-  }, [csvItems]);
+  }, [availableDates]);
 
   // Filter cars without the day filter (for count bubbles) - memoized
   const filteredExceptDay = useMemo(() => {
@@ -277,27 +220,12 @@ const TowDriver: React.FC = () => {
 
   // Filter items based on selected criteria - memoized
   const filtered = useMemo(() => {
-    // Use CSV data if available, otherwise fall back to mock data
-    if (csvItems.length > 0) {
-      let filteredItems = csvItems;
-
-      // Apply date filter if selectedDate is set
-      if (selectedDate) {
-        filteredItems = filteredItems.filter(item => item.dateISO === selectedDate);
-      } else {
-        // For CSV data without specific date, filter by weekday
-        filteredItems = filteredItems.filter(item => {
-          const date = parseISODate(item.dateISO);
-          const weekday = getWeekdayName(date);
-          return weekday === selectedDay;
-        });
-      }
-
-      // Apply other filters
-      return filteredItems.filter(item => {
+    // Use daily CSV data if available, otherwise fall back to mock data
+    if (dailyItems.length > 0) {
+      // Apply other filters to daily items
+      return dailyItems.filter(item => {
         if (client && !item.client.toLowerCase().includes(client.toLowerCase())) return false;
         if (zone && !item.zone.toLowerCase().includes(zone.toLowerCase())) return false;
-        // Note: timeLocated, vizlaRoute, assignedDriver filters don't apply to CSV data structure
         return true;
       });
     } else {
@@ -332,16 +260,16 @@ const TowDriver: React.FC = () => {
         assignedDriver
       });
     }
-  }, [csvItems, selectedDate, selectedDay, client, zone, timeLocated, vizlaRoute, assignedDriver]);
+  }, [dailyItems, selectedDate, selectedDay, client, zone, timeLocated, vizlaRoute, assignedDriver]);
 
   // Route grouping (only for mock data with lat/lng)
   const routeGroups = useMemo(() => {
-    if (csvItems.length > 0) {
-      // CSV data doesn't have lat/lng for route grouping
+    if (dailyItems.length > 0) {
+      // Daily CSV data doesn't have lat/lng for route grouping
       return [];
     }
     return groupNearby(filtered as any, 5);
-  }, [filtered, csvItems.length]);
+  }, [filtered, dailyItems.length]);
 
   // Create a map of car IDs to their step numbers for active route groups
   const carStepMap = useMemo(() => {
@@ -375,12 +303,12 @@ const TowDriver: React.FC = () => {
     return base;
   }, [baseList, repeatTarget, forceSix, visible]);
 
-  // Group CSV items by zone for display
+  // Group daily items by zone for display
   const csvGroups = useMemo(() => {
-    if (csvItems.length === 0) return [];
-    const csvItemsOnly = cardsToRender.filter(item => 'dateISO' in item);
-    return groupByZone(csvItemsOnly as TowItem[]);
-  }, [cardsToRender, csvItems.length]);
+    if (dailyItems.length === 0) return [];
+    const dailyItemsOnly = cardsToRender.filter(item => 'dateISO' in item);
+    return groupByZone(dailyItemsOnly as TowItem[]);
+  }, [cardsToRender, dailyItems.length]);
 
   const hasActiveFilters = weekRange || client || zone || timeLocated || vizlaRoute || assignedDriver || selectedDate;
 
@@ -700,7 +628,7 @@ const TowDriver: React.FC = () => {
                  </div>
                )}
 
-               {/* CSV Data - Grouped by Zone */}
+               {/* Daily CSV Data - Grouped by Zone */}
                {!csvLoading && !csvError && csvGroups.length > 0 && (
                  <div className="space-y-8">
                    {csvGroups.map((group) => (
@@ -724,7 +652,7 @@ const TowDriver: React.FC = () => {
                )}
 
                {/* Mock Data - Vehicle cards grid */}
-               {!csvLoading && !csvError && csvItems.length === 0 && cardsToRender.length > 0 && (
+               {!csvLoading && !csvError && dailyItems.length === 0 && cardsToRender.length > 0 && (
                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                    {cardsToRender.map((car) => (
                      <VehicleCard

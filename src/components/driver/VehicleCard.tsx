@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import type { Car } from '@/data/mockCars';
-import type { TowItem } from '@/lib/transform';
+import type { TowItem } from '@/lib/daily';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { GLASS_SURFACE, TEXT_STYLES, STATUS_COLORS } from '@/lib/constants';
+import { pickNearestLot, buildDirectionsUrl } from '@/lib/zone';
 
 interface VehicleCardProps {
   car?: Car;
@@ -86,7 +87,12 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, item, stepNumber 
 
   // Get maps URL for navigation
   const getMapsUrl = () => {
-    return item?.mapsUrl || '#';
+    if (item?.mapsAddress) {
+      const origin = pickNearestLot(item.city);
+      const destination = pickNearestLot(item.city);
+      return buildDirectionsUrl(origin, item.mapsAddress, destination);
+    }
+    return '#';
   };
 
   return (
