@@ -34,7 +34,6 @@ function parseSheetDate(dateStr: string): string | null {
   if (!dateStr || !dateStr.trim()) return null;
 
   const cleaned = dateStr.trim();
-  console.log('🗓️ Parsing date:', { original: dateStr, cleaned });
   
   // Handle various date formats
   const patterns = [
@@ -55,11 +54,8 @@ function parseSheetDate(dateStr: string): string | null {
         year += year < 50 ? 2000 : 1900;
       }
 
-      console.log('🗓️ Date components:', { month, day, year, match });
-
       // Validate date
       if (month < 1 || month > 12 || day < 1 || day > 31) {
-        console.log('🗓️ Invalid date components:', { month, day, year });
         continue;
       }
 
@@ -68,13 +64,11 @@ function parseSheetDate(dateStr: string): string | null {
       
       // Check if date is valid
       if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-        console.log('🗓️ Invalid date object:', { date, year, month, day });
         continue;
       }
 
       // Format as ISO date string (yyyy-mm-dd)
       const iso = date.toISOString().split('T')[0];
-      console.log('🗓️ Parsed to ISO:', iso);
       return iso;
     }
   }
