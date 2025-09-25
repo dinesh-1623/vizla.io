@@ -237,8 +237,8 @@ export const CalendarPopover: React.FC<CalendarPopoverProps> = ({
           aria-label="Choose date"
           className={cn(
             "absolute top-full right-0 mt-2 z-50",
-            "bg-white/5 backdrop-blur-md ring-1 ring-white/10 rounded-2xl p-3",
-            "min-w-[280px] shadow-2xl"
+            "bg-slate-900/95 backdrop-blur-md ring-1 ring-slate-700/50 rounded-2xl p-4",
+            "min-w-[300px] shadow-2xl border border-slate-800/50"
           )}
           onKeyDown={handleKeyDown}
           tabIndex={-1}
@@ -249,16 +249,16 @@ export const CalendarPopover: React.FC<CalendarPopoverProps> = ({
               onClick={handlePrevMonth}
               disabled={addMonths(currentMonth, -1) < minDate}
               className={cn(
-                "p-1 rounded-lg transition-colors",
-                "hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus",
+                "p-2 rounded-lg transition-colors",
+                "hover:bg-slate-700/50 focus-visible:ring-2 focus-visible:ring-cyan-400",
                 "disabled:opacity-30 disabled:cursor-not-allowed"
               )}
               aria-label="Previous month"
             >
-              <ChevronLeft className="w-4 h-4 text-vizla-text-secondary" />
+              <ChevronLeft className="w-5 h-5 text-slate-300" />
             </button>
 
-            <h3 className="text-sm font-semibold text-vizla-text-primary">
+            <h3 className="text-lg font-bold text-white">
               {getMonthName(currentMonth)} {getYear(currentMonth)}
             </h3>
 
@@ -266,22 +266,22 @@ export const CalendarPopover: React.FC<CalendarPopoverProps> = ({
               onClick={handleNextMonth}
               disabled={addMonths(currentMonth, 1) > maxDate}
               className={cn(
-                "p-1 rounded-lg transition-colors",
-                "hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus",
+                "p-2 rounded-lg transition-colors",
+                "hover:bg-slate-700/50 focus-visible:ring-2 focus-visible:ring-cyan-400",
                 "disabled:opacity-30 disabled:cursor-not-allowed"
               )}
               aria-label="Next month"
             >
-              <ChevronRight className="w-4 h-4 text-vizla-text-secondary" />
+              <ChevronRight className="w-5 h-5 text-slate-300" />
             </button>
           </div>
 
           {/* Weekday Labels */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
+          <div className="grid grid-cols-7 gap-1 mb-3">
             {weekdayLabels.map((day) => (
               <div
                 key={day}
-                className="text-xs font-medium text-vizla-text-muted text-center py-1"
+                className="text-sm font-semibold text-slate-300 text-center py-2"
               >
                 {day}
               </div>
@@ -305,26 +305,26 @@ export const CalendarPopover: React.FC<CalendarPopoverProps> = ({
                   onClick={() => isInRange && handleDateClick(date)}
                   onFocus={() => setFocusedDate(date)}
                   className={cn(
-                    "relative w-9 h-9 rounded-lg text-xs font-medium transition-all",
-                    "focus-visible:ring-2 focus-visible:ring-vizla-ring-focus focus-visible:outline-none",
+                    "relative w-10 h-10 rounded-lg text-sm font-semibold transition-all",
+                    "focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none",
                     {
                       // Default state
-                      "text-vizla-text-muted": !isCurrentMonth || !isInRange,
-                      "text-vizla-text-secondary": isCurrentMonth && isInRange && !isSelected,
+                      "text-slate-500": !isCurrentMonth || !isInRange,
+                      "text-slate-200": isCurrentMonth && isInRange && !isSelected,
                       "cursor-not-allowed": !isInRange,
                       "cursor-pointer": isInRange,
                       
                       // Hover state
-                      "hover:bg-white/5": isInRange && !isSelected,
+                      "hover:bg-slate-700/50": isInRange && !isSelected,
                       
                       // Selected state
-                      "bg-white/10 text-vizla-text-primary ring-1 ring-white/20": isSelected,
+                      "bg-cyan-500 text-white ring-2 ring-cyan-400": isSelected,
                       
                       // Today state
-                      "ring-1 ring-dashed ring-vizla-brand-primary": isToday && !isSelected,
+                      "ring-2 ring-dashed ring-cyan-300 bg-slate-800/50": isToday && !isSelected,
                       
                       // Focused state
-                      "bg-white/5": isFocused && !isSelected,
+                      "bg-slate-700/50": isFocused && !isSelected,
                     }
                   )}
                   disabled={!isInRange}
@@ -335,7 +335,7 @@ export const CalendarPopover: React.FC<CalendarPopoverProps> = ({
                   
                   {/* Data indicator dot */}
                   {hasData && (
-                    <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-vizla-brand-primary rounded-full" />
+                    <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-sm" />
                   )}
                 </button>
               );
