@@ -30,6 +30,9 @@ import {
   getWeekdayName,
   isSameDay 
 } from '@/lib/date';
+import { getVizlaSheetCsvUrl } from '@/lib/env';
+import { fetchCsvRows, getCachedData, setCachedData, generateCacheHash } from '@/lib/csv';
+import { processRows, groupByZone, type TowItem } from '@/lib/transform';
 
 const PAGE_SIZE = 12; // cards per auto-load
 
@@ -69,6 +72,11 @@ const TowDriver: React.FC = () => {
   const [showTop, setShowTop] = useState(false);
   const [routeMode, setRouteMode] = useState<'return' | 'stash'>('stash');
   const [isAssumptionsOpen, setIsAssumptionsOpen] = useState(false);
+
+  // CSV data state
+  const [csvItems, setCsvItems] = useState<TowItem[]>([]);
+  const [csvLoading, setCsvLoading] = useState(true);
+  const [csvError, setCsvError] = useState<string | null>(null);
   
   // Assumptions management
   const { assumptions, updateAssumptions } = useAssumptions();
@@ -78,6 +86,61 @@ const TowDriver: React.FC = () => {
   const forceSix = searchParams.get("demo") === "6";
   const repeatParam = searchParams.get("repeat");
   const repeatTarget = Math.max(0, Math.min(100, Number(repeatParam) || 0)); // clamp 0..100
+
+  // Load CSV data on mount
+  useEffect(() => {
+    const loadCsvData = async () => {
+      try {
+        setCsvLoading(true);
+        setCsvError(null);
+
+        const csvUrl = getVizlaSheetCsvUrl();
+        if (!csvUrl) {
+          console.warn('No CSV URL configured, using mock data');
+          setCsvItems([]);
+          setCsvLoading(false);
+          return;
+        }
+
+        // Check cache first
+        const cached = getCachedData();
+        if (cached) {
+          console.log('📦 Using cached CSV data');
+          setCsvItems(processRows(cached.data));
+          setCsvLoading(false);
+          return;
+        }
+
+        // Fetch fresh data
+        console.log('🌐 Fetching fresh CSV data from:', csvUrl);
+        const rawRows = await fetchCsvRows(csvUrl);
+        
+        if (rawRows.length === 0) {
+          console.warn('No CSV data received');
+          setCsvItems([]);
+          setCsvLoading(false);
+          return;
+        }
+
+        // Process and cache
+        const items = processRows(rawRows);
+        const hash = generateCacheHash(JSON.stringify(rawRows.slice(0, 10))); // Hash first 10 rows
+        setCachedData(rawRows, hash);
+        
+        console.log(`✅ Loaded ${items.length} tow items from CSV`);
+        setCsvItems(items);
+
+      } catch (error) {
+        console.warn('Failed to load CSV data:', error);
+        setCsvError(error instanceof Error ? error.message : 'Failed to load data');
+        setCsvItems([]);
+      } finally {
+        setCsvLoading(false);
+      }
+    };
+
+    loadCsvData();
+  }, []);
 
   // Read query parameters on mount
   useEffect(() => {
@@ -134,14 +197,27 @@ const TowDriver: React.FC = () => {
   // Calculate data counts by date for calendar dots
   const dataCountsByDate = useMemo(() => {
     const counts: Record<string, number> = {};
-    mockCars.forEach(car => {
-      if (car.locatedDate) {
-        const dateISO = toISODateInTZ(new Date(car.locatedDate));
-        counts[dateISO] = (counts[dateISO] || 0) + 1;
-      }
-    });
+    
+    // Use CSV data if available, otherwise fall back to mock data
+    const dataSource = csvItems.length > 0 ? csvItems : mockCars;
+    
+    if (csvItems.length > 0) {
+      // CSV data - items have dateISO property
+      csvItems.forEach(item => {
+        counts[item.dateISO] = (counts[item.dateISO] || 0) + 1;
+      });
+    } else {
+      // Mock data - cars have locatedDate property
+      mockCars.forEach(car => {
+        if (car.locatedDate) {
+          const dateISO = toISODateInTZ(new Date(car.locatedDate));
+          counts[dateISO] = (counts[dateISO] || 0) + 1;
+        }
+      });
+    }
+    
     return counts;
-  }, []);
+  }, [csvItems]);
 
   // Filter cars without the day filter (for count bubbles) - memoized
   const filteredExceptDay = useMemo(() => {
@@ -168,43 +244,73 @@ const TowDriver: React.FC = () => {
     };
   }, [filteredExceptDay]);
 
-  // Filter cars based on selected criteria - memoized
+  // Filter items based on selected criteria - memoized
   const filtered = useMemo(() => {
-    let filteredCars = mockCars;
-    
-    // Apply date filter if selectedDate is set
-    if (selectedDate) {
-      filteredCars = filteredCars.filter(car => {
-        if (!car.locatedDate) return false;
-        const carDateISO = toISODateInTZ(new Date(car.locatedDate));
-        return carDateISO === selectedDate;
+    // Use CSV data if available, otherwise fall back to mock data
+    if (csvItems.length > 0) {
+      let filteredItems = csvItems;
+
+      // Apply date filter if selectedDate is set
+      if (selectedDate) {
+        filteredItems = filteredItems.filter(item => item.dateISO === selectedDate);
+      } else {
+        // For CSV data without specific date, filter by weekday
+        filteredItems = filteredItems.filter(item => {
+          const date = parseISODate(item.dateISO);
+          const weekday = getWeekdayName(date);
+          return weekday === selectedDay;
+        });
+      }
+
+      // Apply other filters
+      return filteredItems.filter(item => {
+        if (client && !item.client.toLowerCase().includes(client.toLowerCase())) return false;
+        if (zone && !item.zone.toLowerCase().includes(zone.toLowerCase())) return false;
+        // Note: timeLocated, vizlaRoute, assignedDriver filters don't apply to CSV data structure
+        return true;
       });
     } else {
-      // Use weekday filter when no specific date is selected
-      filteredCars = filterCars(mockCars, {
-        day: selectedDay,
-        client: '',
-        zone: '',
-        timeLocated: '',
-        vizlaRoute: '',
-        assignedDriver: ''
+      // Fallback to mock data filtering
+      let filteredCars = mockCars;
+
+      // Apply date filter if selectedDate is set
+      if (selectedDate) {
+        filteredCars = filteredCars.filter(car => {
+          if (!car.locatedDate) return false;
+          const carDateISO = toISODateInTZ(new Date(car.locatedDate));
+          return carDateISO === selectedDate;
+        });
+      } else {
+        // Use weekday filter when no specific date is selected
+        filteredCars = filterCars(mockCars, {
+          day: selectedDay,
+          client: '',
+          zone: '',
+          timeLocated: '',
+          vizlaRoute: '',
+          assignedDriver: ''
+        });
+      }
+
+      // Apply other filters
+      return filterCars(filteredCars, {
+        client,
+        zone,
+        timeLocated,
+        vizlaRoute,
+        assignedDriver
       });
     }
-    
-    // Apply other filters
-    return filterCars(filteredCars, {
-      client,
-      zone,
-      timeLocated,
-      vizlaRoute,
-      assignedDriver
-    });
-  }, [selectedDate, selectedDay, client, zone, timeLocated, vizlaRoute, assignedDriver]);
+  }, [csvItems, selectedDate, selectedDay, client, zone, timeLocated, vizlaRoute, assignedDriver]);
 
-  // Route grouping
+  // Route grouping (only for mock data with lat/lng)
   const routeGroups = useMemo(() => {
-    return groupNearby(filtered, 5);
-  }, [filtered]);
+    if (csvItems.length > 0) {
+      // CSV data doesn't have lat/lng for route grouping
+      return [];
+    }
+    return groupNearby(filtered as any, 5);
+  }, [filtered, csvItems.length]);
 
   // Create a map of car IDs to their step numbers for active route groups
   const carStepMap = useMemo(() => {
@@ -232,11 +338,18 @@ const TowDriver: React.FC = () => {
   const baseList = filtered; // includes selectedDay + other filters
   const cardsToRender = useMemo(() => {
     if (repeatTarget > 0) {
-      return repeatToCount(baseList, repeatTarget);
+      return repeatToCount(baseList as any, repeatTarget);
     }
     const base = baseList.slice(0, forceSix ? 6 : visible);
     return base;
   }, [baseList, repeatTarget, forceSix, visible]);
+
+  // Group CSV items by zone for display
+  const csvGroups = useMemo(() => {
+    if (csvItems.length === 0) return [];
+    const csvItemsOnly = cardsToRender.filter(item => 'dateISO' in item);
+    return groupByZone(csvItemsOnly as TowItem[]);
+  }, [cardsToRender, csvItems.length]);
 
   const hasActiveFilters = weekRange || client || zone || timeLocated || vizlaRoute || assignedDriver || selectedDate;
 
@@ -540,27 +653,69 @@ const TowDriver: React.FC = () => {
           </div>
         )}
 
-        {/* Vehicle cards grid */}
-        {cardsToRender.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cardsToRender.map((car) => (
-              <VehicleCard 
-                key={(car as any).__dupKey ?? car.id} 
-                car={car} 
-                stepNumber={carStepMap.get(car.id)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-2xl bg-white/5 backdrop-blur-md ring-1 ring-white/10 p-12 text-center">
-            <p className="text-neutral-300 text-lg">
-              No vehicles found matching your filters
-            </p>
-            <p className="text-neutral-400 text-sm mt-2">
-              Try adjusting your search criteria
-            </p>
-          </div>
-        )}
+               {/* Loading state */}
+               {csvLoading && (
+                 <div className="rounded-2xl bg-white/5 backdrop-blur-md ring-1 ring-white/10 p-12 text-center">
+                   <p className="text-neutral-300 text-lg">Loading vehicle data...</p>
+                   <p className="text-neutral-400 text-sm mt-2">Fetching from Google Sheets</p>
+                 </div>
+               )}
+
+               {/* Error state */}
+               {csvError && !csvLoading && (
+                 <div className="rounded-2xl bg-red-900/20 backdrop-blur-md ring-1 ring-red-500/30 p-12 text-center">
+                   <p className="text-red-300 text-lg">Failed to load data</p>
+                   <p className="text-red-400 text-sm mt-2">{csvError}</p>
+                 </div>
+               )}
+
+               {/* CSV Data - Grouped by Zone */}
+               {!csvLoading && !csvError && csvGroups.length > 0 && (
+                 <div className="space-y-8">
+                   {csvGroups.map((group) => (
+                     <div key={group.zone}>
+                       <h3 className="text-lg font-semibold text-neutral-200 mb-4 flex items-center gap-2">
+                         <span className="w-2 h-2 bg-vizla-brand-primary rounded-full"></span>
+                         {group.zone} ({group.items.length} vehicles)
+                       </h3>
+                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                         {group.items.map((item) => (
+                           <VehicleCard
+                             key={item.id}
+                             item={item}
+                             stepNumber={carStepMap.get(item.id)}
+                           />
+                         ))}
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+
+               {/* Mock Data - Vehicle cards grid */}
+               {!csvLoading && !csvError && csvItems.length === 0 && cardsToRender.length > 0 && (
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                   {cardsToRender.map((car) => (
+                     <VehicleCard
+                       key={(car as any).__dupKey ?? car.id}
+                       car={car}
+                       stepNumber={carStepMap.get(car.id)}
+                     />
+                   ))}
+                 </div>
+               )}
+
+               {/* No data state */}
+               {!csvLoading && !csvError && cardsToRender.length === 0 && (
+                 <div className="rounded-2xl bg-white/5 backdrop-blur-md ring-1 ring-white/10 p-12 text-center">
+                   <p className="text-neutral-300 text-lg">
+                     No vehicles found matching your filters
+                   </p>
+                   <p className="text-neutral-400 text-sm mt-2">
+                     Try adjusting your search criteria
+                   </p>
+                 </div>
+               )}
 
         {/* Loading indicator or caught up message */}
         {cardsToRender.length > 0 && repeatTarget === 0 && (
