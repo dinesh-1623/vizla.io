@@ -8,7 +8,7 @@ export type RawRow = Record<string, string>;
 /**
  * Parse a CSV string into an array of objects
  */
-function parseCsv(csvText: string): RawRow[] {
+export function parseCsv(csvText: string): RawRow[] {
   const lines = csvText.split(/\r?\n/);
   if (lines.length < 2) return [];
 
