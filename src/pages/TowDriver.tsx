@@ -93,6 +93,17 @@ const TowDriver: React.FC = () => {
         const dates = await listAvailableDates();
         setAvailableDates(dates);
         console.log(`📅 Found ${dates.length} available dates`);
+        
+        // If no saved date and we have available dates, default to first one
+        const savedDate = localStorage.getItem('vizla.driver.selectedDate');
+        if (!savedDate && dates.length > 0) {
+          const firstDate = dates[0];
+          setSelectedDate(firstDate);
+          const date = parseISODate(firstDate);
+          const weekday = getWeekdayName(date);
+          setSelectedDay(weekday as Day);
+          console.log(`📅 Defaulting to first available date: ${firstDate}`);
+        }
       } catch (error) {
         console.warn('Failed to load available dates:', error);
         setAvailableDates([]);
@@ -150,9 +161,8 @@ const TowDriver: React.FC = () => {
       const weekday = getWeekdayName(date);
       setSelectedDay(weekday as Day);
     } else {
-      // Default to today
-      const todayISO = getTodayISODate();
-      setSelectedDate(todayISO);
+      // Default to first available date (will be set when availableDates loads)
+      console.log('No saved date, will default to first available date');
     }
   }, []);
 
