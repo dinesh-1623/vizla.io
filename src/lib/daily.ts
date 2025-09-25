@@ -133,24 +133,42 @@ function findBankGpsSection(rows: string[][]): string[][] {
   
   for (let i = bankGpsStartIndex + 1; i < rows.length; i++) {
     const row = rows[i];
+    console.log(`Processing row ${i}:`, row);
     
     // Stop at blank row (all empty cells)
     const isEmpty = row.every(cell => !cell.trim());
-    if (isEmpty) break;
+    if (isEmpty) {
+      console.log(`Row ${i} is empty, stopping`);
+      break;
+    }
     
     // Stop at next all-caps header row (another section)
+    // But be more careful - don't stop on rows that look like data
     const isHeader = row.some(cell => {
       const trimmed = cell.trim();
-      return trimmed.length > 0 && trimmed === trimmed.toUpperCase() && 
-             trimmed.length > 3 && /^[A-Z\s]+$/.test(trimmed) && 
-             trimmed !== 'GPS' && !trimmed.includes('BANK');
+      // Only consider it a header if it's a standalone all-caps word that's not GPS
+      // and doesn't contain numbers or look like data
+      return trimmed.length > 3 && 
+             trimmed === trimmed.toUpperCase() && 
+             /^[A-Z\s]+$/.test(trimmed) && 
+             trimmed !== 'GPS' && 
+             !trimmed.includes('BANK') &&
+             !trimmed.includes('/') && // dates contain /
+             !trimmed.includes(',') && // addresses contain ,
+             !/\d/.test(trimmed); // data contains numbers
     });
-    if (isHeader) break;
+    if (isHeader) {
+      console.log(`Row ${i} is a header, stopping`);
+      break;
+    }
     
     // Only add rows that have actual data (not just empty cells)
     const hasData = row.some(cell => cell.trim() && cell.trim() !== '');
     if (hasData) {
+      console.log(`Adding row ${i} to BANK GPS data`);
       bankGpsRows.push(row);
+    } else {
+      console.log(`Row ${i} has no data, skipping`);
     }
   }
   
