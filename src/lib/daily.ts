@@ -252,14 +252,14 @@ function mapRowToTowItem(row: string[], headers: string[], dateISO: string): Tow
 export async function loadDailyCsv(dateISO: string): Promise<TowItem[]> {
   try {
     // Convert ISO date to filename format
-    const date = new Date(dateISO);
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const year = date.getFullYear() % 100; // Get last 2 digits
+    // Parse date components directly from ISO string to avoid timezone issues
+    const [year, month, day] = dateISO.split('-').map(Number);
+    const shortYear = year % 100; // Get last 2 digits
     
-    const filename = `${month}-${day}-${year}.csv`;
+    const filename = `${month}-${day}-${shortYear}.csv`;
     const filePath = `/data/${filename}`;
     
+    console.log(`📅 Converting ${dateISO} -> ${filename}`);
     console.log(`📅 Loading daily CSV: ${filename}`);
     
     // Fetch the file
