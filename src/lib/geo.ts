@@ -1,30 +1,72 @@
 /**
- * Geospatial utilities
+ * Browser-safe geospatial utilities
+ * Replaces any Node.js or CommonJS geospatial libraries
  */
 
 /**
- * Calculate Haversine distance between two points in miles
+ * Calculate the great-circle distance between two points on Earth using the Haversine formula
+ * @param a First point with latitude and longitude
+ * @param b Second point with latitude and longitude
+ * @returns Distance in kilometers
  */
-export function haversineDistance(
-  lat1: number, lng1: number,
-  lat2: number, lng2: number
+export function haversineKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number }
 ): number {
-  const R = 3959; // Earth's radius in miles
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = toRadians(b.lat - a.lat);
+  const dLng = toRadians(b.lng - a.lng);
+  
+  const a1 = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(a.lat)) * Math.cos(toRadians(b.lat)) *
     Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  
+  const c = 2 * Math.atan2(Math.sqrt(a1), Math.sqrt(1 - a1));
+  
   return R * c;
 }
 
 /**
- * Get difficulty level based on distance
+ * Calculate the great-circle distance between two points on Earth using the Haversine formula
+ * @param a First point with latitude and longitude
+ * @param b Second point with latitude and longitude
+ * @returns Distance in miles
  */
-export function getDifficultyFromDistance(distanceMiles: number): 'Easy' | 'Medium' | 'Hard' {
-  if (distanceMiles <= 2) return 'Easy';
-  if (distanceMiles <= 5) return 'Medium';
-  return 'Hard';
+export function haversineMiles(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number }
+): number {
+  return haversineKm(a, b) * 0.621371; // Convert km to miles
 }
+
+/**
+ * Convert degrees to radians
+ * @param degrees Angle in degrees
+ * @returns Angle in radians
+ */
+function toRadians(degrees: number): number {
+  return degrees * (Math.PI / 180);
+}
+
+/**
+ * Calculate estimated travel time in minutes based on distance and average speed
+ * @param distanceKm Distance in kilometers
+ * @param avgKph Average speed in kilometers per hour
+ * @returns Travel time in minutes
+ */
+export function etaMinutes(distanceKm: number, avgKph: number): number {
+  if (avgKph <= 0) return 0;
+  return (distanceKm / avgKph) * 60;
+}
+
+/**
+ * Calculate estimated travel time in minutes based on distance and average speed
+ * @param distanceMiles Distance in miles
+ * @param avgMph Average speed in miles per hour
+ * @returns Travel time in minutes
+ */
+export function etaMinutesFromMiles(distanceMiles: number, avgMph: number): number {
+  if (avgMph <= 0) return 0;
+  return (distanceMiles / avgMph) * 60;
+}
+

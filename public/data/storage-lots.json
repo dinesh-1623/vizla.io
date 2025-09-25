@@ -1,58 +1,34 @@
 [
   {
-    "id": "white-marsh",
-    "name": "White Marsh Lot",
-    "address": "11051 Pulaski Hwy, White Marsh, MD 21162",
-    "lat": null,
-    "lng": null
+    "id": "main-yard",
+    "name": "Main Storage Lot",
+    "lat": 39.2904,
+    "lng": -76.6122,
+    "type": "lot",
+    "address": "Baltimore, MD"
   },
   {
-    "id": "newark",
-    "name": "Newark Lot",
-    "address": "12 Peoples Dr, Newark, DE 19702",
-    "lat": null,
-    "lng": null
+    "id": "stash-a",
+    "name": "Stash A",
+    "lat": 39.34,
+    "lng": -76.64,
+    "type": "stash",
+    "address": "—"
   },
   {
-    "id": "bladensburg-ne",
-    "name": "Bladensburg NE Lot",
-    "address": "2507 Bladensburg Road NE, Washington, DC 20018",
-    "lat": null,
-    "lng": null
+    "id": "dc-yard",
+    "name": "DC Storage Yard",
+    "lat": 38.9072,
+    "lng": -77.0369,
+    "type": "lot",
+    "address": "Washington, DC"
   },
   {
-    "id": "curtis-ave",
-    "name": "Curtis Ave Lot",
-    "address": "4221 Curtis Ave, Baltimore, MD 21226",
-    "lat": null,
-    "lng": null
-  },
-  {
-    "id": "frederick",
-    "name": "Frederick Lot",
-    "address": "5090 Mountville Road, Frederick, MD 21703",
-    "lat": null,
-    "lng": null
-  },
-  {
-    "id": "greensboro",
-    "name": "Greensboro Lot",
-    "address": "700 West Sunset Ave., Greensboro, MD 21639",
-    "lat": null,
-    "lng": null
-  },
-  {
-    "id": "clinton",
-    "name": "Clinton Lot",
-    "address": "7908 Bellefonte Lane, Clinton, MD 20735",
-    "lat": null,
-    "lng": null
-  },
-  {
-    "id": "investigation-recovery-aj",
-    "name": "Investigation & Recovery – Annapolis Junction",
-    "address": "8595 Dorsey Run Road, Annapolis Junction, MD 20701",
-    "lat": null,
-    "lng": null
+    "id": "stash-b",
+    "name": "Stash B",
+    "lat": 39.1686,
+    "lng": -76.6681,
+    "type": "stash",
+    "address": "—"
   }
 ]
