@@ -107,12 +107,13 @@ function parseCsv(csvText: string): string[][] {
 function findBankGpsSection(rows: string[][]): string[][] {
   let bankGpsStartIndex = -1;
   
-  // Find the row containing "BANK GPS"
+  // Find the row containing "BANK GPS" (case-insensitive)
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    const hasBankGps = row.some(cell => 
-      cell.trim().toUpperCase().includes('BANK GPS')
-    );
+    const hasBankGps = row.some(cell => {
+      const cellUpper = cell.trim().toUpperCase();
+      return cellUpper === 'BANK GPS' || cellUpper.includes('BANK GPS');
+    });
     
     if (hasBankGps) {
       bankGpsStartIndex = i;
@@ -121,8 +122,11 @@ function findBankGpsSection(rows: string[][]): string[][] {
   }
   
   if (bankGpsStartIndex === -1) {
+    console.warn('BANK GPS section not found in CSV');
     return []; // No BANK GPS section found
   }
+  
+  console.log(`Found BANK GPS section at row ${bankGpsStartIndex}`);
   
   // Collect rows after BANK GPS until blank row or next all-caps header
   const bankGpsRows: string[][] = [];
@@ -138,13 +142,19 @@ function findBankGpsSection(rows: string[][]): string[][] {
     const isHeader = row.some(cell => {
       const trimmed = cell.trim();
       return trimmed.length > 0 && trimmed === trimmed.toUpperCase() && 
-             trimmed.length > 3 && /^[A-Z\s]+$/.test(trimmed);
+             trimmed.length > 3 && /^[A-Z\s]+$/.test(trimmed) && 
+             trimmed !== 'GPS' && !trimmed.includes('BANK');
     });
     if (isHeader) break;
     
-    bankGpsRows.push(row);
+    // Only add rows that have actual data (not just empty cells)
+    const hasData = row.some(cell => cell.trim() && cell.trim() !== '');
+    if (hasData) {
+      bankGpsRows.push(row);
+    }
   }
   
+  console.log(`Found ${bankGpsRows.length} data rows in BANK GPS section`);
   return bankGpsRows;
 }
 
@@ -178,6 +188,7 @@ function mapRowToTowItem(row: string[], headers: string[], dateISO: string): Tow
   
   // Skip rows without essential data
   if (!client || (!vin && !tag)) {
+    console.log('Skipping row - missing essential data:', { client, vin, tag });
     return null;
   }
   
@@ -254,12 +265,15 @@ export async function loadDailyCsv(dateISO: string): Promise<TowItem[]> {
     
     // Use first row as headers
     const headers = rows[0];
+    console.log('CSV Headers:', headers);
     
     // Map rows to TowItems
     const items: TowItem[] = [];
     for (const row of bankGpsRows) {
+      console.log('Processing row:', row);
       const item = mapRowToTowItem(row, headers, dateISO);
       if (item) {
+        console.log('Created item:', item);
         items.push(item);
       }
     }
