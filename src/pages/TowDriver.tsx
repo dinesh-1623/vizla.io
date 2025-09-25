@@ -146,6 +146,12 @@ const TowDriver: React.FC = () => {
         console.log('🌐 Fetching fresh CSV data from:', csvUrl);
         const rawRows = await fetchCsvRows(csvUrl);
         
+        console.log('📊 Raw CSV data received:', {
+          rowCount: rawRows.length,
+          sampleRow: rawRows[0],
+          headers: rawRows[0] ? Object.keys(rawRows[0]) : []
+        });
+        
         if (rawRows.length === 0) {
           console.warn('No CSV data received');
           setCsvItems([]);
@@ -155,6 +161,15 @@ const TowDriver: React.FC = () => {
 
         // Process and cache
         const items = processRows(rawRows);
+        console.log('🔄 Processed items:', {
+          itemCount: items.length,
+          sampleItem: items[0],
+          dateRange: items.length > 0 ? {
+            min: Math.min(...items.map(i => i.dateISO)),
+            max: Math.max(...items.map(i => i.dateISO))
+          } : null
+        });
+        
         const hash = generateCacheHash(JSON.stringify(rawRows.slice(0, 10))); // Hash first 10 rows
         setCachedData(rawRows, hash);
         
@@ -279,11 +294,26 @@ const TowDriver: React.FC = () => {
   const filtered = useMemo(() => {
     // Use CSV data if available, otherwise fall back to mock data
     if (csvItems.length > 0) {
+      console.log('🔍 Filtering CSV items:', {
+        totalItems: csvItems.length,
+        selectedDate,
+        selectedDay,
+        client,
+        zone,
+        sampleItems: csvItems.slice(0, 3).map(item => ({
+          id: item.id,
+          dateISO: item.dateISO,
+          client: item.client,
+          zone: item.zone
+        }))
+      });
+      
       let filteredItems = csvItems;
 
       // Apply date filter if selectedDate is set
       if (selectedDate) {
         filteredItems = filteredItems.filter(item => item.dateISO === selectedDate);
+        console.log('📅 After date filter:', filteredItems.length);
       } else {
         // For CSV data without specific date, filter by weekday
         filteredItems = filteredItems.filter(item => {
@@ -291,15 +321,19 @@ const TowDriver: React.FC = () => {
           const weekday = getWeekdayName(date);
           return weekday === selectedDay;
         });
+        console.log('📅 After weekday filter:', filteredItems.length);
       }
 
       // Apply other filters
-      return filteredItems.filter(item => {
+      const finalFiltered = filteredItems.filter(item => {
         if (client && !item.client.toLowerCase().includes(client.toLowerCase())) return false;
         if (zone && !item.zone.toLowerCase().includes(zone.toLowerCase())) return false;
         // Note: timeLocated, vizlaRoute, assignedDriver filters don't apply to CSV data structure
         return true;
       });
+      
+      console.log('🎯 Final filtered items:', finalFiltered.length);
+      return finalFiltered;
     } else {
       // Fallback to mock data filtering
       let filteredCars = mockCars;
