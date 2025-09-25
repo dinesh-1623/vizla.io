@@ -31,7 +31,7 @@ import {
   isSameDay 
 } from '@/lib/date';
 import { getVizlaSheetCsvUrl } from '@/lib/env';
-import { fetchCsvRows, getCachedData, setCachedData, generateCacheHash } from '@/lib/csv';
+import { fetchCsvRows, getCachedData, setCachedData, generateCacheHash, parseCsv } from '@/lib/csv';
 import { processRows, groupByZone, type TowItem } from '@/lib/transform';
 
 const PAGE_SIZE = 12; // cards per auto-load
@@ -96,10 +96,41 @@ const TowDriver: React.FC = () => {
 
         const csvUrl = getVizlaSheetCsvUrl();
         if (!csvUrl) {
-          console.warn('No CSV URL configured, using mock data');
-          setCsvItems([]);
-          setCsvLoading(false);
-          return;
+          console.warn('No CSV URL configured, trying local CSV file');
+          // Try local CSV file as fallback
+          try {
+            const response = await fetch('/data/located-vehicles.csv');
+            if (!response.ok) {
+              console.warn('Local CSV file not found, using mock data');
+              setCsvItems([]);
+              setCsvLoading(false);
+              return;
+            }
+            const csvText = await response.text();
+            const rawRows = parseCsv(csvText);
+            
+            if (rawRows.length === 0) {
+              console.warn('Local CSV file is empty');
+              setCsvItems([]);
+              setCsvLoading(false);
+              return;
+            }
+
+            // Process and cache
+            const items = processRows(rawRows);
+            const hash = generateCacheHash(JSON.stringify(rawRows.slice(0, 10)));
+            setCachedData(rawRows, hash);
+            
+            console.log(`✅ Loaded ${items.length} tow items from local CSV`);
+            setCsvItems(items);
+            setCsvLoading(false);
+            return;
+          } catch (error) {
+            console.warn('Failed to load local CSV:', error);
+            setCsvItems([]);
+            setCsvLoading(false);
+            return;
+          }
         }
 
         // Check cache first
