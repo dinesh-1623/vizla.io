@@ -3,12 +3,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadLocated } from '@/lib/data/loaders';
+import { loadTowCars } from '@/lib/data/driverSource';
 import { Truck, User, RefreshCw, AlertCircle, Navigation } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { StatTile } from '@/components/ui/StatTile';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { FilterBar } from '@/components/dashboard/FilterBar';
 import { FilterChips } from '@/components/dashboard/FilterChips';
 import { BreakdownPanel } from '@/components/dashboard/BreakdownPanel';
@@ -65,11 +66,46 @@ const Dashboard: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('🔄 Loading CSV data...');
-      const loadedData = await loadLocated();
-      console.log('✅ Loaded data:', loadedData.length, 'rows');
-      console.log('📊 Sample data:', loadedData.slice(0, 2));
-      setData(loadedData);
+      console.log('🔄 Loading real data from Maryland Dispatch Sheet...');
+      
+      // Load both datasets
+      const [locatedData, towCarsData] = await Promise.all([
+        loadLocated().catch(() => []), // Fallback to empty array if CSV not found
+        loadTowCars().catch(() => [])  // Load real tow car data
+      ]);
+      
+      // Convert tow cars to LocatedRow format for dashboard
+      const convertedData = towCarsData.map(car => ({
+        id: car.vin,
+        client: car.client,
+        zone: car.city, // Use city as zone
+        driver: 'GPS', // Default driver type
+        source: 'GPS',
+        assignedDriver: 'GPS',
+        status: 'Located' as const,
+        lat: 0, // Will be geocoded if needed
+        lng: 0,
+        address: car.fullAddress,
+        locatedAt: new Date().toISOString(),
+        year: car.year,
+        make: car.make,
+        model: car.model,
+        color: car.color,
+        tag: car.tag,
+        vin: car.vin,
+        city: car.city,
+        zip: car.zip,
+        notes: `BANK + GPS data from Maryland Dispatch Sheet`
+      }));
+      
+      // Combine both datasets
+      const allData = [...locatedData, ...convertedData];
+      
+      console.log('✅ Loaded data:', allData.length, 'rows');
+      console.log('📊 Located data:', locatedData.length, 'rows');
+      console.log('📊 Tow cars data:', convertedData.length, 'rows');
+      console.log('📊 Sample data:', allData.slice(0, 2));
+      setData(allData);
     } catch (err) {
       console.error('❌ Error loading data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -111,17 +147,35 @@ const Dashboard: React.FC = () => {
     const total = filteredData.length;
     const located = filteredData.filter(r => r.status === 'Located').length;
     const blocked = filteredData.filter(r => r.status === 'Blocked').length;
-    
-    // Calculate average time since located (mock calculation for now)
-    const avgMins = Math.round(Math.random() * 120 + 60); // Random between 60-180 minutes
-    
-    // Calculate 5+ days (mock calculation)
-    const fivePlus = Math.round(total * 0.15); // Assume 15% are 5+ days
-    
-    // Calculate missed revenue (mock calculation)
+    const stashed = filteredData.filter(r => r.status === 'Stashed').length;
+
+    // Calculate average time since located (realistic calculation)
+    const now = new Date();
+    const avgMins = filteredData.length > 0 
+      ? Math.round(filteredData.reduce((sum, row) => {
+          if (row.locatedAt) {
+            const locatedTime = new Date(row.locatedAt);
+            const diffMs = now.getTime() - locatedTime.getTime();
+            return sum + Math.round(diffMs / (1000 * 60)); // Convert to minutes
+          }
+          return sum + 90; // Default 90 minutes if no date
+        }, 0) / filteredData.length)
+      : 0;
+
+    // Calculate 5+ days (realistic calculation)
+    const fivePlus = filteredData.filter(row => {
+      if (row.locatedAt) {
+        const locatedTime = new Date(row.locatedAt);
+        const diffDays = (now.getTime() - locatedTime.getTime()) / (1000 * 60 * 60 * 24);
+        return diffDays >= 5;
+      }
+      return false;
+    }).length;
+
+    // Calculate missed revenue (realistic calculation)
     const missedRevenue = blocked * 150; // $150 per blocked vehicle
-    
-    return { total, located, blocked, avgMins, fivePlus, missedRevenue };
+
+    return { total, located, blocked, stashed, avgMins, fivePlus, missedRevenue };
   }, [filteredData]);
 
   // Compute breakdowns from filtered data (cross-filtering logic)
@@ -441,7 +495,7 @@ const Dashboard: React.FC = () => {
               <StatTile
                 label="Pending Order Confirmation"
                 value={kpis.blocked}
-                delta={{ dir: 'down', text: '-$200' }}
+                delta={{ dir: 'down', text: `-$${kpis.missedRevenue}` }}
               />
             )}
           </GlassCard>

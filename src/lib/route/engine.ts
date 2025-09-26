@@ -174,27 +174,30 @@ export function totalTimeReturnToLot(params: RouteParams): number {
   const optimizedOrder = twoOptImprove(initialOrder, points, mph);
   
   let totalTime = 0;
-  let currentLocation = lot;
   
-  // New routing logic: Lot → Vehicle → Nearest Lot (for each vehicle)
+  // Travel from lot to first car
+  if (optimizedOrder.length > 0) {
+    totalTime += travelMin(lot, points[optimizedOrder[0]], mph);
+  }
+  
+  // Visit each car: hook + travel + unload
   for (let i = 0; i < optimizedOrder.length; i++) {
-    const carIndex = optimizedOrder[i];
-    const carPoint = points[carIndex];
+    totalTime += hookMin; // Hook time
     
-    // Travel from current location to car
-    totalTime += travelMin(currentLocation, carPoint, mph);
+    // Travel to next car (or back to lot if last car)
+    if (i < optimizedOrder.length - 1) {
+      const currentCar = points[optimizedOrder[i]];
+      const nextCar = points[optimizedOrder[i + 1]];
+      totalTime += travelMin(currentCar, nextCar, mph);
+    }
     
-    // Hook up at car location
-    totalTime += hookMin;
-    
-    // Travel from car to nearest lot
-    totalTime += travelMin(carPoint, lot, mph);
-    
-    // Unload at lot
-    totalTime += unloadMin;
-    
-    // Next car starts from the lot (driver is now at the lot)
-    currentLocation = lot;
+    totalTime += unloadMin; // Unload time
+  }
+  
+  // Return to lot from last car
+  if (optimizedOrder.length > 0) {
+    const lastCar = points[optimizedOrder[optimizedOrder.length - 1]];
+    totalTime += travelMin(lastCar, lot, mph);
   }
   
   return totalTime;
@@ -220,29 +223,27 @@ export function totalTimeStash(params: RouteParams): { minutes: number; orderIds
   
   let totalTime = 0;
   const orderIds: string[] = [];
-  let currentLocation = lot;
   
-  // New routing logic: Lot → Vehicle → Nearest Lot (for each vehicle)
+  // Travel from lot to first car
+  if (optimizedOrder.length > 0) {
+    totalTime += travelMin(lot, points[optimizedOrder[0]], mph);
+  }
+  
+  // Visit each car: hook + travel + unload
   for (let i = 0; i < optimizedOrder.length; i++) {
     const carIndex = optimizedOrder[i];
-    const car = cars[carIndex];
-    const carPoint = points[carIndex];
-    orderIds.push(car.id);
+    orderIds.push(cars[carIndex].id);
     
-    // Travel from current location to car
-    totalTime += travelMin(currentLocation, carPoint, mph);
+    totalTime += hookMin; // Hook time
     
-    // Hook up at car location
-    totalTime += hookMin;
+    // Travel to next car
+    if (i < optimizedOrder.length - 1) {
+      const currentCar = points[optimizedOrder[i]];
+      const nextCar = points[optimizedOrder[i + 1]];
+      totalTime += travelMin(currentCar, nextCar, mph);
+    }
     
-    // Travel from car to nearest lot (stash)
-    totalTime += travelMin(carPoint, lot, mph);
-    
-    // Unload at lot
-    totalTime += unloadMin;
-    
-    // Next car starts from the lot (driver is now at the lot)
-    currentLocation = lot;
+    totalTime += unloadMin; // Unload time
   }
   
   return { minutes: totalTime, orderIds };
