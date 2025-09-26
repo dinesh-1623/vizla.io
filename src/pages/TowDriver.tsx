@@ -9,10 +9,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useTowCars } from '@/hooks/useTowCars';
-import { useRouteGroups } from '@/hooks/useRouteGroups';
-import { TowCar } from '@/lib/data/driverSource';
-import { POC_POINTS, STORAGE_LOT, STASH_SITE, geocodePoints, clusterPoints, type GeocodedPoint } from '@/lib/data/pocBaltimore';
+import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS, type TowCard } from '@/app/tow-driver/data/baltimoreRun';
 import { VehicleCard } from '@/components/driver/VehicleCard';
 import TowRouteGroupCard from '@/components/driver/TowRouteGroupCard';
 import AssumptionsDrawer from '@/components/owner/AssumptionsDrawer';
@@ -45,16 +42,10 @@ function repeatToCount<T extends { id: string }>(arr: T[], count: number): (T & 
 const TowDriver: React.FC = () => {
   const navigate = useNavigate();
   
-  // Load real data from CSV
-  const { 
-    isLoading, 
-    error, 
-    dayAssignments, 
-    selectedDay, 
-    setSelectedDay, 
-    getSelectedDayCars, 
-    reload 
-  } = useTowCars();
+  // Use new Baltimore data
+  const [selectedDay, setSelectedDay] = useState<Day>('Friday');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const [weekRange, setWeekRange] = useState('');
   const [client, setClient] = useState('');
@@ -66,26 +57,16 @@ const TowDriver: React.FC = () => {
   const [showTop, setShowTop] = useState(false);
   const [routeMode, setRouteMode] = useState<'return' | 'stash'>('stash');
   const [isAssumptionsOpen, setIsAssumptionsOpen] = useState(false);
-  const [showPOCData, setShowPOCData] = useState(false);
-  const [pocClusters, setPocClusters] = useState<any[]>([]);
-  const [pocLoading, setPocLoading] = useState(false);
   
   // Assumptions management
   const { assumptions, updateAssumptions } = useAssumptions();
 
-  // Load POC data
-  const loadPOCData = async () => {
-    setPocLoading(true);
-    try {
-      const geocoded = await geocodePoints(POC_POINTS);
-      const clusters = await clusterPoints(geocoded, 2, true); // 2 drivers, finish at lot
-      setPocClusters(clusters);
-      setShowPOCData(true);
-    } catch (error) {
-      console.error('Failed to load POC data:', error);
-    } finally {
-      setPocLoading(false);
+  // Get cars for selected day
+  const getSelectedDayCars = (): TowCard[] => {
+    if (selectedDay === 'Friday') {
+      return TOW_CARDS;
     }
+    return [];
   };
 
   // Check for demo mode and repeat functionality
@@ -120,14 +101,13 @@ const TowDriver: React.FC = () => {
   // Get cars for selected day
   const selectedDayCars = getSelectedDayCars();
   
-  // Get unique clients and drivers from real data - memoized
+  // Get unique clients from Baltimore data
   const uniqueClients = useMemo(() => {
-    const allCars = dayAssignments.flatMap(assignment => assignment.cars);
-    return [...new Set(allCars.map(car => car.client))].sort();
-  }, [dayAssignments]);
-  
+    return [...new Set(TOW_CARDS.map(car => car.client))].sort();
+  }, []);
+
   const uniqueDrivers = useMemo(() => {
-    // For now, return empty array since we don't have driver data in the CSV
+    // No driver data in this dataset
     return [];
   }, []);
 
@@ -138,32 +118,28 @@ const TowDriver: React.FC = () => {
       Tuesday: 0,
       Wednesday: 0,
       Thursday: 0,
-      Friday: 0,
+      Friday: TOW_CARDS.length,
       Saturday: 0,
       Sunday: 0,
     };
     
-    dayAssignments.forEach(assignment => {
-      counts[assignment.day] = assignment.cars.length;
-    });
-    
     return counts;
-  }, [dayAssignments]);
+  }, []);
 
   // Filter cars based on selected criteria - memoized
   const filtered = useMemo(() => {
     return selectedDayCars.filter(car => {
       if (client && !car.client.toLowerCase().includes(client.toLowerCase())) return false;
-      if (zone && !car.city.toLowerCase().includes(zone.toLowerCase())) return false;
-      if (timeLocated && !car.fullAddress.toLowerCase().includes(timeLocated.toLowerCase())) return false;
+      // Zone and time filters don't apply to this dataset
       if (vizlaRoute && !car.fullAddress.toLowerCase().includes(vizlaRoute.toLowerCase())) return false;
       if (assignedDriver && !car.client.toLowerCase().includes(assignedDriver.toLowerCase())) return false;
       return true;
     });
-  }, [selectedDayCars, client, zone, timeLocated, vizlaRoute, assignedDriver]);
+  }, [selectedDayCars, client, vizlaRoute, assignedDriver]);
 
-  // Route grouping using real data
-  const { routeGroups, getCarStepNumber } = useRouteGroups(filtered);
+  // Route grouping using Baltimore data
+  const routeGroups: any[] = []; // Simplified for now
+  const getCarStepNumber = (vin: string) => undefined;
 
   // Create a map of car VINs to their step numbers for active route groups
   const carStepMap = useMemo(() => {
@@ -180,15 +156,15 @@ const TowDriver: React.FC = () => {
   const baseList = filtered; // includes selectedDay + other filters
   const cardsToRender = useMemo(() => {
     if (repeatTarget > 0) {
-      // Convert TowCar to objects with id property for repeatToCount
-      const carsWithId = baseList.map(car => ({ ...car, id: car.vin }));
+      // Convert TowCard to objects with id property for repeatToCount
+      const carsWithId = baseList.map(car => ({ ...car, id: car.id }));
       return repeatToCount(carsWithId, repeatTarget);
     }
     const base = baseList.slice(0, forceSix ? 6 : visible);
     return base;
   }, [baseList, repeatTarget, forceSix, visible]);
 
-  const hasActiveFilters = weekRange || client || zone || timeLocated || vizlaRoute || assignedDriver;
+  const hasActiveFilters = weekRange || client || vizlaRoute || assignedDriver;
 
   // Reset when filters/day change and restore scroll position
   useEffect(() => {
@@ -204,7 +180,7 @@ const TowDriver: React.FC = () => {
       sessionStorage.setItem(key, String(window.scrollY));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDay, client, zone, timeLocated, vizlaRoute, assignedDriver]);
+  }, [selectedDay, client, vizlaRoute, assignedDriver]);
 
   // Back to top button visibility
   useEffect(() => {
@@ -233,8 +209,6 @@ const TowDriver: React.FC = () => {
   const clearAllFilters = () => {
     setWeekRange('');
     setClient('');
-    setZone('');
-    setTimeLocated('');
     setVizlaRoute('');
     setAssignedDriver('');
   };
@@ -246,12 +220,6 @@ const TowDriver: React.FC = () => {
         break;
       case 'client':
         setClient('');
-        break;
-      case 'zone':
-        setZone('');
-        break;
-      case 'timeLocated':
-        setTimeLocated('');
         break;
       case 'vizlaRoute':
         setVizlaRoute('');
@@ -268,8 +236,6 @@ const TowDriver: React.FC = () => {
   const filters = {
     weekRange,
     client,
-    zone,
-    timeLocated,
     vizlaRoute,
     assignedDriver
   };
@@ -290,27 +256,18 @@ const TowDriver: React.FC = () => {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-vizla-text-primary">Tow Truck Driver View</h1>
-              <p className="text-sm text-vizla-text-muted">Data: BANK + GPS (A3–S24)</p>
+              <p className="text-sm text-vizla-text-muted">Data: Akel's 20 Baltimore Addresses</p>
             </div>
           </div>
                  <div className="flex items-center gap-2">
                    <button
-                     onClick={reload}
+                     onClick={() => window.location.reload()}
                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vizla-glass text-vizla-text-secondary ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
                      aria-label="Refresh Data"
                      disabled={isLoading}
                    >
                      <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                      <span className="text-sm font-medium">Refresh</span>
-                   </button>
-                   <button
-                     onClick={loadPOCData}
-                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vizla-brand-primary text-white ring-1 ring-vizla-brand-primary hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-                     aria-label="Load Baltimore POC Data"
-                     disabled={pocLoading}
-                   >
-                     <RefreshCw className={`w-4 h-4 ${pocLoading ? 'animate-spin' : ''}`} />
-                     <span className="text-sm font-medium">Baltimore POC</span>
                    </button>
                    <button
                      onClick={() => setIsAssumptionsOpen(true)}
@@ -341,7 +298,7 @@ const TowDriver: React.FC = () => {
                 }`}
               >
                 {day}
-                {day === selectedDay && ' (Today)'}
+                {day === 'Friday' && ' (Today)'}
                 {/* Count bubble */}
                 {countsByDay[day] > 0 && (
                   <span className="ml-2 inline-flex min-w-[1.25rem] h-5 items-center justify-center rounded-full bg-white text-slate-900 text-[11px] px-1.5 ring-1 ring-white/40">
@@ -360,7 +317,7 @@ const TowDriver: React.FC = () => {
             <AlertCircle className="w-5 h-5 text-vizla-danger" />
             <span className="text-sm font-medium text-vizla-danger">Error loading data: {error}</span>
             <button
-              onClick={reload}
+              onClick={() => window.location.reload()}
               className="ml-auto px-3 py-1 rounded-md bg-vizla-danger text-white text-sm font-medium hover:bg-vizla-danger/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
             >
               Retry
@@ -489,66 +446,6 @@ const TowDriver: React.FC = () => {
           </h2>
         </div>
 
-        {/* Baltimore POC Data */}
-        {showPOCData && pocClusters.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-md font-medium text-neutral-100">Baltimore POC Clusters</h3>
-              <button
-                onClick={() => setShowPOCData(false)}
-                className="text-neutral-400 hover:text-neutral-100 text-sm px-2 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vizla-ring-focus"
-              >
-                Hide POC Data
-              </button>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {pocClusters.map((cluster, index) => (
-                <GlassCard key={index} className="backdrop-blur-md ring-1 ring-white/10">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-lg font-medium text-neutral-100">
-                        POC Cluster {cluster.id}
-                      </h4>
-                      <span className="text-sm text-neutral-400">
-                        {cluster.points.length} vehicles
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <div className="text-sm text-neutral-400 mb-1">Return Route</div>
-                        <div className="text-lg font-semibold text-neutral-100">
-                          {Math.round(cluster.returnTime / 60)}h {cluster.returnTime % 60}m
-                        </div>
-                      </div>
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <div className="text-sm text-neutral-400 mb-1">Stash Route</div>
-                        <div className="text-lg font-semibold text-neutral-100">
-                          {Math.round(cluster.stashTime / 60)}h {cluster.stashTime % 60}m
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => window.open(cluster.returnUrl, '_blank', 'noopener,noreferrer')}
-                        className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-                      >
-                        Return Route
-                      </button>
-                      <button
-                        onClick={() => window.open(cluster.stashUrl, '_blank', 'noopener,noreferrer')}
-                        className="flex-1 bg-white/10 text-neutral-100 px-4 py-2 rounded-lg text-sm font-medium ring-1 ring-white/20 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-                      >
-                        Stash Route
-                      </button>
-                    </div>
-                  </div>
-                </GlassCard>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Route Groups */}
         {routeGroups.length > 0 && (

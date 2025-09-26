@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import type { TowCar } from '@/lib/data/driverSource';
-import { Skeleton } from '@/components/ui/Skeleton';
+import type { TowCard } from '@/app/tow-driver/data/baltimoreRun';
+import { Skeleton } from '@/components/ui/skeleton';
 import { GLASS_SURFACE, TEXT_STYLES, STATUS_COLORS } from '@/lib/constants';
 
 interface VehicleCardProps {
-  car: TowCar;
+  car: TowCard;
   stepNumber?: number;
 }
 
@@ -12,11 +12,10 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber }) => 
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
-  // Generate a status based on car properties (simplified for real data)
+  // Generate a status based on car properties
   const getStatus = () => {
-    // For real data, we'll use a simple status based on client
     if (car.client.toLowerCase().includes('bank')) return { text: 'Bank', color: STATUS_COLORS.HARD };
-    if (car.client.toLowerCase().includes('gps')) return { text: 'GPS', color: STATUS_COLORS.MEDIUM };
+    if (car.client.toLowerCase().includes('mv')) return { text: 'MV', color: STATUS_COLORS.MEDIUM };
     return { text: 'Active', color: STATUS_COLORS.EASY };
   };
 
@@ -43,7 +42,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber }) => 
       <div className="space-y-2 mb-4">
         <div className="flex justify-between text-sm">
           <span className={TEXT_STYLES.BODY_MUTED}>Tag:</span>
-          <span className={`${TEXT_STYLES.BODY_SECONDARY} font-mono`}>{car.tag}</span>
+          <span className={`${TEXT_STYLES.BODY_SECONDARY} font-mono`}>{car.plate}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className={TEXT_STYLES.BODY_MUTED}>VIN:</span>
@@ -64,26 +63,31 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber }) => 
       <div className="flex gap-2 mt-4">
         <button
           onClick={() => {
-            // Build Google Maps URL: Lot → Vehicle → Nearest Lot
+            // Build Google Maps URL: Lot → Vehicle → Lot
             const baseUrl = 'https://www.google.com/maps/dir/';
-            const origin = encodeURIComponent('11051 Pulaski Hwy, White Marsh, MD 21162'); // Starting lot
+            const origin = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226'); // LOT_ADDRESS
             const vehicleAddress = encodeURIComponent(car.fullAddress);
-            const nearestLot = encodeURIComponent('11051 Pulaski Hwy, White Marsh, MD 21162'); // Nearest lot to vehicle
-            const url = `${baseUrl}${origin}/${vehicleAddress}/${nearestLot}`;
+            const destination = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226'); // LOT_ADDRESS
+            const url = `${baseUrl}${origin}/${vehicleAddress}/${destination}`;
             window.open(url, '_blank', 'noopener,noreferrer');
           }}
           className="flex-1 bg-vizla-brand-primary text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
         >
-          Start Route (Google)
+          Start Route (Lot)
         </button>
         <button
           onClick={() => {
-            // Next stop functionality
-            console.log('Next stop for:', car.vin);
+            // Build Google Maps URL: Lot → Vehicle → Stash
+            const baseUrl = 'https://www.google.com/maps/dir/';
+            const origin = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226'); // LOT_ADDRESS
+            const vehicleAddress = encodeURIComponent(car.fullAddress);
+            const destination = encodeURIComponent('751 W Patapsco Ave, Halethorpe, MD 21227'); // STASH_ADDRESS
+            const url = `${baseUrl}${origin}/${vehicleAddress}/${destination}`;
+            window.open(url, '_blank', 'noopener,noreferrer');
           }}
           className="flex-1 bg-vizla-glass text-vizla-text-secondary px-3 py-2 rounded-lg text-sm font-medium ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
         >
-          Next Stop
+          Start Route (Stash)
         </button>
       </div>
     </div>
