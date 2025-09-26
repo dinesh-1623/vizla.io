@@ -1,105 +1,32 @@
 import React, { useState } from 'react';
-import type { Car } from '@/data/mockCars';
-import type { TowItem } from '@/lib/daily';
+import type { TowCar } from '@/lib/data/driverSource';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { GLASS_SURFACE, TEXT_STYLES, STATUS_COLORS } from '@/lib/constants';
-import { pickNearestLot, buildDirectionsUrl } from '@/lib/zone';
 
 interface VehicleCardProps {
-  car?: Car;
-  item?: TowItem;
+  car: TowCar;
   stepNumber?: number;
 }
 
-export const VehicleCard: React.FC<VehicleCardProps> = ({ car, item, stepNumber }) => {
+export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber }) => {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
-  // Use TowItem data if available, otherwise fall back to Car
-  const data = item || car;
-  if (!data) return null;
-
-  // Generate a status based on data properties
+  // Generate a status based on car properties (simplified for real data)
   const getStatus = () => {
-    if (car && car.daysSinceLocated && car.daysSinceLocated >= 5) return { text: 'Hard', color: STATUS_COLORS.HARD };
-    if (car && car.daysSinceLocated && car.daysSinceLocated >= 2) return { text: 'Medium', color: STATUS_COLORS.MEDIUM };
-    return { text: 'Easy', color: STATUS_COLORS.EASY };
+    // For real data, we'll use a simple status based on client
+    if (car.client.toLowerCase().includes('bank')) return { text: 'Bank', color: STATUS_COLORS.HARD };
+    if (car.client.toLowerCase().includes('gps')) return { text: 'GPS', color: STATUS_COLORS.MEDIUM };
+    return { text: 'Active', color: STATUS_COLORS.EASY };
   };
 
   const status = getStatus();
-
-  // Format vehicle title
-  const getVehicleTitle = () => {
-    if (item) {
-      const parts = [item.year, item.make, item.model].filter(Boolean);
-      return parts.join(' ') || 'Vehicle';
-    }
-    return car?.yearMakeModel || 'Vehicle';
-  };
-
-  // Get vehicle image
-  const getVehicleImage = () => {
-    if (item) {
-      // For TowItem, use a placeholder or car image based on make/model
-      const make = item.make?.toLowerCase() || '';
-      if (make.includes('toyota')) return '/images/cars/cars1.jpg';
-      if (make.includes('honda')) return '/images/cars/cars2.jpg';
-      if (make.includes('ford')) return '/images/cars/cars3.jpg';
-      if (make.includes('chevrolet')) return '/images/cars/cars4.jpg';
-      if (make.includes('nissan')) return '/images/cars/cars5.jpg';
-      return '/images/cars/cars6.jpg'; // Default
-    }
-    return car?.image;
-  };
-
-  // Get client name
-  const getClient = () => {
-    return item?.client || car?.client || 'Unknown';
-  };
-
-  // Get zone
-  const getZone = () => {
-    return item?.zone || car?.zone || 'Unknown';
-  };
-
-  // Get located date
-  const getLocatedDate = () => {
-    if (item) {
-      const date = new Date(item.dateISO);
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-      });
-    }
-    return car?.locatedDate || 'Unknown';
-  };
-
-  // Get tag/plate
-  const getTag = () => {
-    return item?.tag || car?.plate || 'N/A';
-  };
-
-  // Get VIN
-  const getVin = () => {
-    return item?.vin || '1HGBH41JXMN109186';
-  };
-
-  // Get maps URL for navigation
-  const getMapsUrl = () => {
-    if (item?.mapsAddress) {
-      const origin = pickNearestLot(item.city);
-      const destination = pickNearestLot(item.city);
-      return buildDirectionsUrl(origin, item.mapsAddress, destination);
-    }
-    return '#';
-  };
 
   return (
     <div className="overflow-hidden rounded-2xl bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder shadow-[0_2px_30px_rgba(0,0,0,0.25)] transition hover:shadow-[0_6px_40px_rgba(0,0,0,0.35)] hover:translate-y-[-1px] group p-4 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus focus-visible:outline-none">
       {/* Header with status badge and step indicator */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className={`${TEXT_STYLES.HEADING_SECONDARY} truncate`}>{getVehicleTitle()}</h3>
+        <h3 className={`${TEXT_STYLES.HEADING_SECONDARY} truncate`}>{car.year} {car.make} {car.model}, {car.color}</h3>
         <div className="flex items-center gap-2">
           {stepNumber && (
             <span className="bg-vizla-brand-primary/20 text-vizla-brand-primary text-xs px-2 py-1 rounded-full font-medium">
@@ -115,71 +42,56 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, item, stepNumber 
       {/* Vehicle details */}
       <div className="space-y-2 mb-4">
         <div className="flex justify-between text-sm">
-          <span className={TEXT_STYLES.BODY_MUTED}>Client:</span>
-          <span className={TEXT_STYLES.BODY_SECONDARY}>{getClient()}</span>
-        </div>
-        {item?.color && (
-          <div className="flex justify-between text-sm">
-            <span className={TEXT_STYLES.BODY_MUTED}>Color:</span>
-            <span className={TEXT_STYLES.BODY_SECONDARY}>{item.color}</span>
-          </div>
-        )}
-        <div className="flex justify-between text-sm">
           <span className={TEXT_STYLES.BODY_MUTED}>Tag:</span>
-          <span className={`${TEXT_STYLES.BODY_SECONDARY} font-mono`}>{getTag()}</span>
+          <span className={`${TEXT_STYLES.BODY_SECONDARY} font-mono`}>{car.tag}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className={TEXT_STYLES.BODY_MUTED}>VIN:</span>
-          <span className={`${TEXT_STYLES.BODY_SECONDARY} font-mono text-xs`}>{getVin()}</span>
+          <span className={`${TEXT_STYLES.BODY_SECONDARY} font-mono text-xs`}>{car.vin}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className={TEXT_STYLES.BODY_MUTED}>Zone:</span>
-          <span className={TEXT_STYLES.BODY_SECONDARY}>{getZone()}</span>
+          <span className={TEXT_STYLES.BODY_MUTED}>Client:</span>
+          <span className={`${TEXT_STYLES.BODY_SECONDARY}`}>{car.client}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className={TEXT_STYLES.BODY_MUTED}>Located:</span>
-          <span className={TEXT_STYLES.BODY_SECONDARY}>{getLocatedDate()}</span>
+          <span className={TEXT_STYLES.BODY_MUTED}>Address:</span>
+          <span className={`${TEXT_STYLES.BODY_SECONDARY} text-xs`}>{car.street}, {car.city} {car.zip}</span>
         </div>
       </div>
 
-      {/* Image */}
-      <div className="relative aspect-[16/9] w-full bg-vizla-elev-2 rounded-lg overflow-hidden">
-        {imageLoading && !imageError && (
-          <Skeleton className="absolute inset-0 bg-vizla-elev-1" />
-        )}
-        {getVehicleImage() && !imageError ? (
-          <img
-            src={getVehicleImage()}
-            alt={getVehicleTitle()}
-            className="h-full w-full object-cover"
-            loading="lazy"
-            decoding="async"
-            onLoad={() => setImageLoading(false)}
-            onError={() => {
-              setImageError(true);
-              setImageLoading(false);
-            }}
-          />
-        ) : imageError ? (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className={`${TEXT_STYLES.BODY_MUTED} text-sm`}>No image available</span>
-          </div>
-        ) : null}
+      {/* Image placeholder for real data */}
+      <div className="relative aspect-[16/9] w-full bg-vizla-elev2 rounded-lg overflow-hidden">
+        <div className="flex h-full w-full items-center justify-center">
+          <span className={`${TEXT_STYLES.BODY_MUTED} text-sm`}>Vehicle Image</span>
+        </div>
       </div>
 
-      {/* Navigation Button */}
-      {getMapsUrl() !== '#' && (
-        <div className="mt-4">
-          <a
-            href={getMapsUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full inline-flex items-center justify-center px-4 py-2 bg-vizla-brand-primary text-white text-sm font-medium rounded-lg hover:bg-vizla-brand-primary/90 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-          >
-            Navigate
-          </a>
-        </div>
-      )}
+      {/* Action buttons */}
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={() => {
+            // Build Google Maps URL with nearest lot routing
+            const baseUrl = 'https://www.google.com/maps/dir/';
+            const origin = encodeURIComponent('11051 Pulaski Hwy, White Marsh, MD 21162'); // Default lot
+            const destination = encodeURIComponent('11051 Pulaski Hwy, White Marsh, MD 21162'); // Return to lot
+            const waypoint = encodeURIComponent(car.fullAddress);
+            const url = `${baseUrl}${origin}/${waypoint}/${destination}`;
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }}
+          className="flex-1 bg-vizla-brand-primary text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+        >
+          Start Route (Google)
+        </button>
+        <button
+          onClick={() => {
+            // Next stop functionality
+            console.log('Next stop for:', car.vin);
+          }}
+          className="flex-1 bg-vizla-glass text-vizla-text-secondary px-3 py-2 rounded-lg text-sm font-medium ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+        >
+          Next Stop
+        </button>
+      </div>
     </div>
   );
 };

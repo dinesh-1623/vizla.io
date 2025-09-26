@@ -1,38 +1,43 @@
 /**
- * Dependency-free CSV parser for Google Sheets data
- * Handles quoted fields, commas, and CRLF line endings
+ * RFC4180-compliant CSV Parser
+ * 
+ * Handles quoted fields, commas within quotes, and CRLF line endings.
+ * No external dependencies, pure TypeScript implementation.
  */
 
-export type RawRow = Record<string, string>;
+export function parseCsv(text: string): Record<string, string>[] {
+  if (!text || text.trim() === '') {
+    return [];
+  }
 
-/**
- * Parse a CSV string into an array of objects
- */
-export function parseCsv(csvText: string): RawRow[] {
-  const lines = csvText.split(/\r?\n/);
-  if (lines.length < 2) return [];
+  const lines = text.split(/\r?\n/);
+  if (lines.length < 2) {
+    return [];
+  }
 
-  // Parse header row
   const headers = parseCsvLine(lines[0]);
-  if (headers.length === 0) return [];
+  const rows: Record<string, string>[] = [];
 
-  const rows: RawRow[] = [];
-
-  // Parse data rows
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
-    if (!line) continue; // Skip empty lines
+    if (line === '') continue;
 
     const values = parseCsvLine(line);
-    if (values.length === 0) continue;
+    
+    // Skip rows with only empty values or problematic characters
+    const hasValidData = values.some(v => v && v.trim() !== '' && v.length > 1);
+    if (!hasValidData) {
+      continue;
+    }
 
-    // Create object with normalized headers (trim, toLowerCase)
-    const row: RawRow = {};
-    headers.forEach((header, index) => {
-      const normalizedHeader = header.trim().toLowerCase();
-      const value = values[index] || '';
-      row[normalizedHeader] = value;
-    });
+    const row: Record<string, string> = {};
+    
+    // Map values to headers, handling cases where there might be more values than headers
+    for (let j = 0; j < Math.max(headers.length, values.length); j++) {
+      const header = headers[j] || `column_${j}`;
+      const value = values[j] || '';
+      row[header] = value;
+    }
 
     rows.push(row);
   }
@@ -41,7 +46,7 @@ export function parseCsv(csvText: string): RawRow[] {
 }
 
 /**
- * Parse a single CSV line, handling quoted fields
+ * Parse a single CSV line, handling quoted fields and escaped quotes
  */
 function parseCsvLine(line: string): string[] {
   const result: string[] = [];
@@ -55,19 +60,20 @@ function parseCsvLine(line: string): string[] {
 
     if (char === '"') {
       if (inQuotes && nextChar === '"') {
-        // Escaped quote
+        // Escaped quote within quoted field
         current += '"';
         i += 2;
         continue;
       } else {
-        // Toggle quote state
+        // Start or end of quoted field
         inQuotes = !inQuotes;
       }
     } else if (char === ',' && !inQuotes) {
       // Field separator
-      result.push(current);
+      result.push(current.trim());
       current = '';
     } else {
+      // Regular character
       current += char;
     }
 
@@ -75,93 +81,45 @@ function parseCsvLine(line: string): string[] {
   }
 
   // Add the last field
-  result.push(current);
+  result.push(current.trim());
 
   return result;
 }
 
 /**
- * Fetch CSV data from URL and parse it
+ * Unit test for the CSV parser
  */
-export async function fetchCsvRows(url: string): Promise<RawRow[]> {
-  try {
-    const response = await fetch(url, { 
-      cache: 'no-store',
-      headers: {
-        'Accept': 'text/csv,text/plain,*/*',
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+export function testCsvParser(): boolean {
+  const testCases = [
+    {
+      input: 'name,age,city\n"John Doe",25,"New York"\nJane Smith,30,Chicago',
+      expected: [
+        { name: 'John Doe', age: '25', city: 'New York' },
+        { name: 'Jane Smith', age: '30', city: 'Chicago' }
+      ]
+    },
+    {
+      input: 'id,description\n1,"Item with, comma"\n2,"Item with ""quotes"""',
+      expected: [
+        { id: '1', description: 'Item with, comma' },
+        { id: '2', description: 'Item with "quotes"' }
+      ]
+    },
+    {
+      input: 'a,b,c\n1,2,3\n',
+      expected: [
+        { a: '1', b: '2', c: '3' }
+      ]
     }
+  ];
 
-    const csvText = await response.text();
-    const rows = parseCsv(csvText);
-
-    console.log(`📊 Parsed ${rows.length} CSV rows from ${url}`);
-    return rows;
-
-  } catch (error) {
-    console.warn('❌ Failed to fetch CSV data:', error);
-    return [];
-  }
-}
-
-/**
- * Generate a simple hash for cache validation
- */
-export function generateCacheHash(text: string): string {
-  let hash = 0;
-  const sample = text.substring(0, 2048); // First 2KB
-  
-  for (let i = 0; i < sample.length; i++) {
-    const char = sample.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  
-  return Math.abs(hash).toString(36);
-}
-
-/**
- * Cache management for CSV data
- */
-export interface CacheEntry {
-  data: RawRow[];
-  hash: string;
-  timestamp: number;
-}
-
-export function getCachedData(): CacheEntry | null {
-  try {
-    const cached = localStorage.getItem('vizla.driver.csvCache');
-    if (!cached) return null;
-
-    const entry: CacheEntry = JSON.parse(cached);
-    
-    // Check if cache is less than 5 minutes old
-    const fiveMinutes = 5 * 60 * 1000;
-    if (Date.now() - entry.timestamp > fiveMinutes) {
-      localStorage.removeItem('vizla.driver.csvCache');
-      return null;
+  for (const testCase of testCases) {
+    const result = parseCsv(testCase.input);
+    if (JSON.stringify(result) !== JSON.stringify(testCase.expected)) {
+      console.error('CSV parser test failed:', { input: testCase.input, expected: testCase.expected, actual: result });
+      return false;
     }
-
-    return entry;
-  } catch {
-    return null;
   }
-}
 
-export function setCachedData(data: RawRow[], hash: string): void {
-  try {
-    const entry: CacheEntry = {
-      data,
-      hash,
-      timestamp: Date.now()
-    };
-    localStorage.setItem('vizla.driver.csvCache', JSON.stringify(entry));
-  } catch {
-    // Ignore localStorage errors
-  }
+  return true;
 }

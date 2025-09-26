@@ -9,7 +9,7 @@ interface FilterChip {
 }
 
 interface FilterChipsProps {
-  filters: Record<string, string | null>;
+  filters: Record<string, string>;
   onClear: (key: string) => void;
   onClearAll: () => void;
   className?: string;
@@ -27,7 +27,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
     .map(([key, value]) => ({
       key,
       label: getFilterLabel(key),
-      value: formatFilterValue(key, value!)
+      value: value
     }));
 
   // Don't render if no active filters
@@ -82,7 +82,6 @@ function getFilterLabel(key: string): string {
     driver: 'Driver',
     assignedDriver: 'Assigned Driver',
     vizlaRoute: 'Vizla Route',
-    selectedDate: 'Date',
     selectedDay: 'Day',
     selectedClient: 'Client',
     selectedZone: 'Zone',
@@ -90,24 +89,6 @@ function getFilterLabel(key: string): string {
   };
   
   return labelMap[key] || key;
-}
-
-// Helper function to format filter values for display
-function formatFilterValue(key: string, value: string): string {
-  if (key === 'selectedDate') {
-    // Format ISO date to readable format
-    try {
-      const date = new Date(value);
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-      });
-    } catch {
-      return value;
-    }
-  }
-  return value;
 }
 
 export { FilterChips };
