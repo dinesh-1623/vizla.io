@@ -59,23 +59,17 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber }) => 
         </div>
       </div>
 
-      {/* Image placeholder for real data */}
-      <div className="relative aspect-[16/9] w-full bg-vizla-elev2 rounded-lg overflow-hidden">
-        <div className="flex h-full w-full items-center justify-center">
-          <span className={`${TEXT_STYLES.BODY_MUTED} text-sm`}>Vehicle Image</span>
-        </div>
-      </div>
 
       {/* Action buttons */}
       <div className="flex gap-2 mt-4">
         <button
           onClick={() => {
-            // Build Google Maps URL with nearest lot routing
+            // Build Google Maps URL: Lot → Vehicle → Nearest Lot
             const baseUrl = 'https://www.google.com/maps/dir/';
-            const origin = encodeURIComponent('11051 Pulaski Hwy, White Marsh, MD 21162'); // Default lot
-            const destination = encodeURIComponent('11051 Pulaski Hwy, White Marsh, MD 21162'); // Return to lot
-            const waypoint = encodeURIComponent(car.fullAddress);
-            const url = `${baseUrl}${origin}/${waypoint}/${destination}`;
+            const origin = encodeURIComponent('11051 Pulaski Hwy, White Marsh, MD 21162'); // Starting lot
+            const vehicleAddress = encodeURIComponent(car.fullAddress);
+            const nearestLot = encodeURIComponent('11051 Pulaski Hwy, White Marsh, MD 21162'); // Nearest lot to vehicle
+            const url = `${baseUrl}${origin}/${vehicleAddress}/${nearestLot}`;
             window.open(url, '_blank', 'noopener,noreferrer');
           }}
           className="flex-1 bg-vizla-brand-primary text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"

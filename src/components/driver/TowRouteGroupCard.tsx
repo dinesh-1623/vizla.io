@@ -51,7 +51,7 @@ const TowRouteGroupCard: React.FC<TowRouteGroupCardProps> = ({
               {formatTime(returnTime)}
             </div>
             <div className="text-xs text-vizla-text-muted mt-1">
-              Total drive time + service
+              Lot → Vehicle → Nearest Lot (each)
             </div>
           </div>
           <div className="bg-vizla-elev1 rounded-lg p-3">
@@ -60,7 +60,7 @@ const TowRouteGroupCard: React.FC<TowRouteGroupCardProps> = ({
               {formatTime(stashTime)}
             </div>
             <div className="text-xs text-vizla-text-muted mt-1">
-              To nearest stash lot
+              Lot → Vehicle → Nearest Stash (each)
             </div>
           </div>
         </div>
@@ -99,14 +99,14 @@ const TowRouteGroupCard: React.FC<TowRouteGroupCardProps> = ({
             className="flex-1 flex items-center justify-center gap-2 bg-vizla-brand-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
           >
             <Navigation className="w-4 h-4" />
-            Return Route
+            Lot → Vehicle → Lot Route
           </button>
           <button
             onClick={() => window.open(stashUrl, '_blank', 'noopener,noreferrer')}
             className="flex-1 flex items-center justify-center gap-2 bg-vizla-glass text-vizla-text-secondary px-4 py-2 rounded-lg text-sm font-medium ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
           >
             <ExternalLink className="w-4 h-4" />
-            Stash Route
+            Lot → Vehicle → Stash Route
           </button>
         </div>
       </div>

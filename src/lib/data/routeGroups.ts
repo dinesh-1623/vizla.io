@@ -99,6 +99,7 @@ export function createRouteGroups(cars: TowCar[]): RouteGroup[] {
 
 /**
  * Calculate route time for a group of cars
+ * New logic: Lot → Vehicle → Nearest Lot (for each vehicle)
  */
 function calculateRouteTime(cars: TowCar[], lot: string, mode: 'return' | 'stash'): number {
   let totalTime = 0;
@@ -108,33 +109,31 @@ function calculateRouteTime(cars: TowCar[], lot: string, mode: 'return' | 'stash
   const dropTime = 10;   // minutes
   const stashDropTime = 10; // minutes
   
-  // Calculate travel time between consecutive cars
+  // Calculate time for each vehicle: Lot → Vehicle → Nearest Lot
   for (let i = 0; i < cars.length; i++) {
-    if (i === 0) {
-      // From lot to first car
-      const distance = haversineDistance(lot, cars[i].fullAddress);
-      totalTime += calculateTravelTime(distance);
+    const car = cars[i];
+    const nearestCarLot = nearestLot(car.fullAddress);
+    
+    // From lot to vehicle
+    const distanceToVehicle = haversineDistance(lot, car.fullAddress);
+    totalTime += calculateTravelTime(distanceToVehicle);
+    
+    // Add hookup time
+    totalTime += hookupTime;
+    
+    // From vehicle to nearest lot
+    const distanceToLot = haversineDistance(car.fullAddress, nearestCarLot);
+    totalTime += calculateTravelTime(distanceToLot);
+    
+    // Add drop time
+    if (mode === 'return') {
+      totalTime += dropTime;
     } else {
-      // From previous car to current car
-      const distance = haversineDistance(cars[i - 1].fullAddress, cars[i].fullAddress);
-      totalTime += calculateTravelTime(distance);
+      totalTime += stashDropTime;
     }
     
-    // Add service time
-    totalTime += hookupTime;
-  }
-  
-  // Return to lot or stash
-  if (mode === 'return') {
-    const lastCar = cars[cars.length - 1];
-    const distance = haversineDistance(lastCar.fullAddress, lot);
-    totalTime += calculateTravelTime(distance);
-  } else {
-    // Stash mode - find nearest lot to last car
-    const lastCar = cars[cars.length - 1];
-    const stashLot = nearestLot(lastCar.fullAddress);
-    const distance = haversineDistance(lastCar.fullAddress, stashLot);
-    totalTime += calculateTravelTime(distance) + stashDropTime;
+    // Update lot for next vehicle (driver is now at the nearest lot)
+    lot = nearestCarLot;
   }
   
   return totalTime;
@@ -142,31 +141,36 @@ function calculateRouteTime(cars: TowCar[], lot: string, mode: 'return' | 'stash
 
 /**
  * Build Google Maps URL for route
+ * New pattern: Lot → Vehicle1 → Nearest Lot1 → Vehicle2 → Nearest Lot2 → ...
  */
 function buildGoogleMapsUrl(cars: TowCar[], lot: string, mode: 'return' | 'stash'): string {
   const baseUrl = 'https://www.google.com/maps/dir/';
   
-  // Origin: nearest lot
-  const origin = encodeURIComponent(lot);
+  // Build route: Lot → Vehicle1 → Nearest Lot1 → Vehicle2 → Nearest Lot2 → ...
+  const routePoints: string[] = [];
+  let currentLot = lot;
   
-  // Waypoints: all car addresses
-  const waypoints = cars.map(car => encodeURIComponent(car.fullAddress)).join('/');
-  
-  // Destination
-  let destination: string;
-  if (mode === 'return') {
-    destination = encodeURIComponent(lot);
-  } else {
-    // Stash mode - use nearest lot to last car
-    const lastCar = cars[cars.length - 1];
-    const stashLot = nearestLot(lastCar.fullAddress);
-    destination = encodeURIComponent(stashLot);
+  for (const car of cars) {
+    const nearestCarLot = nearestLot(car.fullAddress);
+    
+    // Add vehicle address
+    routePoints.push(encodeURIComponent(car.fullAddress));
+    
+    // Add nearest lot for this vehicle
+    routePoints.push(encodeURIComponent(nearestCarLot));
+    
+    // Update current lot for next iteration
+    currentLot = nearestCarLot;
   }
   
-  // Add optimize parameter for Google to reorder waypoints
-  const optimizeParam = hasGoogleMapsKey() ? '&waypoints=optimize:true' : '';
+  // Origin: starting lot
+  const origin = encodeURIComponent(lot);
   
-  return `${baseUrl}${origin}/${waypoints}/${destination}${optimizeParam}`;
+  // Build the full URL
+  const waypoints = routePoints.join('/');
+  const url = `${baseUrl}${origin}/${waypoints}`;
+  
+  return url;
 }
 
 /**
