@@ -10,12 +10,15 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS, type TowCard } from '@/app/tow-driver/data/baltimoreRun';
+import { haversineMiles, type LatLng } from '@/lib/geo';
+import { totalReturnToLot, totalStash, minutesFromMiles, type ServiceTimes, type Point, type TravelFn } from '@/lib/routing';
+import { mapsUrl } from '@/lib/gmaps';
 import { VehicleCard } from '@/components/driver/VehicleCard';
 import TowRouteGroupCard from '@/components/driver/TowRouteGroupCard';
 import AssumptionsDrawer from '@/components/owner/AssumptionsDrawer';
 import { useAssumptions } from '@/hooks/useAssumptions';
 import { Filters } from '@/components/driver/Filters';
-import { X, ArrowLeft, Settings, RefreshCw, AlertCircle } from 'lucide-react';
+import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { FilterChips } from '@/components/ui/FilterChips';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -57,9 +60,148 @@ const TowDriver: React.FC = () => {
   const [showTop, setShowTop] = useState(false);
   const [routeMode, setRouteMode] = useState<'return' | 'stash'>('stash');
   const [isAssumptionsOpen, setIsAssumptionsOpen] = useState(false);
+  const [finishAtLot, setFinishAtLot] = useState(true);
+  const [optimizationResults, setOptimizationResults] = useState<{
+    returnTotals: { driveMin: number; serviceMin: number; totalMin: number };
+    stashTotals: { driveMin: number; serviceMin: number; totalMin: number };
+    savedMin: number;
+    savedPct: number;
+    fitsReturn: boolean;
+    fitsStash: boolean;
+  } | null>(null);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   
   // Assumptions management
   const { assumptions, updateAssumptions } = useAssumptions();
+
+  // Service times from assumptions
+  const serviceTimes: ServiceTimes = useMemo(() => ({
+    hookupMin: assumptions.hookTimeMin || 10,
+    dropLotMin: assumptions.unloadTimeMin || 10,
+    dropStashMin: assumptions.unloadTimeMin || 10,
+    cityMph: assumptions.averageMph || 22
+  }), [assumptions]);
+
+  // Coordinates for lot and stash
+  const lotCoords: LatLng = useMemo(() => ({
+    lat: 39.238,
+    lng: -76.589
+  }), []);
+
+  const stashCoords: LatLng = useMemo(() => ({
+    lat: 39.238,
+    lng: -76.589
+  }), []);
+
+  // Travel function with cache
+  const travelCache = useMemo(() => new Map<string, number>(), []);
+  const travel: TravelFn = useMemo(() => {
+    const hasApiKey = !!import.meta.env.VITE_GOOGLE_MAPS_KEY;
+    
+    return async (from: LatLng, to: LatLng): Promise<number> => {
+      const key = `${from.lat},${from.lng}→${to.lat},${to.lng}`;
+      
+      if (travelCache.has(key)) {
+        return travelCache.get(key)!;
+      }
+
+      let minutes: number;
+      
+      if (hasApiKey) {
+        // TODO: Implement Distance Matrix API call
+        // For now, use Haversine fallback
+        const miles = haversineMiles(from, to);
+        minutes = minutesFromMiles(miles, serviceTimes.cityMph);
+      } else {
+        const miles = haversineMiles(from, to);
+        minutes = minutesFromMiles(miles, serviceTimes.cityMph);
+      }
+
+      travelCache.set(key, minutes);
+      return minutes;
+    };
+  }, [travelCache, serviceTimes.cityMph]);
+
+  // Convert TowCards to Points
+  const points: Point[] = useMemo(() => {
+    return TOW_CARDS.map(card => ({
+      id: card.id,
+      label: `${card.client} - ${card.year} ${card.make} ${card.model}`,
+      lat: card.fullAddress.includes(',') && !isNaN(parseFloat(card.fullAddress.split(',')[0])) 
+        ? parseFloat(card.fullAddress.split(',')[0])
+        : 39.2904 + (parseInt(card.id) % 10 - 5) * 0.01, // Pseudo-coords for addresses
+      lng: card.fullAddress.includes(',') && !isNaN(parseFloat(card.fullAddress.split(',')[0]))
+        ? parseFloat(card.fullAddress.split(',')[1])
+        : -76.6122 + (parseInt(card.id) % 10 - 5) * 0.01
+    }));
+  }, []);
+
+  // Compute optimization results
+  const computeOptimization = async () => {
+    setIsOptimizing(true);
+    try {
+      const returnTotals = await totalReturnToLot(points, lotCoords, travel, serviceTimes);
+      const stashTotals = await totalStash(points, lotCoords, stashCoords, travel, serviceTimes, finishAtLot);
+      
+      const savedMin = returnTotals.totalMin - stashTotals.totalMin;
+      const savedPct = returnTotals.totalMin > 0 ? (savedMin / returnTotals.totalMin) * 100 : 0;
+      const fitsReturn = returnTotals.totalMin <= 720; // 12 hours
+      const fitsStash = stashTotals.totalMin <= 720;
+
+      setOptimizationResults({
+        returnTotals,
+        stashTotals,
+        savedMin,
+        savedPct,
+        fitsReturn,
+        fitsStash
+      });
+    } catch (error) {
+      console.error('Optimization failed:', error);
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  // Recompute when dependencies change
+  useEffect(() => {
+    computeOptimization();
+  }, [finishAtLot, serviceTimes, points, lotCoords, stashCoords]);
+
+  // Format time display helper
+  const formatTimeDisplay = (minutes: number): string => {
+    if (minutes < 60) return `${Math.round(minutes)}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  };
+
+  // Build Google Maps URLs for optimization
+  const buildReturnUrl = () => {
+    const waypoints: string[] = [];
+    points.forEach(point => {
+      waypoints.push(`${point.lat},${point.lng}`);
+      waypoints.push(`${lotCoords.lat},${lotCoords.lng}`);
+    });
+    return mapsUrl({
+      origin: lotCoords,
+      destination: lotCoords,
+      waypoints: waypoints.slice(0, 24) // Limit to 25 waypoints
+    });
+  };
+
+  const buildStashUrl = () => {
+    const waypoints: string[] = [];
+    points.forEach(point => {
+      waypoints.push(`${point.lat},${point.lng}`);
+      waypoints.push(`${stashCoords.lat},${stashCoords.lng}`);
+    });
+    return mapsUrl({
+      origin: lotCoords,
+      destination: finishAtLot ? lotCoords : stashCoords,
+      waypoints: waypoints.slice(0, 24) // Limit to 25 waypoints
+    });
+  };
 
   // Get cars for selected day
   const getSelectedDayCars = (): TowCard[] => {
@@ -446,6 +588,129 @@ const TowDriver: React.FC = () => {
           </h2>
         </div>
 
+
+        {/* Optimization Bar */}
+        {optimizationResults && (
+          <div className="mb-6">
+            <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-vizla-text-primary">
+                  Optimized Route (20 vehicles)
+                </h3>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2 text-sm text-vizla-text-secondary">
+                    <input
+                      type="checkbox"
+                      checked={finishAtLot}
+                      onChange={(e) => setFinishAtLot(e.target.checked)}
+                      className="w-4 h-4 text-vizla-brand-primary bg-vizla-glass border-vizla-glassBorder rounded focus:ring-vizla-ring-focus"
+                    />
+                    Finish stash at lot
+                  </label>
+                  {!import.meta.env.VITE_GOOGLE_MAPS_KEY && (
+                    <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">
+                      Estimate mode
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Return-to-Lot */}
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Navigation className="w-5 h-5 text-vizla-text-muted" />
+                    <span className="text-sm font-medium text-vizla-text-secondary">Return-to-Lot</span>
+                  </div>
+                  <div className="text-2xl font-bold text-vizla-text-primary">
+                    {formatTimeDisplay(optimizationResults.returnTotals.totalMin)}
+                  </div>
+                  <div className="text-xs text-vizla-text-muted mt-1">
+                    {optimizationResults.fitsReturn ? 'Fits 12h' : `Over by ${formatTimeDisplay(optimizationResults.returnTotals.totalMin - 720)}`}
+                  </div>
+                </div>
+
+                {/* Stash */}
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <ExternalLink className="w-5 h-5 text-vizla-text-muted" />
+                    <span className="text-sm font-medium text-vizla-text-secondary">Stash</span>
+                  </div>
+                  <div className="text-2xl font-bold text-vizla-text-primary">
+                    {formatTimeDisplay(optimizationResults.stashTotals.totalMin)}
+                  </div>
+                  <div className="text-xs text-vizla-text-muted mt-1">
+                    {optimizationResults.fitsStash ? 'Fits 12h' : `Over by ${formatTimeDisplay(optimizationResults.stashTotals.totalMin - 720)}`}
+                  </div>
+                </div>
+
+                {/* Time Saved */}
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Clock className="w-5 h-5 text-vizla-text-muted" />
+                    <span className="text-sm font-medium text-vizla-text-secondary">Time Saved</span>
+                  </div>
+                  <div className="text-2xl font-bold text-green-400">
+                    {formatTimeDisplay(optimizationResults.savedMin)}
+                  </div>
+                  <div className="text-xs text-vizla-text-muted mt-1">
+                    {optimizationResults.savedPct.toFixed(1)}% faster
+                  </div>
+                </div>
+
+                {/* Capacity */}
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Users className="w-5 h-5 text-vizla-text-muted" />
+                    <span className="text-sm font-medium text-vizla-text-secondary">Capacity</span>
+                  </div>
+                  <div className="text-2xl font-bold text-vizla-text-primary">
+                    {Math.round((optimizationResults.stashTotals.totalMin / 720) * 100)}%
+                  </div>
+                  <div className="text-xs text-vizla-text-muted mt-1">
+                    of 12h shift
+                  </div>
+                </div>
+              </div>
+
+              {/* Breakdown */}
+              <div className="mt-6 pt-4 border-t border-vizla-glassBorder">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-vizla-text-muted">Drive time:</span>
+                    <span className="ml-2 text-vizla-text-primary">
+                      {formatTimeDisplay(optimizationResults.stashTotals.driveMin)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-vizla-text-muted">Service time:</span>
+                    <span className="ml-2 text-vizla-text-primary">
+                      {formatTimeDisplay(optimizationResults.stashTotals.serviceMin)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => window.open(buildReturnUrl(), '_blank', 'noopener,noreferrer')}
+                  className="flex-1 flex items-center justify-center gap-2 bg-vizla-brand-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                >
+                  <Navigation className="w-4 h-4" />
+                  Open Google (Return plan)
+                </button>
+                <button
+                  onClick={() => window.open(buildStashUrl(), '_blank', 'noopener,noreferrer')}
+                  className="flex-1 flex items-center justify-center gap-2 bg-vizla-glass text-vizla-text-secondary px-4 py-2 rounded-lg text-sm font-medium ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open Google (Stash plan)
+                </button>
+              </div>
+            </GlassCard>
+          </div>
+        )}
 
         {/* Route Groups */}
         {routeGroups.length > 0 && (
