@@ -69,11 +69,9 @@ function coerceToNumber(value: string): number {
 
 /**
  * Load and parse vizla-dashboard.csv
- * Falls back to Maryland Dispatch Sheet data if CSV not found
  */
 export async function loadVizlaDashboard(): Promise<VizRow[]> {
   try {
-    // Try to load the vizla-dashboard.csv first
     const response = await fetch('/data/vizla-dashboard.csv');
     if (!response.ok) {
       throw new Error(`Failed to fetch CSV: ${response.status} ${response.statusText}`);
@@ -119,35 +117,8 @@ export async function loadVizlaDashboard(): Promise<VizRow[]> {
       };
     });
   } catch (error) {
-    console.warn('⚠️ vizla-dashboard.csv not found, falling back to Maryland Dispatch Sheet data');
-    
-    // Fallback to Maryland Dispatch Sheet data
-    try {
-      const { loadTowCars } = await import('@/lib/data/driverSource');
-      const towCars = await loadTowCars();
-      
-      // Convert TowCar data to VizRow format
-      const convertedRows: VizRow[] = towCars.map(car => ({
-        market: 'Maryland',
-        status: 'Located',
-        client: car.client,
-        zone: car.city,
-        drivers: {
-          'Tow Driver 1': 1, // Each car counts as 1 for the first driver
-          'Tow Driver 2': 0,
-          'Tow Driver 3': 0,
-          'Tow Driver 4': 0
-        }
-      }));
-      
-      console.log('📊 Converted Maryland Dispatch Sheet data:', convertedRows.length, 'rows');
-      console.log('📊 Sample converted data:', convertedRows.slice(0, 2));
-      
-      return convertedRows;
-    } catch (fallbackError) {
-      console.error('❌ Error loading fallback data:', fallbackError);
-      throw new Error('Failed to load any data source');
-    }
+    console.error('❌ Error loading vizla-dashboard.csv:', error);
+    throw error;
   }
 }
 

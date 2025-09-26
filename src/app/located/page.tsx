@@ -19,6 +19,7 @@ import {
   type VizFilters,
   type PivotCell
 } from '@/lib/csv/vizlaDashboard';
+import { loadTowCars } from '@/lib/data/driverSource';
 import { 
   loadPalettePreference, 
   savePalettePreference, 
@@ -62,11 +63,31 @@ const LocatedPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('🔄 Loading vizla-dashboard.csv...');
-      const loadedData = await loadVizlaDashboard();
-      console.log('✅ Loaded data:', loadedData.length, 'rows');
-      console.log('📊 Sample data:', loadedData.slice(0, 2));
-      setData(loadedData);
+      console.log('🔄 Loading real data from Maryland Dispatch Sheet...');
+      
+      // Load both datasets
+      const [vizlaData, towCarsData] = await Promise.all([
+        loadVizlaDashboard().catch(() => []), // Fallback to empty array if CSV not found
+        loadTowCars().catch(() => [])  // Load real tow car data
+      ]);
+      
+      // Convert tow cars to VizRow format for charts
+      const convertedData = towCarsData.map(car => ({
+        client: car.client,
+        zone: car.city, // Use city as zone
+        driver: 'GPS', // Default driver type
+        count: 1, // Each car counts as 1
+        market: car.city, // Use city as market
+        status: 'Located'
+      }));
+      
+      // Combine both datasets
+      const allData = [...vizlaData, ...convertedData];
+      
+      console.log('✅ Loaded data:', allData.length, 'rows');
+      console.log('📊 Vizla data:', vizlaData.length, 'rows');
+      console.log('📊 Tow cars data:', convertedData.length, 'rows');
+      setData(allData);
     } catch (err) {
       console.error('❌ Error loading data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -153,7 +174,7 @@ const LocatedPage: React.FC = () => {
                     Located — Client × Zone × Driver
                   </h1>
                          <p className="text-sm text-vizla-text-secondary mt-1">
-                           Real data from Maryland Dispatch Sheet
+                           Real data from Maryland Dispatch Sheet + vizla-dashboard.csv
                          </p>
                 </div>
               </div>
