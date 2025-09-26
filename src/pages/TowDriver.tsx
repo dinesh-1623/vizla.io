@@ -11,7 +11,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS, type TowCard } from '@/app/tow-driver/data/baltimoreRun';
 import { haversineMiles, type LatLng } from '@/lib/geo';
-import { totalReturnToLot, totalStash, minutesFromMiles, type ServiceTimes, type Point, type TravelFn } from '@/lib/routing';
+import { totalReturnToLot, totalStash, totalHybridPerStop, minutesFromMiles, type ServiceTimes, type Point, type TravelFn, type HybridStep } from '@/lib/routing';
 import { mapsUrl } from '@/lib/gmaps';
 import { VehicleCard } from '@/components/driver/VehicleCard';
 import TowRouteGroupCard from '@/components/driver/TowRouteGroupCard';
@@ -61,13 +61,16 @@ const TowDriver: React.FC = () => {
   const [routeMode, setRouteMode] = useState<'return' | 'stash'>('stash');
   const [isAssumptionsOpen, setIsAssumptionsOpen] = useState(false);
   const [finishAtLot, setFinishAtLot] = useState(true);
+  const [planMode, setPlanMode] = useState<'lot' | 'stash' | 'hybrid'>('hybrid');
   const [optimizationResults, setOptimizationResults] = useState<{
     returnTotals: { driveMin: number; serviceMin: number; totalMin: number };
     stashTotals: { driveMin: number; serviceMin: number; totalMin: number };
+    hybridTotals: { driveMin: number; serviceMin: number; totalMin: number; steps: HybridStep[] };
     savedMin: number;
     savedPct: number;
     fitsReturn: boolean;
     fitsStash: boolean;
+    fitsHybrid: boolean;
   } | null>(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
   
@@ -142,19 +145,26 @@ const TowDriver: React.FC = () => {
     try {
       const returnTotals = await totalReturnToLot(points, lotCoords, travel, serviceTimes);
       const stashTotals = await totalStash(points, lotCoords, stashCoords, travel, serviceTimes, finishAtLot);
+      const hybridTotals = await totalHybridPerStop(points, lotCoords, stashCoords, travel, serviceTimes, finishAtLot);
       
-      const savedMin = returnTotals.totalMin - stashTotals.totalMin;
+      // Calculate savings vs Return-to-Lot for the active plan
+      const activeTotals = planMode === 'lot' ? returnTotals : planMode === 'stash' ? stashTotals : hybridTotals;
+      const savedMin = returnTotals.totalMin - activeTotals.totalMin;
       const savedPct = returnTotals.totalMin > 0 ? (savedMin / returnTotals.totalMin) * 100 : 0;
+      
       const fitsReturn = returnTotals.totalMin <= 720; // 12 hours
       const fitsStash = stashTotals.totalMin <= 720;
+      const fitsHybrid = hybridTotals.totalMin <= 720;
 
       setOptimizationResults({
         returnTotals,
         stashTotals,
+        hybridTotals,
         savedMin,
         savedPct,
         fitsReturn,
-        fitsStash
+        fitsStash,
+        fitsHybrid
       });
     } catch (error) {
       console.error('Optimization failed:', error);
@@ -166,7 +176,7 @@ const TowDriver: React.FC = () => {
   // Recompute when dependencies change
   useEffect(() => {
     computeOptimization();
-  }, [finishAtLot, serviceTimes, points, lotCoords, stashCoords]);
+  }, [finishAtLot, serviceTimes, points, lotCoords, stashCoords, planMode]);
 
   // Format time display helper
   const formatTimeDisplay = (minutes: number): string => {
@@ -201,6 +211,37 @@ const TowDriver: React.FC = () => {
       destination: finishAtLot ? lotCoords : stashCoords,
       waypoints: waypoints.slice(0, 24) // Limit to 25 waypoints
     });
+  };
+
+  const buildHybridUrl = () => {
+    if (!optimizationResults?.hybridTotals.steps) return '';
+    
+    const waypoints: string[] = [];
+    optimizationResults.hybridTotals.steps.forEach(step => {
+      const car = points.find(p => p.id === step.carId);
+      if (car) {
+        waypoints.push(`${car.lat},${car.lng}`);
+        waypoints.push(step.drop === 'lot' ? `${lotCoords.lat},${lotCoords.lng}` : `${stashCoords.lat},${stashCoords.lng}`);
+      }
+    });
+    
+    const lastStep = optimizationResults.hybridTotals.steps[optimizationResults.hybridTotals.steps.length - 1];
+    const destination = finishAtLot ? lotCoords : (lastStep?.drop === 'stash' ? stashCoords : lotCoords);
+    
+    return mapsUrl({
+      origin: lotCoords,
+      destination,
+      waypoints: waypoints.slice(0, 24) // Limit to 25 waypoints
+    });
+  };
+
+  const buildSelectedPlanUrl = () => {
+    switch (planMode) {
+      case 'lot': return buildReturnUrl();
+      case 'stash': return buildStashUrl();
+      case 'hybrid': return buildHybridUrl();
+      default: return '';
+    }
   };
 
   // Get cars for selected day
@@ -615,39 +656,60 @@ const TowDriver: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {/* Return-to-Lot */}
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Navigation className="w-5 h-5 text-vizla-text-muted" />
-                    <span className="text-sm font-medium text-vizla-text-secondary">Return-to-Lot</span>
-                  </div>
-                  <div className="text-2xl font-bold text-vizla-text-primary">
-                    {formatTimeDisplay(optimizationResults.returnTotals.totalMin)}
-                  </div>
-                  <div className="text-xs text-vizla-text-muted mt-1">
-                    {optimizationResults.fitsReturn ? 'Fits 12h' : `Over by ${formatTimeDisplay(optimizationResults.returnTotals.totalMin - 720)}`}
-                  </div>
+              {/* Plan Mode Selector */}
+              <div className="mb-6">
+                <div className="flex bg-vizla-glass rounded-lg p-1 ring-1 ring-vizla-glassBorder">
+                  {[
+                    { key: 'lot', label: 'Return-to-Lot' },
+                    { key: 'stash', label: 'Return-to-Stash' },
+                    { key: 'hybrid', label: 'Optimized (per stop)' }
+                  ].map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => setPlanMode(key as 'lot' | 'stash' | 'hybrid')}
+                      className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus ${
+                        planMode === key
+                          ? 'bg-vizla-brand-primary text-white'
+                          : 'text-vizla-text-secondary hover:text-vizla-text-primary hover:bg-vizla-glassElev'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                {/* Stash */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Total Time */}
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <ExternalLink className="w-5 h-5 text-vizla-text-muted" />
-                    <span className="text-sm font-medium text-vizla-text-secondary">Stash</span>
+                    <Clock className="w-5 h-5 text-vizla-text-muted" />
+                    <span className="text-sm font-medium text-vizla-text-secondary">Total Time</span>
                   </div>
                   <div className="text-2xl font-bold text-vizla-text-primary">
-                    {formatTimeDisplay(optimizationResults.stashTotals.totalMin)}
+                    {formatTimeDisplay(
+                      planMode === 'lot' ? optimizationResults.returnTotals.totalMin :
+                      planMode === 'stash' ? optimizationResults.stashTotals.totalMin :
+                      optimizationResults.hybridTotals.totalMin
+                    )}
                   </div>
                   <div className="text-xs text-vizla-text-muted mt-1">
-                    {optimizationResults.fitsStash ? 'Fits 12h' : `Over by ${formatTimeDisplay(optimizationResults.stashTotals.totalMin - 720)}`}
+                    {(() => {
+                      const activeFits = planMode === 'lot' ? optimizationResults.fitsReturn :
+                                       planMode === 'stash' ? optimizationResults.fitsStash :
+                                       optimizationResults.fitsHybrid;
+                      const activeTotal = planMode === 'lot' ? optimizationResults.returnTotals.totalMin :
+                                        planMode === 'stash' ? optimizationResults.stashTotals.totalMin :
+                                        optimizationResults.hybridTotals.totalMin;
+                      return activeFits ? 'Fits 12h' : `Over by ${formatTimeDisplay(activeTotal - 720)}`;
+                    })()}
                   </div>
                 </div>
 
                 {/* Time Saved */}
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <Clock className="w-5 h-5 text-vizla-text-muted" />
+                    <Navigation className="w-5 h-5 text-vizla-text-muted" />
                     <span className="text-sm font-medium text-vizla-text-secondary">Time Saved</span>
                   </div>
                   <div className="text-2xl font-bold text-green-400">
@@ -658,54 +720,67 @@ const TowDriver: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Capacity */}
+                {/* Drive Time */}
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <ExternalLink className="w-5 h-5 text-vizla-text-muted" />
+                    <span className="text-sm font-medium text-vizla-text-secondary">Drive Time</span>
+                  </div>
+                  <div className="text-2xl font-bold text-vizla-text-primary">
+                    {formatTimeDisplay(
+                      planMode === 'lot' ? optimizationResults.returnTotals.driveMin :
+                      planMode === 'stash' ? optimizationResults.stashTotals.driveMin :
+                      optimizationResults.hybridTotals.driveMin
+                    )}
+                  </div>
+                  <div className="text-xs text-vizla-text-muted mt-1">
+                    Travel time
+                  </div>
+                </div>
+
+                {/* Service Time */}
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-2">
                     <Users className="w-5 h-5 text-vizla-text-muted" />
-                    <span className="text-sm font-medium text-vizla-text-secondary">Capacity</span>
+                    <span className="text-sm font-medium text-vizla-text-secondary">Service Time</span>
                   </div>
                   <div className="text-2xl font-bold text-vizla-text-primary">
-                    {Math.round((optimizationResults.stashTotals.totalMin / 720) * 100)}%
+                    {formatTimeDisplay(
+                      planMode === 'lot' ? optimizationResults.returnTotals.serviceMin :
+                      planMode === 'stash' ? optimizationResults.stashTotals.serviceMin :
+                      optimizationResults.hybridTotals.serviceMin
+                    )}
                   </div>
                   <div className="text-xs text-vizla-text-muted mt-1">
-                    of 12h shift
+                    Hookup + drop
                   </div>
                 </div>
               </div>
 
-              {/* Breakdown */}
-              <div className="mt-6 pt-4 border-t border-vizla-glassBorder">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-vizla-text-muted">Drive time:</span>
-                    <span className="ml-2 text-vizla-text-primary">
-                      {formatTimeDisplay(optimizationResults.stashTotals.driveMin)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-vizla-text-muted">Service time:</span>
-                    <span className="ml-2 text-vizla-text-primary">
-                      {formatTimeDisplay(optimizationResults.stashTotals.serviceMin)}
-                    </span>
+              {/* Hybrid Plan Details */}
+              {planMode === 'hybrid' && optimizationResults.hybridTotals.steps && (
+                <div className="mt-6 pt-4 border-t border-vizla-glassBorder">
+                  <div className="text-sm text-vizla-text-muted mb-3">
+                    Per-stop decisions: {optimizationResults.hybridTotals.steps.filter(s => s.drop === 'lot').length} to lot, {optimizationResults.hybridTotals.steps.filter(s => s.drop === 'stash').length} to stash
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Action Buttons */}
               <div className="mt-6 flex gap-3">
                 <button
-                  onClick={() => window.open(buildReturnUrl(), '_blank', 'noopener,noreferrer')}
+                  onClick={() => window.open(buildSelectedPlanUrl(), '_blank', 'noopener,noreferrer')}
                   className="flex-1 flex items-center justify-center gap-2 bg-vizla-brand-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
                 >
                   <Navigation className="w-4 h-4" />
-                  Open Google (Return plan)
+                  Open Google (selected plan)
                 </button>
                 <button
-                  onClick={() => window.open(buildStashUrl(), '_blank', 'noopener,noreferrer')}
-                  className="flex-1 flex items-center justify-center gap-2 bg-vizla-glass text-vizla-text-secondary px-4 py-2 rounded-lg text-sm font-medium ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                  onClick={() => navigator.clipboard.writeText(buildSelectedPlanUrl())}
+                  className="flex items-center justify-center gap-2 bg-vizla-glass text-vizla-text-secondary px-4 py-2 rounded-lg text-sm font-medium ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Open Google (Stash plan)
+                  Copy link
                 </button>
               </div>
             </GlassCard>
