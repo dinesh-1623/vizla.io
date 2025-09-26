@@ -12,6 +12,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTowCars } from '@/hooks/useTowCars';
 import { useRouteGroups } from '@/hooks/useRouteGroups';
 import { TowCar } from '@/lib/data/driverSource';
+import { POC_POINTS, STORAGE_LOT, STASH_SITE, geocodePoints, clusterPoints, type GeocodedPoint } from '@/lib/data/pocBaltimore';
 import { VehicleCard } from '@/components/driver/VehicleCard';
 import TowRouteGroupCard from '@/components/driver/TowRouteGroupCard';
 import AssumptionsDrawer from '@/components/owner/AssumptionsDrawer';
@@ -21,7 +22,7 @@ import { X, ArrowLeft, Settings, RefreshCw, AlertCircle } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { FilterChips } from '@/components/ui/FilterChips';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const PAGE_SIZE = 12; // cards per auto-load
 
@@ -65,9 +66,27 @@ const TowDriver: React.FC = () => {
   const [showTop, setShowTop] = useState(false);
   const [routeMode, setRouteMode] = useState<'return' | 'stash'>('stash');
   const [isAssumptionsOpen, setIsAssumptionsOpen] = useState(false);
+  const [showPOCData, setShowPOCData] = useState(false);
+  const [pocClusters, setPocClusters] = useState<any[]>([]);
+  const [pocLoading, setPocLoading] = useState(false);
   
   // Assumptions management
   const { assumptions, updateAssumptions } = useAssumptions();
+
+  // Load POC data
+  const loadPOCData = async () => {
+    setPocLoading(true);
+    try {
+      const geocoded = await geocodePoints(POC_POINTS);
+      const clusters = await clusterPoints(geocoded, 2, true); // 2 drivers, finish at lot
+      setPocClusters(clusters);
+      setShowPOCData(true);
+    } catch (error) {
+      console.error('Failed to load POC data:', error);
+    } finally {
+      setPocLoading(false);
+    }
+  };
 
   // Check for demo mode and repeat functionality
   const [searchParams] = useSearchParams();
@@ -274,25 +293,34 @@ const TowDriver: React.FC = () => {
               <p className="text-sm text-vizla-text-muted">Data: BANK + GPS (A3–S24)</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={reload}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vizla-glass text-vizla-text-secondary ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-              aria-label="Refresh Data"
-              disabled={isLoading}
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              <span className="text-sm font-medium">Refresh</span>
-            </button>
-            <button
-              onClick={() => setIsAssumptionsOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vizla-glass text-vizla-text-secondary ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev hover:text-vizla-text-primary transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus"
-              aria-label="Open route assumptions"
-            >
-              <Settings className="w-4 h-4" />
-              <span className="text-sm font-medium">Assumptions</span>
-            </button>
-          </div>
+                 <div className="flex items-center gap-2">
+                   <button
+                     onClick={reload}
+                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vizla-glass text-vizla-text-secondary ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                     aria-label="Refresh Data"
+                     disabled={isLoading}
+                   >
+                     <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                     <span className="text-sm font-medium">Refresh</span>
+                   </button>
+                   <button
+                     onClick={loadPOCData}
+                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vizla-brand-primary text-white ring-1 ring-vizla-brand-primary hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                     aria-label="Load Baltimore POC Data"
+                     disabled={pocLoading}
+                   >
+                     <RefreshCw className={`w-4 h-4 ${pocLoading ? 'animate-spin' : ''}`} />
+                     <span className="text-sm font-medium">Baltimore POC</span>
+                   </button>
+                   <button
+                     onClick={() => setIsAssumptionsOpen(true)}
+                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vizla-glass text-vizla-text-secondary ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev hover:text-vizla-text-primary transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus"
+                     aria-label="Open route assumptions"
+                   >
+                     <Settings className="w-4 h-4" />
+                     <span className="text-sm font-medium">Assumptions</span>
+                   </button>
+                 </div>
         </div>
       </header>
 
@@ -460,6 +488,67 @@ const TowDriver: React.FC = () => {
             })()}
           </h2>
         </div>
+
+        {/* Baltimore POC Data */}
+        {showPOCData && pocClusters.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-md font-medium text-neutral-100">Baltimore POC Clusters</h3>
+              <button
+                onClick={() => setShowPOCData(false)}
+                className="text-neutral-400 hover:text-neutral-100 text-sm px-2 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vizla-ring-focus"
+              >
+                Hide POC Data
+              </button>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {pocClusters.map((cluster, index) => (
+                <GlassCard key={index} className="backdrop-blur-md ring-1 ring-white/10">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-lg font-medium text-neutral-100">
+                        POC Cluster {cluster.id}
+                      </h4>
+                      <span className="text-sm text-neutral-400">
+                        {cluster.points.length} vehicles
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <div className="text-sm text-neutral-400 mb-1">Return Route</div>
+                        <div className="text-lg font-semibold text-neutral-100">
+                          {Math.round(cluster.returnTime / 60)}h {cluster.returnTime % 60}m
+                        </div>
+                      </div>
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <div className="text-sm text-neutral-400 mb-1">Stash Route</div>
+                        <div className="text-lg font-semibold text-neutral-100">
+                          {Math.round(cluster.stashTime / 60)}h {cluster.stashTime % 60}m
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => window.open(cluster.returnUrl, '_blank', 'noopener,noreferrer')}
+                        className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                      >
+                        Return Route
+                      </button>
+                      <button
+                        onClick={() => window.open(cluster.stashUrl, '_blank', 'noopener,noreferrer')}
+                        className="flex-1 bg-white/10 text-neutral-100 px-4 py-2 rounded-lg text-sm font-medium ring-1 ring-white/20 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                      >
+                        Stash Route
+                      </button>
+                    </div>
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Route Groups */}
         {routeGroups.length > 0 && (
