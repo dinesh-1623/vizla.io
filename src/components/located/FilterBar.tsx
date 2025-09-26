@@ -140,17 +140,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <label className="block text-xs font-medium text-vizla-text-muted uppercase tracking-wider mb-1">
               Chart Type
             </label>
-            <SegmentedToggle
-              options={[
-                { value: 'stacked', label: 'Stacked' },
-                { value: 'grouped', label: 'Grouped' },
-                { value: 'pie', label: 'Pie' },
-                { value: 'line', label: 'Line' },
-                { value: 'area', label: 'Area' }
-              ]}
-              value={chartType}
-              onChange={(value) => onChangeChartType(value as 'stacked' | 'grouped' | 'pie' | 'line' | 'area')}
-            />
+                   <SegmentedToggle
+                     options={[
+                       { value: 'stacked', label: 'Stacked' },
+                       { value: 'grouped', label: 'Grouped' },
+                       { value: 'pie', label: 'Pie' }
+                     ]}
+                     value={chartType}
+                     onChange={(value) => onChangeChartType(value as 'stacked' | 'grouped' | 'pie' | 'line' | 'area')}
+                   />
           </div>
         </div>
       )}

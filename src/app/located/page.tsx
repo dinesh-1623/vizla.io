@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { FilterBar } from '@/components/located/FilterBar';
 import { MatrixView } from '@/components/located/MatrixView';
 import { ChartView } from '@/components/located/ChartView';
@@ -152,9 +152,9 @@ const LocatedPage: React.FC = () => {
                   <h1 className="text-2xl font-bold text-vizla-text-primary">
                     Located — Client × Zone × Driver
                   </h1>
-                  <p className="text-sm text-vizla-text-secondary mt-1">
-                    Mock data from vizla-dashboard.csv
-                  </p>
+                         <p className="text-sm text-vizla-text-secondary mt-1">
+                           Real data from Maryland Dispatch Sheet
+                         </p>
                 </div>
               </div>
 
