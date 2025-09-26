@@ -75,10 +75,11 @@ const LocatedPage: React.FC = () => {
       const convertedData = towCarsData.map(car => ({
         client: car.client,
         zone: car.city, // Use city as zone
-        driver: 'GPS', // Default driver type
-        count: 1, // Each car counts as 1
         market: car.city, // Use city as market
-        status: 'Located'
+        status: 'Located',
+        drivers: {
+          'GPS': 1 // Each car counts as 1 for GPS driver
+        }
       }));
       
       // Combine both datasets
