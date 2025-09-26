@@ -171,7 +171,7 @@ const Owner: React.FC = () => {
     });
   }, [selectedDriver, selectedClient, selectedZone, client, zone, timeLocated]);
 
-  // Route grouping
+  // Route grouping - using new logic: Lot → Vehicle → Nearest Lot
   const routeGroups = useMemo(() => {
     return groupNearby(results, 5);
   }, [results]);

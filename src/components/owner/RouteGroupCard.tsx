@@ -172,12 +172,12 @@ const RouteGroupCard: React.FC<RouteGroupCardProps> = ({
       {/* Time comparison stats */}
       <div className="grid grid-cols-2 gap-4">
         <StatTile
-          label="Total Time (Return)"
+          label="Lot → Vehicle → Lot (Return)"
           value={formatTime(timeReturn)}
           className="text-center"
         />
         <StatTile
-          label="Total Time (Stash)"
+          label="Lot → Vehicle → Stash"
           value={formatTime(timeStash)}
           className="text-center"
         />
@@ -188,7 +188,7 @@ const RouteGroupCard: React.FC<RouteGroupCardProps> = ({
         {deltaTime > 0 ? (
           <div className="p-3 rounded-lg bg-vizla-success/10 border border-vizla-success/20">
             <p className="text-sm text-vizla-success font-medium">
-              Stash saves ~{Math.round(deltaTime)} min. You'll finish this group faster and may fit ~{impact.extraTows} extra tow{impact.extraTows !== 1 ? 's' : ''} this shift.
+              Stash saves ~{Math.round(deltaTime)} min. Each vehicle goes to nearest lot after pickup, finishing faster and may fit ~{impact.extraTows} extra tow{impact.extraTows !== 1 ? 's' : ''} this shift.
             </p>
           </div>
         ) : deltaTime < 0 ? (
