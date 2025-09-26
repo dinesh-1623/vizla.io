@@ -22,6 +22,7 @@ import Reports from "./pages/admin/Reports";
 import ActionItems from "./pages/admin/ActionItems";
 import StorageLots from "./pages/admin/StorageLots";
 import LocatedPage from "./app/located/page";
+import BaltimorePOC from "./app/poc/baltimore/page";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/located" element={<LocatedPage />} />
+          <Route path="/poc/baltimore" element={<BaltimorePOC />} />
           <Route path="/tow-driver" element={<TowDriver />} />
           <Route path="/owner" element={<Owner />} />
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
