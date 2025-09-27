@@ -14,6 +14,14 @@ import { haversineMiles, type LatLng } from '@/lib/geo';
 import { totalReturnToLot, totalStash, totalHybridPerStop, minutesFromMiles, type ServiceTimes, type Point, type TravelFn, type HybridStep } from '@/lib/routing';
 import { clusterIntoFourDays } from '@/lib/cluster';
 import { buildRoundTripLot, buildStashChain, buildHybridChainWithCoords } from '@/lib/mapsUrl';
+import { 
+  computeReturnToLot, 
+  computeReturnToStash, 
+  computeOptimizedPerStop,
+  type RouteTotals,
+  type ServiceTimes as RouteServiceTimes,
+  type Point as RoutePoint
+} from '@/lib/routing/routeCalc';
 import { VehicleCard } from '@/components/driver/VehicleCard';
 import TowRouteGroupCard from '@/components/driver/TowRouteGroupCard';
 import AssumptionsDrawer from '@/components/owner/AssumptionsDrawer';
@@ -65,14 +73,14 @@ const TowDriver: React.FC = () => {
   const [finishAtLot, setFinishAtLot] = useState(true);
   const [planMode, setPlanMode] = useState<'lot' | 'stash' | 'hybrid'>('hybrid');
   const [optimizationResults, setOptimizationResults] = useState<{
-    returnTotals: { driveMin: number; serviceMin: number; totalMin: number };
-    stashTotals: { driveMin: number; serviceMin: number; totalMin: number };
-    hybridTotals: { driveMin: number; serviceMin: number; totalMin: number; steps: HybridStep[] };
+    returnTotals: RouteTotals;
+    stashTotals: RouteTotals;
+    optimizedTotals: RouteTotals;
     savedMin: number;
     savedPct: number;
     fitsReturn: boolean;
     fitsStash: boolean;
-    fitsHybrid: boolean;
+    fitsOptimized: boolean;
   } | null>(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
   
@@ -80,7 +88,7 @@ const TowDriver: React.FC = () => {
   const { assumptions, updateAssumptions } = useAssumptions();
 
   // Service times from assumptions
-  const serviceTimes: ServiceTimes = useMemo(() => ({
+  const serviceTimes: RouteServiceTimes = useMemo(() => ({
     hookupMin: assumptions.hookTimeMin || 10,
     dropLotMin: assumptions.unloadTimeMin || 10,
     dropStashMin: assumptions.unloadTimeMin || 10,
@@ -127,8 +135,8 @@ const TowDriver: React.FC = () => {
     };
   }, [travelCache, serviceTimes.cityMph]);
 
-  // Convert TowCards to Points
-  const points: Point[] = useMemo(() => {
+  // Convert TowCards to RoutePoints
+  const points: RoutePoint[] = useMemo(() => {
     return TOW_CARDS.map((card, index) => {
       // Check if address contains coordinates
       const coordMatch = card.fullAddress.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
@@ -169,60 +177,49 @@ const TowDriver: React.FC = () => {
   }, [dayGroups, activeDayIndex]);
 
   // Compute optimization results for current day
-  const computeOptimization = async () => {
+  const computeOptimization = useMemo(() => {
     if (currentDayPoints.length === 0) {
-      setOptimizationResults(null);
-      return;
+      return null;
     }
     
-    setIsOptimizing(true);
-    try {
-      console.log('🔄 Computing optimization for', currentDayPoints.length, 'points');
-      
-      // Compute all three scenarios for the current day's 5 vehicles
-      const [returnTotals, stashTotals, hybridTotals] = await Promise.all([
-        totalReturnToLot(currentDayPoints, lotCoords, travel, serviceTimes),
-        totalStash(currentDayPoints, lotCoords, stashCoords, travel, serviceTimes, finishAtLot),
-        totalHybridPerStop(currentDayPoints, lotCoords, stashCoords, travel, serviceTimes, finishAtLot)
-      ]);
-      
-      console.log('📊 Optimization results:', {
-        returnTotals,
-        stashTotals,
-        hybridTotals
-      });
-      
-      // Calculate savings vs Return-to-Lot for the active plan
-      const activeTotals = planMode === 'lot' ? returnTotals : planMode === 'stash' ? stashTotals : hybridTotals;
-      const savedMin = Math.max(0, returnTotals.totalMin - activeTotals.totalMin);
-      const savedPct = returnTotals.totalMin > 0 ? (savedMin / returnTotals.totalMin) * 100 : 0;
-      
-      const fitsReturn = returnTotals.totalMin <= 720; // 12 hours
-      const fitsStash = stashTotals.totalMin <= 720;
-      const fitsHybrid = hybridTotals.totalMin <= 720;
+    console.log('🔄 Computing optimization for', currentDayPoints.length, 'points');
+    
+    // Compute all three scenarios for the current day's 5 vehicles
+    const returnTotals = computeReturnToLot(currentDayPoints, lotCoords, serviceTimes);
+    const stashTotals = computeReturnToStash(currentDayPoints, lotCoords, stashCoords, finishAtLot, serviceTimes);
+    const optimizedTotals = computeOptimizedPerStop(currentDayPoints, lotCoords, stashCoords, finishAtLot, serviceTimes);
+    
+    console.log('📊 Optimization results:', {
+      returnTotals,
+      stashTotals,
+      optimizedTotals
+    });
+    
+    // Calculate savings: optimized vs the better of return-to-lot or return-to-stash
+    const baselineMin = Math.min(returnTotals.totalMin, stashTotals.totalMin);
+    const savedMin = Math.max(0, baselineMin - optimizedTotals.totalMin);
+    const savedPct = baselineMin > 0 ? (savedMin / baselineMin) * 100 : 0;
+    
+    const fitsReturn = returnTotals.totalMin <= 720; // 12 hours
+    const fitsStash = stashTotals.totalMin <= 720;
+    const fitsOptimized = optimizedTotals.totalMin <= 720;
 
-      setOptimizationResults({
-        returnTotals,
-        stashTotals,
-        hybridTotals,
-        savedMin,
-        savedPct,
-        fitsReturn,
-        fitsStash,
-        fitsHybrid
-      });
-    } catch (error) {
-      console.error('❌ Optimization failed:', error);
-      setOptimizationResults(null);
-    } finally {
-      setIsOptimizing(false);
-    }
-  };
+    return {
+      returnTotals,
+      stashTotals,
+      optimizedTotals,
+      savedMin,
+      savedPct,
+      fitsReturn,
+      fitsStash,
+      fitsOptimized
+    };
+  }, [currentDayPoints, lotCoords, stashCoords, finishAtLot, serviceTimes]);
 
-  // Recompute when dependencies change
+  // Update optimization results when computation changes
   useEffect(() => {
-    computeOptimization();
-  }, [finishAtLot, serviceTimes, currentDayPoints, lotCoords, stashCoords, planMode]);
+    setOptimizationResults(computeOptimization);
+  }, [computeOptimization]);
 
   // Format time display helper
   const formatTimeDisplay = (minutes: number): string => {
@@ -235,14 +232,15 @@ const TowDriver: React.FC = () => {
   // Build Google Maps URLs for optimization
 
   const buildSelectedPlanUrls = () => {
+    if (!optimizationResults) return [];
+    
     switch (planMode) {
       case 'lot': 
-        return buildRoundTripLot(currentDayPoints, lotCoords);
+        return optimizationResults.returnTotals.segments;
       case 'stash': 
-        return buildStashChain(currentDayPoints, lotCoords, stashCoords, finishAtLot);
+        return optimizationResults.stashTotals.segments;
       case 'hybrid': 
-        if (!optimizationResults?.hybridTotals.steps) return [];
-        return buildHybridChainWithCoords(optimizationResults.hybridTotals.steps, currentDayPoints, lotCoords, stashCoords, finishAtLot);
+        return optimizationResults.optimizedTotals.segments;
       default: 
         return [];
     }
@@ -703,17 +701,17 @@ const TowDriver: React.FC = () => {
                     {formatTimeDisplay(
                       planMode === 'lot' ? optimizationResults.returnTotals.totalMin :
                       planMode === 'stash' ? optimizationResults.stashTotals.totalMin :
-                      optimizationResults.hybridTotals.totalMin
+                      optimizationResults.optimizedTotals.totalMin
                     )}
                   </div>
                   <div className="text-xs text-vizla-text-muted mt-1">
                     {(() => {
                       const activeFits = planMode === 'lot' ? optimizationResults.fitsReturn :
                                        planMode === 'stash' ? optimizationResults.fitsStash :
-                                       optimizationResults.fitsHybrid;
+                                       optimizationResults.fitsOptimized;
                       const activeTotal = planMode === 'lot' ? optimizationResults.returnTotals.totalMin :
                                         planMode === 'stash' ? optimizationResults.stashTotals.totalMin :
-                                        optimizationResults.hybridTotals.totalMin;
+                                        optimizationResults.optimizedTotals.totalMin;
                       return activeFits ? 'Fits 12h' : `Over by ${formatTimeDisplay(activeTotal - 720)}`;
                     })()}
                   </div>
@@ -741,9 +739,9 @@ const TowDriver: React.FC = () => {
                   </div>
                   <div className="text-2xl font-bold text-vizla-text-primary">
                     {formatTimeDisplay(
-                      planMode === 'lot' ? optimizationResults.returnTotals.driveMin :
-                      planMode === 'stash' ? optimizationResults.stashTotals.driveMin :
-                      optimizationResults.hybridTotals.driveMin
+                      planMode === 'lot' ? optimizationResults.returnTotals.travelMin :
+                      planMode === 'stash' ? optimizationResults.stashTotals.travelMin :
+                      optimizationResults.optimizedTotals.travelMin
                     )}
                   </div>
                   <div className="text-xs text-vizla-text-muted mt-1">
@@ -761,7 +759,7 @@ const TowDriver: React.FC = () => {
                     {formatTimeDisplay(
                       planMode === 'lot' ? optimizationResults.returnTotals.serviceMin :
                       planMode === 'stash' ? optimizationResults.stashTotals.serviceMin :
-                      optimizationResults.hybridTotals.serviceMin
+                      optimizationResults.optimizedTotals.serviceMin
                     )}
                   </div>
                   <div className="text-xs text-vizla-text-muted mt-1">
@@ -770,11 +768,11 @@ const TowDriver: React.FC = () => {
                 </div>
               </div>
 
-              {/* Hybrid Plan Details */}
-              {planMode === 'hybrid' && optimizationResults.hybridTotals.steps && (
+              {/* Optimized Plan Details */}
+              {planMode === 'hybrid' && optimizationResults.optimizedTotals.decisions && (
                 <div className="mt-6 pt-4 border-t border-vizla-glassBorder">
                   <div className="text-sm text-vizla-text-muted mb-3">
-                    Per-stop decisions: {optimizationResults.hybridTotals.steps.filter(s => s.drop === 'lot').length} to lot, {optimizationResults.hybridTotals.steps.filter(s => s.drop === 'stash').length} to stash
+                    Per-stop decisions: {optimizationResults.optimizedTotals.decisions.toLot} to lot, {optimizationResults.optimizedTotals.decisions.toStash} to stash
                   </div>
                 </div>
               )}
@@ -784,7 +782,7 @@ const TowDriver: React.FC = () => {
                 {buildSelectedPlanUrls().map((route, index) => (
                   <button
                     key={index}
-                    onClick={() => window.open(route.url, '_blank', 'noopener,noreferrer')}
+                    onClick={() => window.open(route.gmapsUrl, '_blank', 'noopener,noreferrer')}
                     className="w-full flex items-center justify-center gap-2 bg-vizla-brand-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
                   >
                     <Navigation className="w-4 h-4" />
