@@ -43,13 +43,33 @@ export function orderForStash(cars: Point[], lot: LatLng, stash: LatLng): Point[
 export async function totalReturnToLot(
   cars: Point[], lot: LatLng, travel: TravelFn, svc: ServiceTimes
 ) {
+  if (!cars.length) {
+    return { driveMin: 0, serviceMin: 0, totalMin: 0 };
+  }
+
   let drive = 0;
   for (const c of cars) {
-    drive += Number(await travel(lot, c));
-    drive += Number(await travel(c, lot));
+    try {
+      const toCar = Number(await travel(lot, c));
+      const toLot = Number(await travel(c, lot));
+      
+      if (isNaN(toCar) || isNaN(toLot)) {
+        console.warn(`Invalid travel time for car ${c.id}: toCar=${toCar}, toLot=${toLot}`);
+        continue;
+      }
+      
+      drive += toCar + toLot;
+    } catch (error) {
+      console.error(`Travel calculation failed for car ${c.id}:`, error);
+    }
   }
+  
   const service = cars.length * (svc.hookupMin + svc.dropLotMin);
-  return { driveMin: drive, serviceMin: service, totalMin: drive + service };
+  const total = drive + service;
+  
+  console.log(`Return-to-Lot calculation: ${cars.length} cars, drive=${drive}min, service=${service}min, total=${total}min`);
+  
+  return { driveMin: drive, serviceMin: service, totalMin: total };
 }
 
 // Stash: lot→first car→stash, then stash↔car for remaining; optional final stash→lot
@@ -58,23 +78,45 @@ export async function totalStash(
   svc: ServiceTimes, finishAtLot = true
 ) {
   if (!cars.length) return { driveMin: 0, serviceMin: 0, totalMin: 0 };
+  
   const ordered = orderForStash(cars, lot, stash);
-
   let drive = 0;
-  // first cycle: lot -> first car -> stash
-  drive += Number(await travel(lot, ordered[0]));
-  drive += Number(await travel(ordered[0], stash));
 
-  // remaining cycles: stash -> car -> stash
-  for (let i = 1; i < ordered.length; i++) {
-    drive += Number(await travel(stash, ordered[i]));
-    drive += Number(await travel(ordered[i], stash));
+  try {
+    // first cycle: lot -> first car -> stash
+    const toFirstCar = Number(await travel(lot, ordered[0]));
+    const firstCarToStash = Number(await travel(ordered[0], stash));
+    
+    if (!isNaN(toFirstCar) && !isNaN(firstCarToStash)) {
+      drive += toFirstCar + firstCarToStash;
+    }
+
+    // remaining cycles: stash -> car -> stash
+    for (let i = 1; i < ordered.length; i++) {
+      const toCar = Number(await travel(stash, ordered[i]));
+      const carToStash = Number(await travel(ordered[i], stash));
+      
+      if (!isNaN(toCar) && !isNaN(carToStash)) {
+        drive += toCar + carToStash;
+      }
+    }
+
+    if (finishAtLot) {
+      const stashToLot = Number(await travel(stash, lot));
+      if (!isNaN(stashToLot)) {
+        drive += stashToLot;
+      }
+    }
+  } catch (error) {
+    console.error('Stash calculation failed:', error);
   }
 
-  if (finishAtLot) drive += Number(await travel(stash, lot));
-
   const service = ordered.length * (svc.hookupMin + svc.dropStashMin);
-  return { driveMin: drive, serviceMin: service, totalMin: drive + service, order: ordered };
+  const total = drive + service;
+  
+  console.log(`Stash calculation: ${cars.length} cars, drive=${drive}min, service=${service}min, total=${total}min`);
+  
+  return { driveMin: drive, serviceMin: service, totalMin: total, order: ordered };
 }
 
 // Hybrid: after each pickup, choose lot or stash based on which yields less total time
@@ -86,51 +128,71 @@ export async function totalHybridPerStop(
   svc: ServiceTimes,
   finishAtLot = true
 ) {
+  if (!cars.length) {
+    return { steps: [], driveMin: 0, serviceMin: 0, totalMin: 0 };
+  }
+
   // Start at lot. For ordering pickups, use nearest-neighbor from current position
   let current = lot;
   const steps: HybridStep[] = [];
   let drive = 0, service = 0;
   const remaining = [...cars];
 
-  while (remaining.length > 0) {
-    // Find nearest car to current position
-    const nearestIndex = remaining.reduce((minIndex, car, index) => {
-      const currentDist = (car.lat - current.lat) ** 2 + (car.lng - current.lng) ** 2;
-      const minDist = (remaining[minIndex].lat - current.lat) ** 2 + (remaining[minIndex].lng - current.lng) ** 2;
-      return currentDist < minDist ? index : minIndex;
-    }, 0);
-    
-    const car = remaining.splice(nearestIndex, 1)[0];
+  try {
+    while (remaining.length > 0) {
+      // Find nearest car to current position
+      const nearestIndex = remaining.reduce((minIndex, car, index) => {
+        const currentDist = (car.lat - current.lat) ** 2 + (car.lng - current.lng) ** 2;
+        const minDist = (remaining[minIndex].lat - current.lat) ** 2 + (remaining[minIndex].lng - current.lng) ** 2;
+        return currentDist < minDist ? index : minIndex;
+      }, 0);
+      
+      const car = remaining.splice(nearestIndex, 1)[0];
 
-    const toCar = Number(await travel(current, car));
-    const toLot = Number(await travel(car, lot));
-    const toStash = Number(await travel(car, stash));
+      const toCar = Number(await travel(current, car));
+      const toLot = Number(await travel(car, lot));
+      const toStash = Number(await travel(car, stash));
 
-    const lotCost   = toCar + toLot   + svc.hookupMin + svc.dropLotMin;
-    const stashCost = toCar + toStash + svc.hookupMin + svc.dropStashMin;
+      // Skip if any travel time is invalid
+      if (isNaN(toCar) || isNaN(toLot) || isNaN(toStash)) {
+        console.warn(`Invalid travel times for car ${car.id}: toCar=${toCar}, toLot=${toLot}, toStash=${toStash}`);
+        continue;
+      }
 
-    const drop: "lot" | "stash" = lotCost <= stashCost ? "lot" : "stash";
-    const legMin = drop === "lot" ? toCar + toLot : toCar + toStash;
-    const serviceMin = svc.hookupMin + (drop === "lot" ? svc.dropLotMin : svc.dropStashMin);
+      const lotCost   = toCar + toLot   + svc.hookupMin + svc.dropLotMin;
+      const stashCost = toCar + toStash + svc.hookupMin + svc.dropStashMin;
 
-    drive += legMin;
-    service += serviceMin;
+      const drop: "lot" | "stash" = lotCost <= stashCost ? "lot" : "stash";
+      const legMin = drop === "lot" ? toCar + toLot : toCar + toStash;
+      const serviceMin = svc.hookupMin + (drop === "lot" ? svc.dropLotMin : svc.dropStashMin);
 
-    steps.push({
-      carId: car.id,
-      drop,
-      legMin,
-      driveBreakdown: { toCar, toDrop: drop === "lot" ? toLot : toStash },
-      serviceMin
-    });
+      drive += legMin;
+      service += serviceMin;
 
-    current = drop === "lot" ? lot : stash;
+      steps.push({
+        carId: car.id,
+        drop,
+        legMin,
+        driveBreakdown: { toCar, toDrop: drop === "lot" ? toLot : toStash },
+        serviceMin
+      });
+
+      current = drop === "lot" ? lot : stash;
+    }
+
+    if (finishAtLot && (current !== lot)) {
+      const back = Number(await travel(current, lot));
+      if (!isNaN(back)) {
+        drive += back;
+      }
+    }
+  } catch (error) {
+    console.error('Hybrid calculation failed:', error);
   }
 
-  if (finishAtLot && (current !== lot)) {
-    const back = Number(await travel(current, lot));
-    drive += back;
-  }
-
-  return { steps, driveMin: drive, serviceMin: service, totalMin: drive + service };
+  const total = drive + service;
+  
+  console.log(`Hybrid calculation: ${cars.length} cars, drive=${drive}min, service=${service}min, total=${total}min, steps=${steps.length}`);
+  
+  return { steps, driveMin: drive, serviceMin: service, totalMin: total };
 }

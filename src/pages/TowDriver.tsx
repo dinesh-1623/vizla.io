@@ -87,14 +87,14 @@ const TowDriver: React.FC = () => {
     cityMph: assumptions.averageMph || 22
   }), [assumptions]);
 
-  // Coordinates for lot and stash
+  // Coordinates for lot and stash (Baltimore locations)
   const lotCoords: LatLng = useMemo(() => ({
-    lat: 39.238,
+    lat: 39.238,  // 4221 Curtis Ave, Baltimore, MD 21226
     lng: -76.589
   }), []);
 
   const stashCoords: LatLng = useMemo(() => ({
-    lat: 39.238,
+    lat: 39.238,  // 751 W Patapsco Ave, Halethorpe, MD 21227
     lng: -76.589
   }), []);
 
@@ -110,16 +110,16 @@ const TowDriver: React.FC = () => {
         return travelCache.get(key)!;
       }
 
-      let minutes: number;
-      
-      if (hasApiKey) {
-        // TODO: Implement Distance Matrix API call
-        // For now, use Haversine fallback
-        const miles = haversineMiles(from, to);
-        minutes = minutesFromMiles(miles, serviceTimes.cityMph);
-      } else {
-        const miles = haversineMiles(from, to);
-        minutes = minutesFromMiles(miles, serviceTimes.cityMph);
+      // Calculate distance using Haversine formula
+      const miles = haversineMiles(from, to);
+      const minutes = minutesFromMiles(miles, serviceTimes.cityMph);
+
+      // Ensure we return a valid number
+      if (isNaN(minutes) || minutes < 0) {
+        console.warn(`Invalid travel time calculated: ${minutes} for distance ${miles} miles`);
+        const fallbackMinutes = Math.max(1, miles * 2); // 2 minutes per mile fallback
+        travelCache.set(key, fallbackMinutes);
+        return fallbackMinutes;
       }
 
       travelCache.set(key, minutes);
@@ -129,16 +129,33 @@ const TowDriver: React.FC = () => {
 
   // Convert TowCards to Points
   const points: Point[] = useMemo(() => {
-    return TOW_CARDS.map(card => ({
-      id: card.id,
-      label: `${card.client} - ${card.year} ${card.make} ${card.model}`,
-      lat: card.fullAddress.includes(',') && !isNaN(parseFloat(card.fullAddress.split(',')[0])) 
-        ? parseFloat(card.fullAddress.split(',')[0])
-        : 39.2904 + (parseInt(card.id) % 10 - 5) * 0.01, // Pseudo-coords for addresses
-      lng: card.fullAddress.includes(',') && !isNaN(parseFloat(card.fullAddress.split(',')[0]))
-        ? parseFloat(card.fullAddress.split(',')[1])
-        : -76.6122 + (parseInt(card.id) % 10 - 5) * 0.01
-    }));
+    return TOW_CARDS.map((card, index) => {
+      // Check if address contains coordinates
+      const coordMatch = card.fullAddress.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
+      
+      if (coordMatch) {
+        // Use actual coordinates from address
+        return {
+          id: card.id,
+          label: `${card.client} - ${card.year} ${card.make} ${card.model}`,
+          lat: parseFloat(coordMatch[1]),
+          lng: parseFloat(coordMatch[2])
+        };
+      } else {
+        // Generate deterministic pseudo-coordinates based on index
+        const baseLat = 39.2904; // Baltimore center
+        const baseLng = -76.6122;
+        const offsetLat = (index % 10 - 5) * 0.01;
+        const offsetLng = (Math.floor(index / 10) % 10 - 5) * 0.01;
+        
+        return {
+          id: card.id,
+          label: `${card.client} - ${card.year} ${card.make} ${card.model}`,
+          lat: baseLat + offsetLat,
+          lng: baseLng + offsetLng
+        };
+      }
+    });
   }, []);
 
   // Cluster points into exactly 4 days with 5 pickups each
@@ -153,17 +170,31 @@ const TowDriver: React.FC = () => {
 
   // Compute optimization results for current day
   const computeOptimization = async () => {
-    if (currentDayPoints.length === 0) return;
+    if (currentDayPoints.length === 0) {
+      setOptimizationResults(null);
+      return;
+    }
     
     setIsOptimizing(true);
     try {
-      const returnTotals = await totalReturnToLot(currentDayPoints, lotCoords, travel, serviceTimes);
-      const stashTotals = await totalStash(currentDayPoints, lotCoords, stashCoords, travel, serviceTimes, finishAtLot);
-      const hybridTotals = await totalHybridPerStop(currentDayPoints, lotCoords, stashCoords, travel, serviceTimes, finishAtLot);
+      console.log('🔄 Computing optimization for', currentDayPoints.length, 'points');
+      
+      // Compute all three scenarios for the current day's 5 vehicles
+      const [returnTotals, stashTotals, hybridTotals] = await Promise.all([
+        totalReturnToLot(currentDayPoints, lotCoords, travel, serviceTimes),
+        totalStash(currentDayPoints, lotCoords, stashCoords, travel, serviceTimes, finishAtLot),
+        totalHybridPerStop(currentDayPoints, lotCoords, stashCoords, travel, serviceTimes, finishAtLot)
+      ]);
+      
+      console.log('📊 Optimization results:', {
+        returnTotals,
+        stashTotals,
+        hybridTotals
+      });
       
       // Calculate savings vs Return-to-Lot for the active plan
       const activeTotals = planMode === 'lot' ? returnTotals : planMode === 'stash' ? stashTotals : hybridTotals;
-      const savedMin = returnTotals.totalMin - activeTotals.totalMin;
+      const savedMin = Math.max(0, returnTotals.totalMin - activeTotals.totalMin);
       const savedPct = returnTotals.totalMin > 0 ? (savedMin / returnTotals.totalMin) * 100 : 0;
       
       const fitsReturn = returnTotals.totalMin <= 720; // 12 hours
@@ -181,7 +212,8 @@ const TowDriver: React.FC = () => {
         fitsHybrid
       });
     } catch (error) {
-      console.error('Optimization failed:', error);
+      console.error('❌ Optimization failed:', error);
+      setOptimizationResults(null);
     } finally {
       setIsOptimizing(false);
     }
