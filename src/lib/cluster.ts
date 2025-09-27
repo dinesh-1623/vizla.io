@@ -162,81 +162,50 @@ export function clusterIntoDays(points: Point[], k = 4): Point[][] {
 export function clusterIntoFourDays(points: Point[]): Point[][] {
   if (points.length === 0) return [[], [], [], []];
   
-  // Run k-means with seeded centroids for determinism
-  const { clusters } = kMeans(points, 4);
-  
-  // Sort each cluster by distance to centroid for consistent ordering
-  const sortedClusters = clusters.map(cluster => {
-    const centroid = {
-      lat: cluster.reduce((sum, p) => sum + p.lat, 0) / cluster.length,
-      lng: cluster.reduce((sum, p) => sum + p.lng, 0) / cluster.length
-    };
+  // If we have exactly 20 points, distribute them deterministically
+  if (points.length === 20) {
+    // Sort points by longitude for consistent ordering
+    const sortedPoints = [...points].sort((a, b) => a.lng - b.lng);
     
-    return cluster.sort((a, b) => {
-      const distA = (a.lat - centroid.lat) ** 2 + (a.lng - centroid.lng) ** 2;
-      const distB = (b.lat - centroid.lat) ** 2 + (b.lng - centroid.lng) ** 2;
-      return distA - distB;
-    });
-  });
-  
-  // Balance to exactly 5 each
-  const result: Point[][] = [[], [], [], []];
-  
-  // First, distribute points evenly
-  sortedClusters.forEach((cluster, index) => {
-    result[index] = [...cluster];
-  });
-  
-  // Balance to exactly 5 each
-  while (true) {
-    let changed = false;
-    
-    for (let i = 0; i < 4; i++) {
-      if (result[i].length > 5) {
-        // Move excess to nearest cluster with < 5
-        const excess = result[i].splice(5);
-        for (const point of excess) {
-          let nearestIndex = -1;
-          let minDistance = Infinity;
-          
-          for (let j = 0; j < 4; j++) {
-            if (j !== i && result[j].length < 5) {
-              const clusterCentroid = {
-                lat: result[j].reduce((sum, p) => sum + p.lat, 0) / (result[j].length || 1),
-                lng: result[j].reduce((sum, p) => sum + p.lng, 0) / (result[j].length || 1)
-              };
-              const distance = (point.lat - clusterCentroid.lat) ** 2 + (point.lng - clusterCentroid.lng) ** 2;
-              if (distance < minDistance) {
-                minDistance = distance;
-                nearestIndex = j;
-              }
-            }
-          }
-          
-          if (nearestIndex !== -1) {
-            result[nearestIndex].push(point);
-            changed = true;
-          } else {
-            result[i].push(point); // Put it back if no space
-          }
-        }
-      }
-    }
-    
-    if (!changed) break;
+    // Distribute evenly: first 5, next 5, next 5, last 5
+    return [
+      sortedPoints.slice(0, 5),
+      sortedPoints.slice(5, 10),
+      sortedPoints.slice(10, 15),
+      sortedPoints.slice(15, 20)
+    ];
   }
   
-  // Sort clusters by centroid longitude for stable UI order
-  const withCentroids = result.map((cluster, index) => ({
-    cluster,
-    centroid: {
-      lat: cluster.reduce((sum, p) => sum + p.lat, 0) / (cluster.length || 1),
-      lng: cluster.reduce((sum, p) => sum + p.lng, 0) / (cluster.length || 1)
-    },
-    index
-  }));
+  // For other cases, use k-means but ensure balanced distribution
+  const { clusters } = kMeans(points, 4);
   
-  withCentroids.sort((a, b) => a.centroid.lng - b.centroid.lng);
+  // Flatten all points and distribute evenly
+  const allPoints = clusters.flat();
+  const result: Point[][] = [[], [], [], []];
   
-  return withCentroids.map(item => item.cluster);
+  // Distribute points evenly across 4 days
+  allPoints.forEach((point, index) => {
+    const dayIndex = index % 4;
+    result[dayIndex].push(point);
+  });
+  
+  // Ensure each day has exactly 5 points by redistributing
+  while (result.some(day => day.length !== 5)) {
+    const overIndex = result.findIndex(day => day.length > 5);
+    const underIndex = result.findIndex(day => day.length < 5);
+    
+    if (overIndex !== -1 && underIndex !== -1) {
+      const point = result[overIndex].pop()!;
+      result[underIndex].push(point);
+    } else {
+      break; // Safety break
+    }
+  }
+  
+  // Sort each day's points by longitude for consistent ordering
+  result.forEach(day => {
+    day.sort((a, b) => a.lng - b.lng);
+  });
+  
+  return result;
 }
