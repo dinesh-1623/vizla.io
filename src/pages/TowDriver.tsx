@@ -282,16 +282,11 @@ const TowDriver: React.FC = () => {
     return counts;
   }, [dayGroups]);
 
-  // Filter cars based on selected criteria - memoized
+  // Get cars for the active day only (strictly 5 cards)
   const filtered = useMemo(() => {
-    return selectedDayCars.filter(car => {
-      if (client && !car.client.toLowerCase().includes(client.toLowerCase())) return false;
-      // Zone and time filters don't apply to this dataset
-      if (vizlaRoute && !car.fullAddress.toLowerCase().includes(vizlaRoute.toLowerCase())) return false;
-      if (assignedDriver && !car.client.toLowerCase().includes(assignedDriver.toLowerCase())) return false;
-      return true;
-    });
-  }, [selectedDayCars, client, vizlaRoute, assignedDriver]);
+    // Always return exactly the 5 cars for the active day, no additional filtering
+    return selectedDayCars;
+  }, [selectedDayCars]);
 
   // Route grouping using Baltimore data
   const routeGroups: any[] = []; // Simplified for now
@@ -308,25 +303,25 @@ const TowDriver: React.FC = () => {
     return stepMap;
   }, [routeGroups]);
 
-  // Support demo mode to cap at 6 and repeat functionality
-  const baseList = filtered; // includes selectedDay + other filters
+  // Support demo mode but always limit to 5 cards per day
+  const baseList = filtered; // exactly 5 cars for the active day
   const cardsToRender = useMemo(() => {
     if (repeatTarget > 0) {
       // Convert TowCard to objects with id property for repeatToCount
       const carsWithId = baseList.map(car => ({ ...car, id: car.id }));
       return repeatToCount(carsWithId, repeatTarget);
     }
-    const base = baseList.slice(0, forceSix ? 6 : visible);
-    return base;
-  }, [baseList, repeatTarget, forceSix, visible]);
+    // Always show exactly 5 cards for the active day
+    return baseList.slice(0, 5);
+  }, [baseList, repeatTarget]);
 
-  const hasActiveFilters = weekRange || client || vizlaRoute || assignedDriver;
+  // No active filters in 4-day mode - each day shows exactly 5 cards
+  const hasActiveFilters = false;
 
-  // Reset when filters/day change and restore scroll position
+  // Reset when day changes and restore scroll position
   useEffect(() => {
     const key = `scroll.${selectedDay}`;
     const saved = sessionStorage.getItem(key);
-    setVisible(PAGE_SIZE);
     // Restore scroll after next paint if saved
     requestAnimationFrame(() => {
       if (saved) window.scrollTo({ top: Number(saved), behavior: "instant" as ScrollBehavior });
@@ -336,7 +331,7 @@ const TowDriver: React.FC = () => {
       sessionStorage.setItem(key, String(window.scrollY));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDay, client, vizlaRoute, assignedDriver]);
+  }, [selectedDay]);
 
   // Back to top button visibility
   useEffect(() => {
@@ -363,6 +358,7 @@ const TowDriver: React.FC = () => {
   }, [filtered.length, forceSix]);
 
   const clearAllFilters = () => {
+    // No filters to clear in 4-day mode
     setWeekRange('');
     setClient('');
     setVizlaRoute('');
@@ -370,6 +366,7 @@ const TowDriver: React.FC = () => {
   };
 
   const handleFilterClear = (key: string) => {
+    // No filter clearing needed in 4-day mode
     switch (key) {
       case 'weekRange':
         setWeekRange('');
@@ -388,12 +385,12 @@ const TowDriver: React.FC = () => {
     }
   };
 
-  // Create filters object for FilterChips
+  // Create filters object for FilterChips (empty in 4-day mode)
   const filters = {
-    weekRange,
-    client,
-    vizlaRoute,
-    assignedDriver
+    weekRange: '',
+    client: '',
+    vizlaRoute: '',
+    assignedDriver: ''
   };
 
   return (
@@ -608,7 +605,7 @@ const TowDriver: React.FC = () => {
               if (demoActive) {
                 return `(Preview) Day ${activeDayIndex + 1} • showing ${cardsToRender.length} of ${baseList.length} base`;
               }
-              return `Day ${activeDayIndex + 1} • ${baseList.length} card${baseList.length !== 1 ? 's' : ''}`;
+              return `Day ${activeDayIndex + 1} • 5 cards`;
             })()}
           </h2>
         </div>
