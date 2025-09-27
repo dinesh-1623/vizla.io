@@ -12,7 +12,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS, type TowCard } from '@/app/tow-driver/data/baltimoreRun';
 import { haversineMiles, type LatLng } from '@/lib/geo';
 import { totalReturnToLot, totalStash, totalHybridPerStop, minutesFromMiles, type ServiceTimes, type Point, type TravelFn, type HybridStep } from '@/lib/routing';
-import { clusterIntoDays } from '@/lib/cluster';
+import { clusterIntoFourDays } from '@/lib/cluster';
 import { buildRoundTripLot, buildStashChain, buildHybridChainWithCoords } from '@/lib/mapsUrl';
 import { VehicleCard } from '@/components/driver/VehicleCard';
 import TowRouteGroupCard from '@/components/driver/TowRouteGroupCard';
@@ -48,7 +48,7 @@ const TowDriver: React.FC = () => {
   
   // Use new Baltimore data with 4-day batching
   const [selectedDay, setSelectedDay] = useState<Day>('Monday');
-  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -141,15 +141,15 @@ const TowDriver: React.FC = () => {
     }));
   }, []);
 
-  // Cluster points into 4 days
-  const dailyClusters = useMemo(() => {
-    return clusterIntoDays(points, 4);
+  // Cluster points into exactly 4 days with 5 pickups each
+  const dayGroups = useMemo(() => {
+    return clusterIntoFourDays(points);
   }, [points]);
 
   // Get current day's points
   const currentDayPoints = useMemo(() => {
-    return dailyClusters[selectedDayIndex] || [];
-  }, [dailyClusters, selectedDayIndex]);
+    return dayGroups[activeDayIndex] || [];
+  }, [dayGroups, activeDayIndex]);
 
   // Compute optimization results for current day
   const computeOptimization = async () => {
@@ -264,20 +264,23 @@ const TowDriver: React.FC = () => {
     return [];
   }, []);
 
+  // Day labels for the 4-day system
+  const DAY_LABELS = ['Monday (Today)', 'Tuesday', 'Wednesday', 'Thursday'];
+  
   // Get counts by day - memoized
   const countsByDay = useMemo(() => {
     const counts: Record<Day, number> = {
-      Monday: dailyClusters[0]?.length || 0,
-      Tuesday: dailyClusters[1]?.length || 0,
-      Wednesday: dailyClusters[2]?.length || 0,
-      Thursday: dailyClusters[3]?.length || 0,
+      Monday: dayGroups[0]?.length || 0,
+      Tuesday: dayGroups[1]?.length || 0,
+      Wednesday: dayGroups[2]?.length || 0,
+      Thursday: dayGroups[3]?.length || 0,
       Friday: 0,
       Saturday: 0,
       Sunday: 0,
     };
     
     return counts;
-  }, [dailyClusters]);
+  }, [dayGroups]);
 
   // Filter cars based on selected criteria - memoized
   const filtered = useMemo(() => {
@@ -437,35 +440,40 @@ const TowDriver: React.FC = () => {
       {/* Sticky Tabs Bar */}
       <div className="sticky top-[120px] z-30 bg-white/5 backdrop-blur-md ring-1 ring-white/10 rounded-2xl p-4 mb-6">
           <div className="flex flex-wrap gap-2" role="tablist">
-            {DAYS.map((day) => (
-              <button
-                key={day}
-                onClick={() => {
-                  setSelectedDay(day);
-                  const dayIndex = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'].indexOf(day);
-                  if (dayIndex !== -1) {
-                    setSelectedDayIndex(dayIndex);
-                  }
-                }}
-                role="tab"
-                aria-selected={selectedDay === day}
-                aria-label={`Select ${day}`}
-                className={`relative px-4 py-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vizla-ring-focus ${
-                  selectedDay === day
-                    ? 'bg-white text-slate-900'
-                    : 'bg-white/5 text-neutral-200 ring-1 ring-white/10 hover:bg-white/10'
-                }`}
-              >
-                {day}
-{day === 'Monday' && ' (Today)'}
-                {/* Count bubble */}
-                {countsByDay[day] > 0 && (
+            {DAY_LABELS.map((label, index) => {
+              const day = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'][index];
+              const isEnabled = dayGroups[index]?.length === 5;
+              
+              return (
+                <button
+                  key={day}
+                  onClick={() => {
+                    if (isEnabled) {
+                      setSelectedDay(day as Day);
+                      setActiveDayIndex(index);
+                    }
+                  }}
+                  role="tab"
+                  aria-selected={selectedDay === day}
+                  aria-label={`Select ${label}`}
+                  disabled={!isEnabled}
+                  title={!isEnabled ? "Not enough pickups for this day" : undefined}
+                  className={`relative px-4 py-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vizla-ring-focus ${
+                    selectedDay === day
+                      ? 'bg-white text-slate-900'
+                      : isEnabled 
+                        ? 'bg-white/5 text-neutral-200 ring-1 ring-white/10 hover:bg-white/10'
+                        : 'bg-white/5 text-neutral-400 ring-1 ring-white/10 cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  {label}
+                  {/* Count bubble */}
                   <span className="ml-2 inline-flex min-w-[1.25rem] h-5 items-center justify-center rounded-full bg-white text-slate-900 text-[11px] px-1.5 ring-1 ring-white/40">
-                    {countsByDay[day]}
+                    5
                   </span>
-                )}
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -598,21 +606,21 @@ const TowDriver: React.FC = () => {
             {(() => {
               const demoActive = repeatTarget > 0;
               if (demoActive) {
-                return `(Preview) Day ${selectedDayIndex + 1} • showing ${cardsToRender.length} of ${baseList.length} base`;
+                return `(Preview) Day ${activeDayIndex + 1} • showing ${cardsToRender.length} of ${baseList.length} base`;
               }
-              return `Day ${selectedDayIndex + 1} • ${baseList.length} card${baseList.length !== 1 ? 's' : ''}`;
+              return `Day ${activeDayIndex + 1} • ${baseList.length} card${baseList.length !== 1 ? 's' : ''}`;
             })()}
           </h2>
         </div>
 
 
         {/* Optimization Bar */}
-        {optimizationResults && (
+        {optimizationResults && currentDayPoints.length > 0 && (
           <div className="mb-6">
             <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-vizla-text-primary">
-                  Route Summary (Day {selectedDayIndex + 1} - {currentDayPoints.length} pickups)
+                  Route Summary (Day {activeDayIndex + 1} - {currentDayPoints.length} pickups)
                 </h3>
                 <div className="flex items-center gap-2">
                   <label className="flex items-center gap-2 text-sm text-vizla-text-secondary">
@@ -689,10 +697,10 @@ const TowDriver: React.FC = () => {
                     <span className="text-sm font-medium text-vizla-text-secondary">Time Saved</span>
                   </div>
                   <div className="text-2xl font-bold text-green-400">
-                    {formatTimeDisplay(optimizationResults.savedMin)}
+                    {formatTimeDisplay(Math.max(0, optimizationResults.savedMin))}
                   </div>
                   <div className="text-xs text-vizla-text-muted mt-1">
-                    {optimizationResults.savedPct.toFixed(1)}% faster
+                    {Math.max(0, optimizationResults.savedPct).toFixed(1)}% faster
                   </div>
                 </div>
 

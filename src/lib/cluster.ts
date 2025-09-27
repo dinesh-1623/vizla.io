@@ -157,3 +157,86 @@ export function clusterIntoDays(points: Point[], k = 4): Point[][] {
   
   return balanceClusters(clusters, targetSize);
 }
+
+// Enforce exactly 4 days with 5 pickups each
+export function clusterIntoFourDays(points: Point[]): Point[][] {
+  if (points.length === 0) return [[], [], [], []];
+  
+  // Run k-means with seeded centroids for determinism
+  const { clusters } = kMeans(points, 4);
+  
+  // Sort each cluster by distance to centroid for consistent ordering
+  const sortedClusters = clusters.map(cluster => {
+    const centroid = {
+      lat: cluster.reduce((sum, p) => sum + p.lat, 0) / cluster.length,
+      lng: cluster.reduce((sum, p) => sum + p.lng, 0) / cluster.length
+    };
+    
+    return cluster.sort((a, b) => {
+      const distA = (a.lat - centroid.lat) ** 2 + (a.lng - centroid.lng) ** 2;
+      const distB = (b.lat - centroid.lat) ** 2 + (b.lng - centroid.lng) ** 2;
+      return distA - distB;
+    });
+  });
+  
+  // Balance to exactly 5 each
+  const result: Point[][] = [[], [], [], []];
+  
+  // First, distribute points evenly
+  sortedClusters.forEach((cluster, index) => {
+    result[index] = [...cluster];
+  });
+  
+  // Balance to exactly 5 each
+  while (true) {
+    let changed = false;
+    
+    for (let i = 0; i < 4; i++) {
+      if (result[i].length > 5) {
+        // Move excess to nearest cluster with < 5
+        const excess = result[i].splice(5);
+        for (const point of excess) {
+          let nearestIndex = -1;
+          let minDistance = Infinity;
+          
+          for (let j = 0; j < 4; j++) {
+            if (j !== i && result[j].length < 5) {
+              const clusterCentroid = {
+                lat: result[j].reduce((sum, p) => sum + p.lat, 0) / (result[j].length || 1),
+                lng: result[j].reduce((sum, p) => sum + p.lng, 0) / (result[j].length || 1)
+              };
+              const distance = (point.lat - clusterCentroid.lat) ** 2 + (point.lng - clusterCentroid.lng) ** 2;
+              if (distance < minDistance) {
+                minDistance = distance;
+                nearestIndex = j;
+              }
+            }
+          }
+          
+          if (nearestIndex !== -1) {
+            result[nearestIndex].push(point);
+            changed = true;
+          } else {
+            result[i].push(point); // Put it back if no space
+          }
+        }
+      }
+    }
+    
+    if (!changed) break;
+  }
+  
+  // Sort clusters by centroid longitude for stable UI order
+  const withCentroids = result.map((cluster, index) => ({
+    cluster,
+    centroid: {
+      lat: cluster.reduce((sum, p) => sum + p.lat, 0) / (cluster.length || 1),
+      lng: cluster.reduce((sum, p) => sum + p.lng, 0) / (cluster.length || 1)
+    },
+    index
+  }));
+  
+  withCentroids.sort((a, b) => a.centroid.lng - b.centroid.lng);
+  
+  return withCentroids.map(item => item.cluster);
+}
