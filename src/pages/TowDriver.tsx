@@ -12,7 +12,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS, type TowCard } from '@/app/tow-driver/data/baltimoreRun';
 import { haversineMiles, type LatLng } from '@/lib/geo';
 import { totalReturnToLot, totalStash, totalHybridPerStop, minutesFromMiles, type ServiceTimes, type Point, type TravelFn, type HybridStep } from '@/lib/routing';
-import { mapsUrl } from '@/lib/gmaps';
+import { clusterIntoDays } from '@/lib/cluster';
+import { buildRoundTripLot, buildStashChain, buildHybridChainWithCoords } from '@/lib/mapsUrl';
 import { VehicleCard } from '@/components/driver/VehicleCard';
 import TowRouteGroupCard from '@/components/driver/TowRouteGroupCard';
 import AssumptionsDrawer from '@/components/owner/AssumptionsDrawer';
@@ -45,8 +46,9 @@ function repeatToCount<T extends { id: string }>(arr: T[], count: number): (T & 
 const TowDriver: React.FC = () => {
   const navigate = useNavigate();
   
-  // Use new Baltimore data
-  const [selectedDay, setSelectedDay] = useState<Day>('Friday');
+  // Use new Baltimore data with 4-day batching
+  const [selectedDay, setSelectedDay] = useState<Day>('Monday');
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -139,13 +141,25 @@ const TowDriver: React.FC = () => {
     }));
   }, []);
 
-  // Compute optimization results
+  // Cluster points into 4 days
+  const dailyClusters = useMemo(() => {
+    return clusterIntoDays(points, 4);
+  }, [points]);
+
+  // Get current day's points
+  const currentDayPoints = useMemo(() => {
+    return dailyClusters[selectedDayIndex] || [];
+  }, [dailyClusters, selectedDayIndex]);
+
+  // Compute optimization results for current day
   const computeOptimization = async () => {
+    if (currentDayPoints.length === 0) return;
+    
     setIsOptimizing(true);
     try {
-      const returnTotals = await totalReturnToLot(points, lotCoords, travel, serviceTimes);
-      const stashTotals = await totalStash(points, lotCoords, stashCoords, travel, serviceTimes, finishAtLot);
-      const hybridTotals = await totalHybridPerStop(points, lotCoords, stashCoords, travel, serviceTimes, finishAtLot);
+      const returnTotals = await totalReturnToLot(currentDayPoints, lotCoords, travel, serviceTimes);
+      const stashTotals = await totalStash(currentDayPoints, lotCoords, stashCoords, travel, serviceTimes, finishAtLot);
+      const hybridTotals = await totalHybridPerStop(currentDayPoints, lotCoords, stashCoords, travel, serviceTimes, finishAtLot);
       
       // Calculate savings vs Return-to-Lot for the active plan
       const activeTotals = planMode === 'lot' ? returnTotals : planMode === 'stash' ? stashTotals : hybridTotals;
@@ -176,7 +190,7 @@ const TowDriver: React.FC = () => {
   // Recompute when dependencies change
   useEffect(() => {
     computeOptimization();
-  }, [finishAtLot, serviceTimes, points, lotCoords, stashCoords, planMode]);
+  }, [finishAtLot, serviceTimes, currentDayPoints, lotCoords, stashCoords, planMode]);
 
   // Format time display helper
   const formatTimeDisplay = (minutes: number): string => {
@@ -187,69 +201,25 @@ const TowDriver: React.FC = () => {
   };
 
   // Build Google Maps URLs for optimization
-  const buildReturnUrl = () => {
-    const waypoints: string[] = [];
-    points.forEach(point => {
-      waypoints.push(`${point.lat},${point.lng}`);
-      waypoints.push(`${lotCoords.lat},${lotCoords.lng}`);
-    });
-    return mapsUrl({
-      origin: lotCoords,
-      destination: lotCoords,
-      waypoints: waypoints.slice(0, 24) // Limit to 25 waypoints
-    });
-  };
 
-  const buildStashUrl = () => {
-    const waypoints: string[] = [];
-    points.forEach(point => {
-      waypoints.push(`${point.lat},${point.lng}`);
-      waypoints.push(`${stashCoords.lat},${stashCoords.lng}`);
-    });
-    return mapsUrl({
-      origin: lotCoords,
-      destination: finishAtLot ? lotCoords : stashCoords,
-      waypoints: waypoints.slice(0, 24) // Limit to 25 waypoints
-    });
-  };
-
-  const buildHybridUrl = () => {
-    if (!optimizationResults?.hybridTotals.steps) return '';
-    
-    const waypoints: string[] = [];
-    optimizationResults.hybridTotals.steps.forEach(step => {
-      const car = points.find(p => p.id === step.carId);
-      if (car) {
-        waypoints.push(`${car.lat},${car.lng}`);
-        waypoints.push(step.drop === 'lot' ? `${lotCoords.lat},${lotCoords.lng}` : `${stashCoords.lat},${stashCoords.lng}`);
-      }
-    });
-    
-    const lastStep = optimizationResults.hybridTotals.steps[optimizationResults.hybridTotals.steps.length - 1];
-    const destination = finishAtLot ? lotCoords : (lastStep?.drop === 'stash' ? stashCoords : lotCoords);
-    
-    return mapsUrl({
-      origin: lotCoords,
-      destination,
-      waypoints: waypoints.slice(0, 24) // Limit to 25 waypoints
-    });
-  };
-
-  const buildSelectedPlanUrl = () => {
+  const buildSelectedPlanUrls = () => {
     switch (planMode) {
-      case 'lot': return buildReturnUrl();
-      case 'stash': return buildStashUrl();
-      case 'hybrid': return buildHybridUrl();
-      default: return '';
+      case 'lot': 
+        return buildRoundTripLot(currentDayPoints, lotCoords);
+      case 'stash': 
+        return buildStashChain(currentDayPoints, lotCoords, stashCoords, finishAtLot);
+      case 'hybrid': 
+        if (!optimizationResults?.hybridTotals.steps) return [];
+        return buildHybridChainWithCoords(optimizationResults.hybridTotals.steps, currentDayPoints, lotCoords, stashCoords, finishAtLot);
+      default: 
+        return [];
     }
   };
 
   // Get cars for selected day
   const getSelectedDayCars = (): TowCard[] => {
-    if (selectedDay === 'Friday') {
-      return TOW_CARDS;
-    }
-    return [];
+    const currentDayPointIds = currentDayPoints.map(p => p.id);
+    return TOW_CARDS.filter(card => currentDayPointIds.includes(card.id));
   };
 
   // Check for demo mode and repeat functionality
@@ -297,17 +267,17 @@ const TowDriver: React.FC = () => {
   // Get counts by day - memoized
   const countsByDay = useMemo(() => {
     const counts: Record<Day, number> = {
-      Monday: 0,
-      Tuesday: 0,
-      Wednesday: 0,
-      Thursday: 0,
-      Friday: TOW_CARDS.length,
+      Monday: dailyClusters[0]?.length || 0,
+      Tuesday: dailyClusters[1]?.length || 0,
+      Wednesday: dailyClusters[2]?.length || 0,
+      Thursday: dailyClusters[3]?.length || 0,
+      Friday: 0,
       Saturday: 0,
       Sunday: 0,
     };
     
     return counts;
-  }, []);
+  }, [dailyClusters]);
 
   // Filter cars based on selected criteria - memoized
   const filtered = useMemo(() => {
@@ -439,7 +409,7 @@ const TowDriver: React.FC = () => {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-vizla-text-primary">Tow Truck Driver View</h1>
-              <p className="text-sm text-vizla-text-muted">Data: Akel's 20 Baltimore Addresses</p>
+              <p className="text-sm text-vizla-text-muted">Data: Akel's 20 Baltimore Addresses (4-day batching)</p>
             </div>
           </div>
                  <div className="flex items-center gap-2">
@@ -470,7 +440,13 @@ const TowDriver: React.FC = () => {
             {DAYS.map((day) => (
               <button
                 key={day}
-                onClick={() => setSelectedDay(day)}
+                onClick={() => {
+                  setSelectedDay(day);
+                  const dayIndex = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'].indexOf(day);
+                  if (dayIndex !== -1) {
+                    setSelectedDayIndex(dayIndex);
+                  }
+                }}
                 role="tab"
                 aria-selected={selectedDay === day}
                 aria-label={`Select ${day}`}
@@ -481,7 +457,7 @@ const TowDriver: React.FC = () => {
                 }`}
               >
                 {day}
-                {day === 'Friday' && ' (Today)'}
+{day === 'Monday' && ' (Today)'}
                 {/* Count bubble */}
                 {countsByDay[day] > 0 && (
                   <span className="ml-2 inline-flex min-w-[1.25rem] h-5 items-center justify-center rounded-full bg-white text-slate-900 text-[11px] px-1.5 ring-1 ring-white/40">
@@ -622,9 +598,9 @@ const TowDriver: React.FC = () => {
             {(() => {
               const demoActive = repeatTarget > 0;
               if (demoActive) {
-                return `(Preview) ${selectedDay} • showing ${cardsToRender.length} of ${baseList.length} base`;
+                return `(Preview) Day ${selectedDayIndex + 1} • showing ${cardsToRender.length} of ${baseList.length} base`;
               }
-              return `${selectedDay} • ${baseList.length} card${baseList.length !== 1 ? 's' : ''}`;
+              return `Day ${selectedDayIndex + 1} • ${baseList.length} card${baseList.length !== 1 ? 's' : ''}`;
             })()}
           </h2>
         </div>
@@ -636,7 +612,7 @@ const TowDriver: React.FC = () => {
             <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-vizla-text-primary">
-                  Optimized Route (20 vehicles)
+                  Route Summary (Day {selectedDayIndex + 1} - {currentDayPoints.length} pickups)
                 </h3>
                 <div className="flex items-center gap-2">
                   <label className="flex items-center gap-2 text-sm text-vizla-text-secondary">
@@ -767,21 +743,22 @@ const TowDriver: React.FC = () => {
               )}
 
               {/* Action Buttons */}
-              <div className="mt-6 flex gap-3">
-                <button
-                  onClick={() => window.open(buildSelectedPlanUrl(), '_blank', 'noopener,noreferrer')}
-                  className="flex-1 flex items-center justify-center gap-2 bg-vizla-brand-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-                >
-                  <Navigation className="w-4 h-4" />
-                  Open Google (selected plan)
-                </button>
-                <button
-                  onClick={() => navigator.clipboard.writeText(buildSelectedPlanUrl())}
-                  className="flex items-center justify-center gap-2 bg-vizla-glass text-vizla-text-secondary px-4 py-2 rounded-lg text-sm font-medium ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Copy link
-                </button>
+              <div className="mt-6 space-y-3">
+                {buildSelectedPlanUrls().map((route, index) => (
+                  <button
+                    key={index}
+                    onClick={() => window.open(route.url, '_blank', 'noopener,noreferrer')}
+                    className="w-full flex items-center justify-center gap-2 bg-vizla-brand-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                  >
+                    <Navigation className="w-4 h-4" />
+                    {route.label}
+                  </button>
+                ))}
+                {buildSelectedPlanUrls().length === 0 && (
+                  <div className="text-center text-vizla-text-muted text-sm py-4">
+                    No routes available for current selection
+                  </div>
+                )}
               </div>
             </GlassCard>
           </div>
