@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadLocated } from '@/lib/data/loaders';
+import { loadBaltimoreData } from '@/lib/data/baltimoreLoader';
 import { loadTowCars } from '@/lib/data/driverSource';
 import { Truck, User, RefreshCw, AlertCircle, Navigation } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
@@ -66,49 +67,22 @@ const Dashboard: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('🔄 Loading real data from Maryland Dispatch Sheet...');
+      console.log('🔄 Loading Baltimore data from Tow Driver dataset...');
       
-      // Load both datasets
-      const [locatedData, towCarsData] = await Promise.all([
-        loadLocated().catch(() => []), // Fallback to empty array if CSV not found
-        loadTowCars().catch(() => [])  // Load real tow car data
-      ]);
+      // Load Baltimore data (same as Tow Driver View)
+      const baltimoreData = await loadBaltimoreData();
       
-      // Convert tow cars to LocatedRow format for dashboard
-      const convertedData = towCarsData.map(car => ({
-        id: car.vin,
-        client: car.client,
-        zone: car.city, // Use city as zone
-        driver: 'GPS', // Default driver type
-        source: 'GPS',
-        assignedDriver: 'GPS',
-        status: 'Located' as const,
-        lat: 0, // Will be geocoded if needed
-        lng: 0,
-        address: car.fullAddress,
-        locatedAt: new Date().toISOString(),
-        year: car.year,
-        make: car.make,
-        model: car.model,
-        color: car.color,
-        tag: car.tag,
-        vin: car.vin,
-        city: car.city,
-        zip: car.zip,
-        notes: `BANK + GPS data from Maryland Dispatch Sheet`
-      }));
+      console.log('📊 Baltimore data loaded:', {
+        total: baltimoreData.length,
+        clients: [...new Set(baltimoreData.map(r => r.client))].length,
+        zones: [...new Set(baltimoreData.map(r => r.zone))].length,
+        statuses: [...new Set(baltimoreData.map(r => r.status))]
+      });
       
-      // Combine both datasets
-      const allData = [...locatedData, ...convertedData];
-      
-      console.log('✅ Loaded data:', allData.length, 'rows');
-      console.log('📊 Located data:', locatedData.length, 'rows');
-      console.log('📊 Tow cars data:', convertedData.length, 'rows');
-      console.log('📊 Sample data:', allData.slice(0, 2));
-      setData(allData);
+      setData(baltimoreData);
     } catch (err) {
-      console.error('❌ Error loading data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+      console.error('❌ Error loading Baltimore data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load Baltimore data');
     } finally {
       setIsLoading(false);
     }
@@ -356,7 +330,7 @@ const Dashboard: React.FC = () => {
       {/* Header */}
       <SectionHeading
         title="Dashboard"
-        subtitle="Overview of vehicle recovery operations"
+        subtitle="Baltimore vehicle recovery operations (same data as Tow Driver View)"
         actionSlot={
           <>
             <button
