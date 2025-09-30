@@ -22,11 +22,16 @@ import {
   type ServiceTimes as RouteServiceTimes,
   type Point as RoutePoint
 } from '@/lib/routing/routeCalc';
+import { 
+  type CapacityInputs,
+  type GeocodedPoint
+} from '@/lib/routing/timeTotals';
 import { VehicleCard } from '@/components/driver/VehicleCard';
 import TowRouteGroupCard from '@/components/driver/TowRouteGroupCard';
 import AssumptionsDrawer from '@/components/owner/AssumptionsDrawer';
 import { useAssumptions } from '@/hooks/useAssumptions';
 import { Filters } from '@/components/driver/Filters';
+import { CapacityCard } from '@/components/driver/CapacityCard';
 import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { FilterChips } from '@/components/ui/FilterChips';
@@ -641,161 +646,47 @@ const TowDriver: React.FC = () => {
         </div>
 
 
-        {/* Optimization Bar */}
-        {optimizationResults && currentDayPoints.length > 0 && (
+        {/* Capacity Card */}
+        {currentDayPoints.length > 0 && (
           <div className="mb-6">
-            <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-vizla-text-primary">
-                  Route Summary (Day {activeDayIndex + 1} - {currentDayPoints.length} pickups)
-                </h3>
-                <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-2 text-sm text-vizla-text-secondary">
-                    <input
-                      type="checkbox"
-                      checked={finishAtLot}
-                      onChange={(e) => setFinishAtLot(e.target.checked)}
-                      className="w-4 h-4 text-vizla-brand-primary bg-vizla-glass border-vizla-glassBorder rounded focus:ring-vizla-ring-focus"
-                    />
-                    Finish stash at lot
-                  </label>
-                  {!import.meta.env.VITE_GOOGLE_MAPS_KEY && (
-                    <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">
-                      Estimate mode
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Plan Mode Selector */}
-              <div className="mb-6">
-                <div className="flex bg-vizla-glass rounded-lg p-1 ring-1 ring-vizla-glassBorder">
-                  {[
-                    { key: 'lot', label: 'Return-to-Lot' },
-                    { key: 'stash', label: 'Return-to-Stash' },
-                    { key: 'hybrid', label: 'Optimized (per stop)' }
-                  ].map(({ key, label }) => (
-                    <button
-                      key={key}
-                      onClick={() => setPlanMode(key as 'lot' | 'stash' | 'hybrid')}
-                      className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus ${
-                        planMode === key
-                          ? 'bg-vizla-brand-primary text-white'
-                          : 'text-vizla-text-secondary hover:text-vizla-text-primary hover:bg-vizla-glassElev'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {/* Total Time */}
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Clock className="w-5 h-5 text-vizla-text-muted" />
-                    <span className="text-sm font-medium text-vizla-text-secondary">Total Time</span>
-                  </div>
-                  <div className="text-2xl font-bold text-vizla-text-primary">
-                    {formatTimeDisplay(
-                      planMode === 'lot' ? optimizationResults.returnTotals.totalMin :
-                      planMode === 'stash' ? optimizationResults.stashTotals.totalMin :
-                      optimizationResults.optimizedTotals.totalMin
-                    )}
-                  </div>
-                  <div className="text-xs text-vizla-text-muted mt-1">
-                    {(() => {
-                      const activeFits = planMode === 'lot' ? optimizationResults.fitsReturn :
-                                       planMode === 'stash' ? optimizationResults.fitsStash :
-                                       optimizationResults.fitsOptimized;
-                      const activeTotal = planMode === 'lot' ? optimizationResults.returnTotals.totalMin :
-                                        planMode === 'stash' ? optimizationResults.stashTotals.totalMin :
-                                        optimizationResults.optimizedTotals.totalMin;
-                      return activeFits ? 'Fits 12h' : `Over by ${formatTimeDisplay(activeTotal - 720)}`;
-                    })()}
-                  </div>
-                </div>
-
-                {/* Time Saved */}
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Navigation className="w-5 h-5 text-vizla-text-muted" />
-                    <span className="text-sm font-medium text-vizla-text-secondary">Time Saved</span>
-                  </div>
-                  <div className="text-2xl font-bold text-green-400">
-                    {formatTimeDisplay(Math.max(0, optimizationResults.savedMin))}
-                  </div>
-                  <div className="text-xs text-vizla-text-muted mt-1">
-                    {Math.max(0, optimizationResults.savedPct).toFixed(1)}% faster
-                  </div>
-                </div>
-
-                {/* Drive Time */}
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <ExternalLink className="w-5 h-5 text-vizla-text-muted" />
-                    <span className="text-sm font-medium text-vizla-text-secondary">Drive Time</span>
-                  </div>
-                  <div className="text-2xl font-bold text-vizla-text-primary">
-                    {formatTimeDisplay(
-                      planMode === 'lot' ? optimizationResults.returnTotals.travelMin :
-                      planMode === 'stash' ? optimizationResults.stashTotals.travelMin :
-                      optimizationResults.optimizedTotals.travelMin
-                    )}
-                  </div>
-                  <div className="text-xs text-vizla-text-muted mt-1">
-                    Travel time
-                  </div>
-                </div>
-
-                {/* Service Time */}
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Users className="w-5 h-5 text-vizla-text-muted" />
-                    <span className="text-sm font-medium text-vizla-text-secondary">Service Time</span>
-                  </div>
-                  <div className="text-2xl font-bold text-vizla-text-primary">
-                    {formatTimeDisplay(
-                      planMode === 'lot' ? optimizationResults.returnTotals.serviceMin :
-                      planMode === 'stash' ? optimizationResults.stashTotals.serviceMin :
-                      optimizationResults.optimizedTotals.serviceMin
-                    )}
-                  </div>
-                  <div className="text-xs text-vizla-text-muted mt-1">
-                    Hookup + drop
-                  </div>
-                </div>
-              </div>
-
-              {/* Optimized Plan Details */}
-              {planMode === 'hybrid' && optimizationResults.optimizedTotals.decisions && (
-                <div className="mt-6 pt-4 border-t border-vizla-glassBorder">
-                  <div className="text-sm text-vizla-text-muted mb-3">
-                    Per-stop decisions: {optimizationResults.optimizedTotals.decisions.toLot} to lot, {optimizationResults.optimizedTotals.decisions.toStash} to stash
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="mt-6 space-y-3">
-                {buildSelectedPlanUrls().map((route, index) => (
-                  <button
-                    key={index}
-                    onClick={() => window.open(route.gmapsUrl, '_blank', 'noopener,noreferrer')}
-                    className="w-full flex items-center justify-center gap-2 bg-vizla-brand-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-                  >
-                    <Navigation className="w-4 h-4" />
-                    {route.label}
-                  </button>
-                ))}
-                {buildSelectedPlanUrls().length === 0 && (
-                  <div className="text-center text-vizla-text-muted text-sm py-4">
-                    No routes available for current selection
-                  </div>
-                )}
-              </div>
-            </GlassCard>
+            <CapacityCard
+              inputs={{
+                mode: planMode === 'hybrid' ? 'optimized' : planMode,
+                pickups: currentDayPoints.map(point => ({
+                  lat: point.lat,
+                  lng: point.lng,
+                  address: `Pickup ${point.id}`,
+                  id: point.id
+                })),
+                lot: {
+                  lat: lotCoords.lat,
+                  lng: lotCoords.lng,
+                  address: LOT_ADDRESS,
+                  id: 'lot'
+                },
+                stash: {
+                  lat: stashCoords.lat,
+                  lng: stashCoords.lng,
+                  address: STASH_ADDRESS,
+                  id: 'stash'
+                },
+                finishStashAtLot: finishAtLot,
+                service: {
+                  hookupMin: serviceTimes.hookupMin,
+                  dropLotMin: serviceTimes.dropLotMin,
+                  dropStashMin: serviceTimes.dropStashMin,
+                  cityMph: serviceTimes.cityMph
+                },
+                useLiveMatrix: !!import.meta.env.VITE_GOOGLE_MAPS_KEY
+              }}
+              onModeChange={(mode) => {
+                if (mode === 'optimized') {
+                  setPlanMode('hybrid');
+                } else {
+                  setPlanMode(mode);
+                }
+              }}
+            />
           </div>
         )}
 

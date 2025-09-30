@@ -18,8 +18,6 @@ import {
   type VizFilters,
   type PivotCell
 } from '@/lib/csv/vizlaDashboard';
-import { loadBaltimoreData } from '@/lib/data/baltimoreLoader';
-import { buildBaltimorePivot } from '@/lib/data/baltimoreToVizla';
 import { loadTowCars } from '@/lib/data/driverSource';
 
 const LocatedPage: React.FC = () => {
@@ -53,34 +51,35 @@ const LocatedPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('🔄 Loading Baltimore data for charts...');
+      console.log('🔄 Loading real data from Maryland Dispatch Sheet...');
       
-      // Load Baltimore data (same as Dashboard and Tow Driver View)
-      const baltimoreData = await loadBaltimoreData();
+      // Load both datasets
+      const [vizlaData, towCarsData] = await Promise.all([
+        loadVizlaDashboard().catch(() => []), // Fallback to empty array if CSV not found
+        loadTowCars().catch(() => [])  // Load real tow car data
+      ]);
       
-      console.log('📊 Baltimore data loaded for charts:', {
-        total: baltimoreData.length,
-        clients: [...new Set(baltimoreData.map(r => r.client))].length,
-        zones: [...new Set(baltimoreData.map(r => r.zone))].length,
-        drivers: [...new Set(baltimoreData.map(r => r.assignedDriver))].length
-      });
-      
-      // Convert Baltimore data to VizRow format for charts
-      const vizRows = baltimoreData.map(row => ({
-        id: row.id,
-        client: row.client,
-        zone: row.zone,
-        market: 'Maryland', // All Baltimore data is Maryland market
-        status: row.status,
+      // Convert tow cars to VizRow format for charts
+      const convertedData = towCarsData.map(car => ({
+        client: car.client,
+        zone: car.city, // Use city as zone
+        market: car.city, // Use city as market
+        status: 'Located',
         drivers: {
-          [row.assignedDriver]: 1
+          'GPS': 1 // Each car counts as 1 for GPS driver
         }
       }));
       
-      setData(vizRows);
+      // Combine both datasets
+      const allData = [...vizlaData, ...convertedData];
+      
+      console.log('✅ Loaded data:', allData.length, 'rows');
+      console.log('📊 Vizla data:', vizlaData.length, 'rows');
+      console.log('📊 Tow cars data:', convertedData.length, 'rows');
+      setData(allData);
     } catch (err) {
-      console.error('❌ Error loading Baltimore data for charts:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load Baltimore data');
+      console.error('❌ Error loading data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setIsLoading(false);
     }
@@ -154,10 +153,10 @@ const LocatedPage: React.FC = () => {
                 
                 <div>
                   <h1 className="text-2xl font-bold text-vizla-text-primary">
-                    Baltimore Data — Client × Zone × Driver
+                    Located — Client × Zone × Driver
                   </h1>
                          <p className="text-sm text-vizla-text-secondary mt-1">
-                           Baltimore vehicle data (same as Tow Driver View and Dashboard)
+                           Real data from Maryland Dispatch Sheet + vizla-dashboard.csv
                          </p>
                 </div>
               </div>
