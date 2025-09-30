@@ -23,7 +23,6 @@ export type ChartType = 'stacked' | 'grouped' | 'pie' | 'line' | 'area';
 interface ChartViewProps {
   pivot: Pivot;
   onSegmentClick: (client: string, driverKey: string) => void;
-  currentPalette: PaletteType;
   chartType: ChartType;
   className?: string;
 }
@@ -48,7 +47,6 @@ interface PieData {
 export const ChartView: React.FC<ChartViewProps> = ({
   pivot,
   onSegmentClick,
-  currentPalette,
   chartType,
   className
 }) => {
@@ -58,7 +56,7 @@ export const ChartView: React.FC<ChartViewProps> = ({
   const grandTotal = Object.values(totals.byClient).reduce((sum, total) => sum + total, 0);
 
   // Get chart colors for current palette
-  const chartColors = getChartColors(currentPalette);
+  const chartColors = getChartColors('lagoon');
 
   // Prepare chart data
   const chartData: ChartData[] = clients.map(client => {

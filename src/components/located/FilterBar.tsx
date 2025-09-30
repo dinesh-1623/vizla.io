@@ -9,11 +9,11 @@ interface FilterBarProps {
   statuses: string[];
   selectedMarket: string;
   selectedStatus: string;
-  viewMode: 'matrix' | 'charts';
+  viewMode: 'grid' | 'charts';
   chartType: 'stacked' | 'grouped' | 'pie' | 'line' | 'area';
   onChangeMarket: (market: string) => void;
   onChangeStatus: (status: string) => void;
-  onChangeView: (view: 'matrix' | 'charts') => void;
+  onChangeView: (view: 'grid' | 'charts') => void;
   onChangeChartType: (chartType: 'stacked' | 'grouped' | 'pie' | 'line' | 'area') => void;
 }
 
@@ -124,11 +124,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         <div className="flex items-end">
           <SegmentedToggle
             options={[
-              { value: 'matrix', label: 'Matrix' },
+              { value: 'grid', label: 'Data Grid' },
               { value: 'charts', label: 'Charts' }
             ]}
             value={viewMode}
-            onChange={(value) => onChangeView(value as 'matrix' | 'charts')}
+            onChange={(value) => onChangeView(value as 'grid' | 'charts')}
           />
         </div>
       </div>

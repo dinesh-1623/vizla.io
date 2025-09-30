@@ -7,9 +7,8 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FilterBar } from '@/components/located/FilterBar';
-import { MatrixView } from '@/components/located/MatrixView';
+import { DataGrid } from '@/components/located/DataGrid';
 import { ChartView } from '@/components/located/ChartView';
-import { Legend } from '@/components/located/Legend';
 import {
   loadVizlaDashboard,
   buildPivot,
@@ -20,11 +19,6 @@ import {
   type PivotCell
 } from '@/lib/csv/vizlaDashboard';
 import { loadTowCars } from '@/lib/data/driverSource';
-import { 
-  loadPalettePreference, 
-  savePalettePreference, 
-  type PaletteType 
-} from '@/lib/palette';
 
 const LocatedPage: React.FC = () => {
   const navigate = useNavigate();
@@ -35,9 +29,8 @@ const LocatedPage: React.FC = () => {
   // Filter state
   const [market, setMarket] = useState<string>('All');
   const [status, setStatus] = useState<string>('All');
-  const [viewMode, setViewMode] = useState<'matrix' | 'charts'>('matrix');
+  const [viewMode, setViewMode] = useState<'grid' | 'charts'>('grid');
   const [chartType, setChartType] = useState<'stacked' | 'grouped' | 'pie' | 'line' | 'area'>('stacked');
-  const [currentPalette, setCurrentPalette] = useState<PaletteType>('lagoon');
 
   // Load data and filters on mount
   useEffect(() => {
@@ -45,8 +38,7 @@ const LocatedPage: React.FC = () => {
     const savedFilters = loadLocatedFilters();
     setMarket(savedFilters.market);
     setStatus(savedFilters.status);
-    setViewMode(savedFilters.view as 'matrix' | 'charts');
-    setCurrentPalette(loadPalettePreference());
+    setViewMode(savedFilters.view as 'grid' | 'charts');
   }, []);
 
   // Save filters to localStorage
@@ -54,10 +46,6 @@ const LocatedPage: React.FC = () => {
     saveLocatedFilters(market, status, viewMode);
   }, [market, status, viewMode]);
 
-  // Save palette preference to localStorage
-  useEffect(() => {
-    savePalettePreference(currentPalette);
-  }, [currentPalette]);
 
   const loadData = async () => {
     try {
@@ -126,7 +114,7 @@ const LocatedPage: React.FC = () => {
     setStatus(newStatus);
   };
 
-  const handleViewChange = (newView: 'matrix' | 'charts') => {
+  const handleViewChange = (newView: 'grid' | 'charts') => {
     setViewMode(newView);
   };
 
@@ -144,14 +132,7 @@ const LocatedPage: React.FC = () => {
     // TODO: Implement filter chips based on segment selection
   };
 
-  const handlePaletteChange = (palette: PaletteType) => {
-    setCurrentPalette(palette);
-  };
 
-  // Calculate max count for legend
-  const maxCount = useMemo(() => {
-    return Math.max(...pivot.cells.map(cell => cell.count), 1);
-  }, [pivot.cells]);
 
   return (
     <div className="min-h-screen bg-vizla-canvas text-vizla-text-primary">
@@ -265,22 +246,12 @@ const LocatedPage: React.FC = () => {
         {/* Content */}
         {!isLoading && !error && pivot.cells.length > 0 && (
           <div className="space-y-6">
-            {/* Legend */}
-            <Legend 
-              maxCount={maxCount} 
-              currentPalette={currentPalette}
-              onPaletteChange={handlePaletteChange}
-            />
-
-            {/* Matrix View */}
-            {viewMode === 'matrix' && (
-              <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
-                <MatrixView
-                  pivot={pivot}
-                  onCellClick={handleCellClick}
-                  currentPalette={currentPalette}
-                />
-              </GlassCard>
+            {/* Data Grid View */}
+            {viewMode === 'grid' && (
+              <DataGrid
+                pivot={pivot}
+                onCellClick={handleCellClick}
+              />
             )}
 
             {/* Chart Views */}
@@ -288,7 +259,6 @@ const LocatedPage: React.FC = () => {
               <ChartView
                 pivot={pivot}
                 onSegmentClick={handleSegmentClick}
-                currentPalette={currentPalette}
                 chartType={chartType}
               />
             )}
