@@ -9,10 +9,12 @@ import { ShiftFilters } from '@/components/shift/ShiftFilters';
 import { 
   getShifts, 
   filterShifts, 
-  generateShiftCSV, 
-  downloadCSV,
   getShiftsForDate 
 } from '@/lib/shift/store';
+import { 
+  generateShiftCSV, 
+  downloadCSV 
+} from '@/lib/shift/utils';
 import { MARKETS, ZONES, DRIVERS, generateMockShifts } from '@/lib/shift/seed';
 import { getZonesByMarket } from '@/lib/shift/seed';
 import { Shift, ShiftFilters as ShiftFiltersType } from '@/lib/shift/types';
