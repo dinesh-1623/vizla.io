@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Columns, List, Download, ExternalLink, AlertCircle } from 'lucide-react';
+import { Search, Columns, List, Download, ExternalLink, AlertCircle, Filter, X } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { MarketCard } from './MarketCard';
 import { MarketsList } from './MarketsList';
@@ -30,6 +30,8 @@ export const MarketsOverview: React.FC<MarketsOverviewProps> = ({
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<MarketsViewMode>(defaultViewMode);
   const [usingMockData, setUsingMockData] = useState(false);
+  const [selectedMarkets, setSelectedMarkets] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
   
   // Load data on mount
   useEffect(() => {
@@ -56,8 +58,24 @@ export const MarketsOverview: React.FC<MarketsOverviewProps> = ({
     loadData();
   }, []);
   
+  // Get unique markets for filter options
+  const availableMarkets = useMemo(() => {
+    const markets = [...new Set(zones.map(zone => zone.market))];
+    return markets.sort();
+  }, [zones]);
+  
   // Filter and group data
-  const filteredZones = useMemo(() => filterZones(zones, search), [zones, search]);
+  const filteredZones = useMemo(() => {
+    let filtered = filterZones(zones, search);
+    
+    // Apply market filter
+    if (selectedMarkets.length > 0) {
+      filtered = filtered.filter(zone => selectedMarkets.includes(zone.market));
+    }
+    
+    return filtered;
+  }, [zones, search, selectedMarkets]);
+  
   const marketGroups = useMemo(() => groupZonesByMarket(filteredZones), [filteredZones]);
   
   // Statistics
@@ -91,6 +109,27 @@ export const MarketsOverview: React.FC<MarketsOverviewProps> = ({
   // Handle view all
   const handleViewAll = () => {
     window.location.href = '/markets';
+  };
+  
+  // Handle market filter toggle
+  const handleMarketToggle = (market: string) => {
+    setSelectedMarkets(prev => 
+      prev.includes(market) 
+        ? prev.filter(m => m !== market)
+        : [...prev, market]
+    );
+  };
+  
+  // Clear all filters
+  const handleClearFilters = () => {
+    setSelectedMarkets([]);
+    setSearch('');
+  };
+  
+  // Quick filter functions
+  const handleQuickFilter = (markets: string[]) => {
+    setSelectedMarkets(markets);
+    setShowFilters(true);
   };
   
   if (loading) {
@@ -149,6 +188,43 @@ export const MarketsOverview: React.FC<MarketsOverviewProps> = ({
           </div>
         </div>
         
+        {/* Quick Filters */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-sm font-medium text-vizla-text-secondary">Quick Filters:</span>
+          <button
+            onClick={() => handleQuickFilter(['Maryland'])}
+            className="px-3 py-1.5 bg-vizla-glass hover:bg-vizla-glassElev text-vizla-text-secondary hover:text-vizla-text-primary rounded-lg text-sm font-medium transition-colors ring-1 ring-vizla-glassBorder"
+          >
+            Maryland
+          </button>
+          <button
+            onClick={() => handleQuickFilter(['Houston'])}
+            className="px-3 py-1.5 bg-vizla-glass hover:bg-vizla-glassElev text-vizla-text-secondary hover:text-vizla-text-primary rounded-lg text-sm font-medium transition-colors ring-1 ring-vizla-glassBorder"
+          >
+            Houston
+          </button>
+          <button
+            onClick={() => handleQuickFilter(['DC', 'Virginia'])}
+            className="px-3 py-1.5 bg-vizla-glass hover:bg-vizla-glassElev text-vizla-text-secondary hover:text-vizla-text-primary rounded-lg text-sm font-medium transition-colors ring-1 ring-vizla-glassBorder"
+          >
+            DC/Virginia
+          </button>
+          <button
+            onClick={() => handleQuickFilter(['Delaware'])}
+            className="px-3 py-1.5 bg-vizla-glass hover:bg-vizla-glassElev text-vizla-text-secondary hover:text-vizla-text-primary rounded-lg text-sm font-medium transition-colors ring-1 ring-vizla-glassBorder"
+          >
+            Delaware
+          </button>
+          {(selectedMarkets.length > 0 || search) && (
+            <button
+              onClick={handleClearFilters}
+              className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm font-medium transition-colors ring-1 ring-red-500/30"
+            >
+              Clear All
+            </button>
+          )}
+        </div>
+
         {/* Controls */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 max-w-md">
@@ -165,6 +241,23 @@ export const MarketsOverview: React.FC<MarketsOverviewProps> = ({
           </div>
           
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg ring-1 ring-vizla-glassBorder transition-colors ${
+                selectedMarkets.length > 0
+                  ? 'bg-vizla-brand-primary text-white'
+                  : 'bg-vizla-glass text-vizla-text-secondary hover:bg-vizla-glassElev hover:text-vizla-text-primary'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              Filters
+              {selectedMarkets.length > 0 && (
+                <span className="px-1.5 py-0.5 bg-white/20 text-xs rounded-full">
+                  {selectedMarkets.length}
+                </span>
+              )}
+            </button>
+            
             <div className="flex bg-vizla-glass rounded-lg p-1 ring-1 ring-vizla-glassBorder">
               <button
                 onClick={() => setViewMode('columns')}
@@ -192,6 +285,51 @@ export const MarketsOverview: React.FC<MarketsOverviewProps> = ({
           </div>
         </div>
         
+        {/* Expandable Filters */}
+        {showFilters && (
+          <div className="mt-4 p-4 bg-vizla-glass rounded-lg border border-vizla-glassBorder">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-medium text-vizla-text-primary">Filter by Market</h4>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="p-1 hover:bg-vizla-elev1 rounded transition-colors"
+              >
+                <X className="w-4 h-4 text-vizla-text-muted" />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {availableMarkets.map((market) => (
+                <button
+                  key={market}
+                  onClick={() => handleMarketToggle(market)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ring-1 ${
+                    selectedMarkets.includes(market)
+                      ? 'bg-vizla-brand-primary text-white ring-vizla-brand-primary'
+                      : 'bg-vizla-elev1 text-vizla-text-secondary hover:bg-vizla-elev2 hover:text-vizla-text-primary ring-vizla-glassBorder'
+                  }`}
+                >
+                  {market}
+                </button>
+              ))}
+            </div>
+            {selectedMarkets.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-vizla-glassBorder">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-vizla-text-muted">
+                    {selectedMarkets.length} market{selectedMarkets.length !== 1 ? 's' : ''} selected
+                  </span>
+                  <button
+                    onClick={() => setSelectedMarkets([])}
+                    className="text-xs text-vizla-text-muted hover:text-vizla-text-primary transition-colors"
+                  >
+                    Clear selection
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Mock data notice */}
         {usingMockData && (
           <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-amber-500/20 text-amber-400 text-sm rounded-lg border border-amber-500/30">
