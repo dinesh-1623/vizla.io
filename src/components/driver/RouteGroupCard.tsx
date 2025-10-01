@@ -71,20 +71,20 @@ export const RouteGroupCard: React.FC<RouteGroupCardProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-sm text-vizla-text-muted">Time to Tow & Lot</span>
               <span className="text-sm font-medium text-vizla-text-primary">
-                {formatDuration(batch.lotTime)}
+                {formatDuration(Math.round(batch.lotTime))}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-vizla-text-muted">Time to Tow & Stash</span>
               <span className="text-sm font-medium text-vizla-text-primary">
-                {formatDuration(batch.stashTime)}
+                {formatDuration(Math.round(batch.stashTime))}
               </span>
             </div>
             {batch.stashSavings > 0 && (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-vizla-text-muted">Stash saves</span>
                 <span className="text-sm font-medium text-green-400">
-                  {formatDuration(batch.stashSavings)}
+                  {formatDuration(Math.round(batch.stashSavings))}
                 </span>
               </div>
             )}
@@ -114,7 +114,7 @@ export const RouteGroupCard: React.FC<RouteGroupCardProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-sm text-vizla-text-muted">Total Time</span>
               <span className="text-sm font-medium text-vizla-text-primary">
-                {formatDuration(batchTime)}
+                {formatDuration(Math.round(batchTime))}
               </span>
             </div>
           </div>

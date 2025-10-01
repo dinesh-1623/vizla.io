@@ -14,9 +14,9 @@ import {
 import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS } from '@/app/tow-driver/data/baltimoreRun';
 import { haversineMiles } from '@/lib/geo';
 
-// Correct coordinates from TowDriver
+// Updated coordinates to match Tow Truck Driver View
 const LOT_COORDS = { lat: 39.238, lng: -76.589 }; // 4221 Curtis Ave, Baltimore, MD 21226
-const STASH_COORDS = { lat: 39.245, lng: -76.580 }; // 751 W Patapsco Ave, Halethorpe, MD 21227 (approximate)
+const STASH_COORDS = { lat: 39.245, lng: -76.580 }; // 751 W Patapsco Ave, Halethorpe, MD 21227
 
 const DriverProgress: React.FC = () => {
   // State
@@ -126,12 +126,12 @@ const DriverProgress: React.FC = () => {
     <AppShell title="Driver Progress">
       {/* Header Section */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-vizla-text-primary mb-2">Driver Progress</h1>
             <p className="text-vizla-text-muted text-lg">Real-time capacity planning and route optimization</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {!import.meta.env.VITE_GOOGLE_MAPS_KEY && (
               <span className="px-3 py-2 bg-amber-500/20 text-amber-400 text-sm rounded-full border border-amber-500/30">
                 Estimate Mode
@@ -275,7 +275,7 @@ const DriverProgress: React.FC = () => {
                   backgroundColor: segment.color
                 }}
               />
-            )}
+            ))}
             {/* Current time marker */}
             <div
               className="absolute top-0 w-1 h-full bg-white rounded-full shadow-lg"
