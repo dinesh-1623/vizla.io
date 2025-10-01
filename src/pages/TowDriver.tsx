@@ -668,48 +668,6 @@ const TowDriver: React.FC = () => {
           </div>
         )}
 
-        {/* Group 2 Capacity Card */}
-        {group2Points.length > 0 && (
-          <div className="mb-6">
-            <div className="mb-4">
-              <h3 className="text-xl font-semibold text-vizla-text-primary">Group 2 • 10 Vehicles</h3>
-            </div>
-            <CapacityCard
-              inputs={{
-                mode: group2Mode,
-                pickups: group2Points.map(point => ({
-                  lat: point.lat,
-                  lng: point.lng,
-                  address: `Pickup ${point.id}`,
-                  id: point.id
-                })),
-                lot: {
-                  lat: lotCoords.lat,
-                  lng: lotCoords.lng,
-                  address: LOT_ADDRESS,
-                  id: 'lot'
-                },
-                stash: {
-                  lat: stashCoords.lat,
-                  lng: stashCoords.lng,
-                  address: STASH_ADDRESS,
-                  id: 'stash'
-                },
-                finishStashAtLot: finishAtLot,
-                service: {
-                  hookupMin: serviceTimes.hookupMin,
-                  dropLotMin: serviceTimes.dropLotMin,
-                  dropStashMin: serviceTimes.dropStashMin,
-                  cityMph: serviceTimes.cityMph
-                },
-                useLiveMatrix: !!import.meta.env.VITE_GOOGLE_MAPS_KEY
-              }}
-              onModeChange={(mode) => {
-                setGroup2Mode(mode);
-              }}
-            />
-          </div>
-        )}
 
         {/* Route Groups */}
         {routeGroups.length > 0 && (
@@ -754,6 +712,49 @@ const TowDriver: React.FC = () => {
         {/* Group 2 Vehicle Cards */}
         {group2Cars.length > 0 && (
           <div className="mb-8">
+            {/* Group 2 Capacity Card */}
+            {group2Points.length > 0 && (
+              <div className="mb-6">
+                <div className="mb-4">
+                  <h3 className="text-xl font-semibold text-vizla-text-primary">Group 2 • 10 Vehicles</h3>
+                </div>
+                <CapacityCard
+                  inputs={{
+                    mode: group2Mode,
+                    pickups: group2Points.map(point => ({
+                      lat: point.lat,
+                      lng: point.lng,
+                      address: `Pickup ${point.id}`,
+                      id: point.id
+                    })),
+                    lot: {
+                      lat: lotCoords.lat,
+                      lng: lotCoords.lng,
+                      address: LOT_ADDRESS,
+                      id: 'lot'
+                    },
+                    stash: {
+                      lat: stashCoords.lat,
+                      lng: stashCoords.lng,
+                      address: STASH_ADDRESS,
+                      id: 'stash'
+                    },
+                    finishStashAtLot: finishAtLot,
+                    service: {
+                      hookupMin: serviceTimes.hookupMin,
+                      dropLotMin: serviceTimes.dropLotMin,
+                      dropStashMin: serviceTimes.dropStashMin,
+                      cityMph: serviceTimes.cityMph
+                    },
+                    useLiveMatrix: !!import.meta.env.VITE_GOOGLE_MAPS_KEY
+                  }}
+                  onModeChange={(mode) => {
+                    setGroup2Mode(mode);
+                  }}
+                />
+              </div>
+            )}
+
             <div className="mb-4">
               <h3 className="text-xl font-semibold text-vizla-text-primary">Group 2 Vehicles</h3>
             </div>
