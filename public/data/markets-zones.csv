@@ -1,0 +1,54 @@
+market,zone,code,is_active
+Maryland,AA,AA,true
+Maryland,Balt CO,BALTCO,true
+Maryland,Balt East,BALTEAST,true
+Maryland,Balt West,BALTWEST,true
+Maryland,Hagerstown,HAGERSTOWN,true
+Maryland,Harco,HARCO,true
+Maryland,Howard,HOWARD,true
+Maryland,Moco,MOCO,true
+Maryland,Northwest,NORTHWEST,true
+Maryland,PG1-A,PG1-A,true
+Maryland,PG1-B,PG1-B,true
+Maryland,PG2-TOP,PG2-TOP,true
+Maryland,PG2-BOTTOM,PG2-BOTTOM,true
+Maryland,PG3-A,PG3-A,true
+Maryland,PG3-B,PG3-B,true
+Maryland,Silver Spring,SILVERSPRING,true
+Maryland,Western Md,WESTERNMD,true
+Virginia,VA 2,VA2,true
+Virginia,Virginia,VA,true
+DC,DC 1,DC1,true
+DC,DC 2,DC2,true
+DC,DC 3/VA,DC3VA,true
+Delaware,DE Camden Co,DECAMDEN,true
+Delaware,DE Gloucester Co,DEGLOUCESTER,true
+Delaware,DE pa1,DEPA1,true
+Delaware,DE pa2,DEPA2,true
+Delaware,DE Salem Co,DESALEM,true
+Delaware,Del Bear/NC,DEBEARNC,true
+Houston,TX - City East,TX-CityEast,true
+Houston,TX - City West A,TX-CityWestA,true
+Houston,TX - City West B,TX-CityWestB,true
+Houston,TX - Cypress A,TX-CypressA,true
+Houston,TX - Cypress B,TX-CypressB,true
+Houston,TX - Humble,TX-Humble,true
+Houston,TX - Katy 1,TX-Katy1,true
+Houston,TX - Katy 2,TX-Katy2,true
+Houston,TX - Katy 3,TX-Katy3,true
+Houston,TX - Liberty A,TX-LibertyA,true
+Houston,TX - Liberty B,TX-LibertyB,true
+Houston,TX - Livingston,TX-Livingston,true
+Houston,TX - Moco 1,TX-Moco1,true
+Houston,TX - Moco 2,TX-Moco2,true
+Houston,TX - Pasadena,TX-Pasadena,true
+Houston,TX - SE 1,TX-SE1,true
+Houston,TX - SE 2,TX-SE2,true
+Houston,TX - Spring A,TX-SpringA,true
+Houston,TX - Spring B,TX-SpringB,true
+Houston,TX - Sugarland,TX-Sugarland,true
+Houston,TX - Sugarland B,TX-SugarlandB,true
+Houston,TX - SW 1,TX-SW1,true
+Houston,TX - SW 2,TX-SW2,true
+Houston,TX - SW 3,TX-SW3,true
+The Valley,RGVTX-1,RGVTX-1,true

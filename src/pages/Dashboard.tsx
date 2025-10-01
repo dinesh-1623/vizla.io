@@ -16,6 +16,7 @@ import { FilterChips } from '@/components/dashboard/FilterChips';
 import { BreakdownPanel } from '@/components/dashboard/BreakdownPanel';
 import { StatusLegend } from '@/components/dashboard/StatusLegend';
 import { SegmentedToggle } from '@/components/dashboard/SegmentedToggle';
+import { MarketsOverview } from '@/components/MarketsOverview';
 import { 
   loadGlobalFilters, 
   saveGlobalFilters, 
@@ -474,6 +475,13 @@ const Dashboard: React.FC = () => {
             )}
           </GlassCard>
         </div>
+
+        {/* Markets Overview */}
+        <MarketsOverview 
+          defaultViewMode="columns"
+          showViewAllButton={true}
+          maxColumns={6}
+        />
 
         {/* Status Legend */}
         <div className="mb-4">

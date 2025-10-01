@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import TowDriver from "./pages/TowDriver";
 import DriverProgress from "./pages/DriverProgress";
+import Markets from "./pages/Markets";
 import Owner from "./pages/Owner";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import ToDispatch from "./pages/ToDispatch";
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/poc/baltimore" element={<BaltimorePOC />} />
           <Route path="/tow-driver" element={<TowDriver />} />
           <Route path="/driver/progress" element={<DriverProgress />} />
+          <Route path="/markets" element={<Markets />} />
           <Route path="/owner" element={<Owner />} />
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
           <Route path="/to-dispatch" element={<ToDispatch />} />
