@@ -9,7 +9,10 @@ import { ShiftFilters } from '@/components/shift/ShiftFilters';
 import { 
   getShifts, 
   filterShifts, 
-  getShiftsForDate 
+  getShiftsForDate,
+  saveShift,
+  removeShift,
+  duplicateShift
 } from '@/lib/shift/store';
 import { 
   generateShiftCSV, 
@@ -40,8 +43,6 @@ const Shifts: React.FC = () => {
         if (loadedShifts.length === 0) {
           const mockShifts = generateMockShifts();
           mockShifts.forEach(shift => {
-            // Save each mock shift to localStorage
-            const { saveShift } = require('@/lib/shift/store');
             saveShift(shift);
           });
           loadedShifts = getShifts();
@@ -82,7 +83,6 @@ const Shifts: React.FC = () => {
 
   // Handle duplicate shift
   const handleDuplicateShift = (shift: Shift) => {
-    const { duplicateShift } = require('@/lib/shift/store');
     try {
       const newShift = duplicateShift(shift.id);
       setShifts(getShifts());
@@ -93,13 +93,17 @@ const Shifts: React.FC = () => {
 
   // Handle delete shift
   const handleDeleteShift = (shiftId: string) => {
-    const { removeShift } = require('@/lib/shift/store');
     if (confirm('Are you sure you want to delete this shift?')) {
       try {
-        removeShift(shiftId);
-        setShifts(getShifts());
+        const success = removeShift(shiftId);
+        if (success) {
+          setShifts(getShifts());
+        } else {
+          alert('Failed to delete shift. Shift may not exist.');
+        }
       } catch (error) {
         console.error('Error deleting shift:', error);
+        alert('Error deleting shift. Please try again.');
       }
     }
   };
