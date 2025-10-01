@@ -52,7 +52,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
       title: "People",
       items: [
         { label: "Spotters", href: "/spotters" },
-        { label: "Tow Trucks", href: "/tow-trucks" }
+        { label: "Tow Trucks", href: "/tow-trucks" },
+        { label: "Driver Progress", href: "/driver/progress" }
       ]
     },
     {

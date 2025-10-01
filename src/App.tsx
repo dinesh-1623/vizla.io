@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import TowDriver from "./pages/TowDriver";
+import DriverProgress from "./pages/DriverProgress";
 import Owner from "./pages/Owner";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import ToDispatch from "./pages/ToDispatch";
@@ -38,6 +39,7 @@ const App = () => (
           <Route path="/located" element={<LocatedPage />} />
           <Route path="/poc/baltimore" element={<BaltimorePOC />} />
           <Route path="/tow-driver" element={<TowDriver />} />
+          <Route path="/driver/progress" element={<DriverProgress />} />
           <Route path="/owner" element={<Owner />} />
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
           <Route path="/to-dispatch" element={<ToDispatch />} />
