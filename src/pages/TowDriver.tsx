@@ -12,7 +12,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS, type TowCard } from '@/app/tow-driver/data/baltimoreRun';
 import { haversineMiles, type LatLng } from '@/lib/geo';
 import { totalReturnToLot, totalStash, totalHybridPerStop, minutesFromMiles, type ServiceTimes, type Point, type TravelFn, type HybridStep } from '@/lib/routing';
-// No clustering needed - show all cards at once
+import { clusterIntoTwoGroups } from '@/lib/cluster';
 import { buildRoundTripLot, buildStashChain, buildHybridChainWithCoords } from '@/lib/mapsUrl';
 import { 
   computeReturnToLot, 
@@ -40,7 +40,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const PAGE_SIZE = 12; // cards per auto-load
 
-// No group types needed - single view
+const GROUPS = ['Group 1', 'Group 2'] as const;
+type Group = typeof GROUPS[number];
 
 // Utility to repeat with unique keys
 function repeatToCount<T extends { id: string }>(arr: T[], count: number): (T & { __dupKey: string })[] {
@@ -58,8 +59,9 @@ function repeatToCount<T extends { id: string }>(arr: T[], count: number): (T & 
 const TowDriver: React.FC = () => {
   const navigate = useNavigate();
   
-  // Use all Baltimore data in single view
-  const [optimizationMode, setOptimizationMode] = useState<'efficient' | 'balanced'>('efficient');
+  // Use Baltimore data with 2 groups displayed on same page
+  const [group1Mode, setGroup1Mode] = useState<'lot' | 'stash' | 'optimized'>('optimized');
+  const [group2Mode, setGroup2Mode] = useState<'lot' | 'stash' | 'optimized'>('optimized');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -169,23 +171,32 @@ const TowDriver: React.FC = () => {
     });
   }, []);
 
-  // Use all points in single view
-  const allPoints = useMemo(() => {
-    return points; // All 20 points
+  // Cluster points into exactly 2 groups with 10 pickups each
+  const groupData = useMemo(() => {
+    return clusterIntoTwoGroups(points);
   }, [points]);
 
-  // Compute optimization results for all 20 vehicles
-  const computeOptimization = useMemo(() => {
-    if (allPoints.length === 0) {
+  // Get points for each group
+  const group1Points = useMemo(() => {
+    return groupData[0] || [];
+  }, [groupData]);
+
+  const group2Points = useMemo(() => {
+    return groupData[1] || [];
+  }, [groupData]);
+
+  // Compute optimization results for Group 1
+  const computeGroup1Optimization = useMemo(() => {
+    if (group1Points.length === 0) {
       return null;
     }
     
-    console.log('🔄 Computing optimization for', allPoints.length, 'points');
+    console.log('🔄 Computing Group 1 optimization for', group1Points.length, 'points');
     
-    // Compute all three scenarios for all 20 vehicles
-    const returnTotals = computeReturnToLot(allPoints, lotCoords, serviceTimes);
-    const stashTotals = computeReturnToStash(allPoints, lotCoords, stashCoords, finishAtLot, serviceTimes);
-    const optimizedTotals = computeOptimizedPerStop(allPoints, lotCoords, stashCoords, finishAtLot, serviceTimes);
+    // Compute all three scenarios for Group 1's 10 vehicles
+    const returnTotals = computeReturnToLot(group1Points, lotCoords, serviceTimes);
+    const stashTotals = computeReturnToStash(group1Points, lotCoords, stashCoords, finishAtLot, serviceTimes);
+    const optimizedTotals = computeOptimizedPerStop(group1Points, lotCoords, stashCoords, finishAtLot, serviceTimes);
     
     console.log('📊 Optimization results:', {
       returnTotals,
@@ -212,12 +223,52 @@ const TowDriver: React.FC = () => {
       fitsStash,
       fitsOptimized
     };
-  }, [allPoints, lotCoords, stashCoords, finishAtLot, serviceTimes]);
+  }, [group1Points, lotCoords, stashCoords, finishAtLot, serviceTimes]);
+
+  // Compute optimization results for Group 2
+  const computeGroup2Optimization = useMemo(() => {
+    if (group2Points.length === 0) {
+      return null;
+    }
+    
+    console.log('🔄 Computing Group 2 optimization for', group2Points.length, 'points');
+    
+    // Compute all three scenarios for Group 2's 10 vehicles
+    const returnTotals = computeReturnToLot(group2Points, lotCoords, serviceTimes);
+    const stashTotals = computeReturnToStash(group2Points, lotCoords, stashCoords, finishAtLot, serviceTimes);
+    const optimizedTotals = computeOptimizedPerStop(group2Points, lotCoords, stashCoords, finishAtLot, serviceTimes);
+    
+    console.log('📊 Group 2 optimization results:', {
+      returnTotals,
+      stashTotals,
+      optimizedTotals
+    });
+    
+    // Calculate savings: optimized vs the better of return-to-lot or return-to-stash
+    const baselineMin = Math.min(returnTotals.totalMin, stashTotals.totalMin);
+    const savedMin = Math.max(0, baselineMin - optimizedTotals.totalMin);
+    const savedPct = baselineMin > 0 ? (savedMin / baselineMin) * 100 : 0;
+    
+    const fitsReturn = returnTotals.totalMin <= 720; // 12 hours
+    const fitsStash = stashTotals.totalMin <= 720;
+    const fitsOptimized = optimizedTotals.totalMin <= 720;
+
+    return {
+      returnTotals,
+      stashTotals,
+      optimizedTotals,
+      savedMin,
+      savedPct,
+      fitsReturn,
+      fitsStash,
+      fitsOptimized
+    };
+  }, [group2Points, lotCoords, stashCoords, finishAtLot, serviceTimes]);
 
   // Update optimization results when computation changes
   useEffect(() => {
-    setOptimizationResults(computeOptimization);
-  }, [computeOptimization]);
+    setOptimizationResults(computeGroup1Optimization);
+  }, [computeGroup1Optimization]);
 
   // Format time display helper
   const formatTimeDisplay = (minutes: number): string => {
@@ -244,9 +295,16 @@ const TowDriver: React.FC = () => {
     }
   };
 
-  // Get all cars (no filtering needed)
-  const getAllCars = (): TowCard[] => {
-    return TOW_CARDS; // All 20 cards
+  // Get cars for Group 1
+  const getGroup1Cars = (): TowCard[] => {
+    const group1PointIds = group1Points.map(p => p.id);
+    return TOW_CARDS.filter(card => group1PointIds.includes(card.id));
+  };
+
+  // Get cars for Group 2
+  const getGroup2Cars = (): TowCard[] => {
+    const group2PointIds = group2Points.map(p => p.id);
+    return TOW_CARDS.filter(card => group2PointIds.includes(card.id));
   };
 
   // Check for demo mode and repeat functionality
@@ -278,8 +336,9 @@ const TowDriver: React.FC = () => {
     localStorage.setItem('tow-driver-route-mode', routeMode);
   }, [routeMode]);
 
-  // Get all cars
-  const allCars = getAllCars();
+  // Get cars for both groups
+  const group1Cars = getGroup1Cars();
+  const group2Cars = getGroup2Cars();
   
   // Get unique clients from Baltimore data
   const uniqueClients = useMemo(() => {
@@ -291,11 +350,11 @@ const TowDriver: React.FC = () => {
     return [];
   }, []);
 
-  // Get all cars (no filtering needed)
-  const filtered = useMemo(() => {
-    // Always return all 20 cars
-    return allCars;
-  }, [allCars]);
+  // Get all cars combined for display
+  const allCars = useMemo(() => {
+    // Return all 20 cards (both groups combined)
+    return [...group1Cars, ...group2Cars];
+  }, [group1Cars, group2Cars]);
 
   // Route grouping using Baltimore data
   const routeGroups: any[] = []; // Simplified for now
@@ -313,7 +372,7 @@ const TowDriver: React.FC = () => {
   }, [routeGroups]);
 
   // Support demo mode but show all 20 cards
-  const baseList = filtered; // all 20 cards
+  const baseList = allCars; // all 20 cards
   const cardsToRender = useMemo(() => {
     if (repeatTarget > 0) {
       // Convert TowCard to objects with id property for repeatToCount
@@ -343,13 +402,13 @@ const TowDriver: React.FC = () => {
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) {
         if (e.isIntersecting) {
-          setVisible((v) => Math.min(v + PAGE_SIZE, filtered.length));
+                 setVisible((v) => Math.min(v + PAGE_SIZE, allCars.length));
         }
       }
     }, { root: null, rootMargin: "800px 0px 800px 0px" });
     io.observe(el);
     return () => io.disconnect();
-  }, [filtered.length, forceSix]);
+  }, [allCars.length, forceSix]);
 
   const clearAllFilters = () => {
     // No filters to clear in 4-day mode
@@ -403,7 +462,7 @@ const TowDriver: React.FC = () => {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-vizla-text-primary">Tow Truck Driver View</h1>
-              <p className="text-sm text-vizla-text-muted">Data: Akel's 20 Baltimore Addresses (single view with dual optimization)</p>
+              <p className="text-sm text-vizla-text-muted">Data: Akel's 20 Baltimore Addresses (2 groups of 10 with independent optimization)</p>
             </div>
           </div>
                  <div className="flex items-center gap-2">
@@ -428,32 +487,6 @@ const TowDriver: React.FC = () => {
         </div>
       </header>
 
-      {/* Optimization Mode Selector */}
-      <div className="sticky top-[120px] z-30 bg-white/5 backdrop-blur-md ring-1 ring-white/10 rounded-2xl p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-vizla-text-primary">
-              Route Optimization
-            </h2>
-            <div className="flex bg-vizla-glass rounded-lg p-1 ring-1 ring-vizla-glassBorder">
-              {[
-                { key: 'efficient', label: 'Efficient Route' },
-                { key: 'balanced', label: 'Balanced Route' }
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setOptimizationMode(key as 'efficient' | 'balanced')}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus ${
-                    optimizationMode === key
-                      ? 'bg-vizla-brand-primary text-white'
-                      : 'text-vizla-text-secondary hover:text-vizla-text-primary hover:bg-vizla-glassElev'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
 
       {/* Error State */}
       {error && (
@@ -584,21 +617,24 @@ const TowDriver: React.FC = () => {
             {(() => {
               const demoActive = repeatTarget > 0;
               if (demoActive) {
-                return `(Preview) ${optimizationMode} • showing ${cardsToRender.length} of ${baseList.length} base`;
+                return `(Preview) All Groups • showing ${cardsToRender.length} of ${baseList.length} base`;
               }
-              return `${optimizationMode} • 20 vehicles`;
+              return `All Groups • 20 vehicles (10 + 10)`;
             })()}
           </h2>
         </div>
 
 
-        {/* Capacity Card */}
-        {allPoints.length > 0 && (
+        {/* Group 1 Capacity Card */}
+        {group1Points.length > 0 && (
           <div className="mb-6">
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold text-vizla-text-primary">Group 1 • 10 Vehicles</h3>
+            </div>
             <CapacityCard
               inputs={{
-                mode: optimizationMode === 'efficient' ? 'optimized' : 'stash',
-                pickups: allPoints.map(point => ({
+                mode: group1Mode,
+                pickups: group1Points.map(point => ({
                   lat: point.lat,
                   lng: point.lng,
                   address: `Pickup ${point.id}`,
@@ -626,13 +662,50 @@ const TowDriver: React.FC = () => {
                 useLiveMatrix: !!import.meta.env.VITE_GOOGLE_MAPS_KEY
               }}
               onModeChange={(mode) => {
-                if (mode === 'optimized') {
-                  setOptimizationMode('efficient');
-                } else if (mode === 'stash') {
-                  setOptimizationMode('balanced');
-                } else {
-                  setOptimizationMode('efficient');
-                }
+                setGroup1Mode(mode);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Group 2 Capacity Card */}
+        {group2Points.length > 0 && (
+          <div className="mb-6">
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold text-vizla-text-primary">Group 2 • 10 Vehicles</h3>
+            </div>
+            <CapacityCard
+              inputs={{
+                mode: group2Mode,
+                pickups: group2Points.map(point => ({
+                  lat: point.lat,
+                  lng: point.lng,
+                  address: `Pickup ${point.id}`,
+                  id: point.id
+                })),
+                lot: {
+                  lat: lotCoords.lat,
+                  lng: lotCoords.lng,
+                  address: LOT_ADDRESS,
+                  id: 'lot'
+                },
+                stash: {
+                  lat: stashCoords.lat,
+                  lng: stashCoords.lng,
+                  address: STASH_ADDRESS,
+                  id: 'stash'
+                },
+                finishStashAtLot: finishAtLot,
+                service: {
+                  hookupMin: serviceTimes.hookupMin,
+                  dropLotMin: serviceTimes.dropLotMin,
+                  dropStashMin: serviceTimes.dropStashMin,
+                  cityMph: serviceTimes.cityMph
+                },
+                useLiveMatrix: !!import.meta.env.VITE_GOOGLE_MAPS_KEY
+              }}
+              onModeChange={(mode) => {
+                setGroup2Mode(mode);
               }}
             />
           </div>
@@ -660,18 +733,44 @@ const TowDriver: React.FC = () => {
           </div>
         )}
 
-        {/* Vehicle cards grid */}
-        {cardsToRender.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cardsToRender.map((car) => (
-              <VehicleCard 
-                key={(car as any).__dupKey ?? car.vin} 
-                car={car} 
-                stepNumber={carStepMap.get(car.vin)}
-              />
-            ))}
+        {/* Group 1 Vehicle Cards */}
+        {group1Cars.length > 0 && (
+          <div className="mb-8">
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold text-vizla-text-primary">Group 1 Vehicles</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+              {group1Cars.map((car) => (
+                <VehicleCard 
+                  key={(car as any).__dupKey ?? car.vin} 
+                  car={car} 
+                  stepNumber={carStepMap.get(car.vin)}
+                />
+              ))}
+            </div>
           </div>
-        ) : (
+        )}
+
+        {/* Group 2 Vehicle Cards */}
+        {group2Cars.length > 0 && (
+          <div className="mb-8">
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold text-vizla-text-primary">Group 2 Vehicles</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+              {group2Cars.map((car) => (
+                <VehicleCard 
+                  key={(car as any).__dupKey ?? car.vin} 
+                  car={car} 
+                  stepNumber={carStepMap.get(car.vin)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Fallback for no vehicles */}
+        {cardsToRender.length === 0 && (
           <GlassCard className="p-12 text-center">
             <p className="text-vizla-text-primary text-lg">
               No vehicles found matching your filters
@@ -685,7 +784,7 @@ const TowDriver: React.FC = () => {
         {/* Loading indicator or caught up message */}
         {cardsToRender.length > 0 && repeatTarget === 0 && (
           <>
-            {!forceSix && cardsToRender.length < filtered.length ? (
+            {!forceSix && cardsToRender.length < allCars.length ? (
               <div ref={loadMoreRef} className="h-12 flex items-center justify-center text-neutral-400">
                 Loading more…
               </div>
