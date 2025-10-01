@@ -6,9 +6,9 @@ import { saveShift, updateShift } from '@/lib/shift/store';
 import { 
   calculateShiftLength, 
   deriveShiftType, 
-  validateShiftForm,
-  getZonesByMarket 
+  validateShiftForm
 } from '@/lib/shift/utils';
+import { getZonesByMarket } from '@/lib/shift/seed';
 
 interface ShiftManagementDrawerProps {
   shift?: Shift | null;

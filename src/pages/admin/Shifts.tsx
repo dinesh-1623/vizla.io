@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, Plus, Download, Filter, Search, Clock, MapPin, Users, Target } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { AppShell } from '@/components/shell/AppShell';
+import AppShell from '@/components/shell/AppShell';
 import { ShiftManagementDrawer } from '@/components/shift/ShiftManagementDrawer';
 import { ShiftCard } from '@/components/shift/ShiftCard';
 import { CalendarStripe } from '@/components/shift/CalendarStripe';
