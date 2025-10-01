@@ -161,7 +161,7 @@ export function clusterIntoDays(points: Point[], k = 4): Point[][] {
 // Enforce exactly 4 days with 5 pickups each
 export function clusterIntoFourDays(points: Point[]): Point[][] {
   if (points.length === 0) return [[], [], [], []];
-  
+
   // If we have exactly 20 points, distribute them deterministically
   if (points.length === 20) {
     // Sort points by longitude for consistent ordering
@@ -175,7 +175,7 @@ export function clusterIntoFourDays(points: Point[]): Point[][] {
       sortedPoints.slice(15, 20)
     ];
   }
-  
+
   // For other cases, use k-means but ensure balanced distribution
   const { clusters } = kMeans(points, 4);
   
@@ -205,6 +205,56 @@ export function clusterIntoFourDays(points: Point[]): Point[][] {
   // Sort each day's points by longitude for consistent ordering
   result.forEach(day => {
     day.sort((a, b) => a.lng - b.lng);
+  });
+  
+  return result;
+}
+
+// Enforce exactly 2 groups with 10 pickups each
+export function clusterIntoTwoGroups(points: Point[]): Point[][] {
+  if (points.length === 0) return [[], []];
+
+  // If we have exactly 20 points, distribute them deterministically
+  if (points.length === 20) {
+    // Sort points by longitude for consistent ordering
+    const sortedPoints = [...points].sort((a, b) => a.lng - b.lng);
+    
+    // Distribute evenly: first 10, last 10
+    return [
+      sortedPoints.slice(0, 10),
+      sortedPoints.slice(10, 20)
+    ];
+  }
+
+  // For other cases, use k-means but ensure balanced distribution
+  const { clusters } = kMeans(points, 2);
+  
+  // Flatten all points and distribute evenly
+  const allPoints = clusters.flat();
+  const result: Point[][] = [[], []];
+  
+  // Distribute points evenly across 2 groups
+  allPoints.forEach((point, index) => {
+    const groupIndex = index % 2;
+    result[groupIndex].push(point);
+  });
+  
+  // Ensure each group has exactly 10 points by redistributing
+  while (result.some(group => group.length !== 10)) {
+    const overIndex = result.findIndex(group => group.length > 10);
+    const underIndex = result.findIndex(group => group.length < 10);
+    
+    if (overIndex !== -1 && underIndex !== -1) {
+      const point = result[overIndex].pop()!;
+      result[underIndex].push(point);
+    } else {
+      break; // Safety break
+    }
+  }
+  
+  // Sort each group's points by longitude for consistent ordering
+  result.forEach(group => {
+    group.sort((a, b) => a.lng - b.lng);
   });
   
   return result;

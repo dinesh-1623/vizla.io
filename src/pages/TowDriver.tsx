@@ -12,7 +12,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS, type TowCard } from '@/app/tow-driver/data/baltimoreRun';
 import { haversineMiles, type LatLng } from '@/lib/geo';
 import { totalReturnToLot, totalStash, totalHybridPerStop, minutesFromMiles, type ServiceTimes, type Point, type TravelFn, type HybridStep } from '@/lib/routing';
-import { clusterIntoFourDays } from '@/lib/cluster';
+import { clusterIntoTwoGroups } from '@/lib/cluster';
 import { buildRoundTripLot, buildStashChain, buildHybridChainWithCoords } from '@/lib/mapsUrl';
 import { 
   computeReturnToLot, 
@@ -40,8 +40,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const PAGE_SIZE = 12; // cards per auto-load
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
-type Day = typeof DAYS[number];
+const GROUPS = ['Group 1', 'Group 2'] as const;
+type Group = typeof GROUPS[number];
 
 // Utility to repeat with unique keys
 function repeatToCount<T extends { id: string }>(arr: T[], count: number): (T & { __dupKey: string })[] {
@@ -59,9 +59,9 @@ function repeatToCount<T extends { id: string }>(arr: T[], count: number): (T & 
 const TowDriver: React.FC = () => {
   const navigate = useNavigate();
   
-  // Use new Baltimore data with 4-day batching
-  const [selectedDay, setSelectedDay] = useState<Day>('Monday');
-  const [activeDayIndex, setActiveDayIndex] = useState(0);
+  // Use new Baltimore data with 2-group batching
+  const [selectedGroup, setSelectedGroup] = useState<Group>('Group 1');
+  const [activeGroupIndex, setActiveGroupIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -171,28 +171,28 @@ const TowDriver: React.FC = () => {
     });
   }, []);
 
-  // Cluster points into exactly 4 days with 5 pickups each
-  const dayGroups = useMemo(() => {
-    return clusterIntoFourDays(points);
+  // Cluster points into exactly 2 groups with 10 pickups each
+  const groupData = useMemo(() => {
+    return clusterIntoTwoGroups(points);
   }, [points]);
 
-  // Get current day's points
-  const currentDayPoints = useMemo(() => {
-    return dayGroups[activeDayIndex] || [];
-  }, [dayGroups, activeDayIndex]);
+  // Get current group's points
+  const currentGroupPoints = useMemo(() => {
+    return groupData[activeGroupIndex] || [];
+  }, [groupData, activeGroupIndex]);
 
-  // Compute optimization results for current day
+  // Compute optimization results for current group
   const computeOptimization = useMemo(() => {
-    if (currentDayPoints.length === 0) {
+    if (currentGroupPoints.length === 0) {
       return null;
     }
     
-    console.log('🔄 Computing optimization for', currentDayPoints.length, 'points');
+    console.log('🔄 Computing optimization for', currentGroupPoints.length, 'points');
     
-    // Compute all three scenarios for the current day's 5 vehicles
-    const returnTotals = computeReturnToLot(currentDayPoints, lotCoords, serviceTimes);
-    const stashTotals = computeReturnToStash(currentDayPoints, lotCoords, stashCoords, finishAtLot, serviceTimes);
-    const optimizedTotals = computeOptimizedPerStop(currentDayPoints, lotCoords, stashCoords, finishAtLot, serviceTimes);
+    // Compute all three scenarios for the current group's 10 vehicles
+    const returnTotals = computeReturnToLot(currentGroupPoints, lotCoords, serviceTimes);
+    const stashTotals = computeReturnToStash(currentGroupPoints, lotCoords, stashCoords, finishAtLot, serviceTimes);
+    const optimizedTotals = computeOptimizedPerStop(currentGroupPoints, lotCoords, stashCoords, finishAtLot, serviceTimes);
     
     console.log('📊 Optimization results:', {
       returnTotals,
@@ -219,7 +219,7 @@ const TowDriver: React.FC = () => {
       fitsStash,
       fitsOptimized
     };
-  }, [currentDayPoints, lotCoords, stashCoords, finishAtLot, serviceTimes]);
+  }, [currentGroupPoints, lotCoords, stashCoords, finishAtLot, serviceTimes]);
 
   // Update optimization results when computation changes
   useEffect(() => {
@@ -251,10 +251,10 @@ const TowDriver: React.FC = () => {
     }
   };
 
-  // Get cars for selected day
-  const getSelectedDayCars = (): TowCard[] => {
-    const currentDayPointIds = currentDayPoints.map(p => p.id);
-    return TOW_CARDS.filter(card => currentDayPointIds.includes(card.id));
+  // Get cars for selected group
+  const getSelectedGroupCars = (): TowCard[] => {
+    const currentGroupPointIds = currentGroupPoints.map(p => p.id);
+    return TOW_CARDS.filter(card => currentGroupPointIds.includes(card.id));
   };
 
   // Check for demo mode and repeat functionality
@@ -286,8 +286,8 @@ const TowDriver: React.FC = () => {
     localStorage.setItem('tow-driver-route-mode', routeMode);
   }, [routeMode]);
 
-  // Get cars for selected day
-  const selectedDayCars = getSelectedDayCars();
+  // Get cars for selected group
+  const selectedGroupCars = getSelectedGroupCars();
   
   // Get unique clients from Baltimore data
   const uniqueClients = useMemo(() => {
@@ -299,29 +299,24 @@ const TowDriver: React.FC = () => {
     return [];
   }, []);
 
-  // Day labels for the 4-day system
-  const DAY_LABELS = ['Monday (Today)', 'Tuesday', 'Wednesday', 'Thursday'];
+  // Group labels for the 2-group system
+  const GROUP_LABELS = ['Group 1', 'Group 2'];
   
-  // Get counts by day - memoized
-  const countsByDay = useMemo(() => {
-    const counts: Record<Day, number> = {
-      Monday: dayGroups[0]?.length || 0,
-      Tuesday: dayGroups[1]?.length || 0,
-      Wednesday: dayGroups[2]?.length || 0,
-      Thursday: dayGroups[3]?.length || 0,
-      Friday: 0,
-      Saturday: 0,
-      Sunday: 0,
+  // Get counts by group - memoized
+  const countsByGroup = useMemo(() => {
+    const counts: Record<Group, number> = {
+      'Group 1': groupData[0]?.length || 0,
+      'Group 2': groupData[1]?.length || 0,
     };
     
     return counts;
-  }, [dayGroups]);
+  }, [groupData]);
 
-  // Get cars for the active day only (strictly 5 cards)
+  // Get cars for the active group only (strictly 10 cards)
   const filtered = useMemo(() => {
-    // Always return exactly the 5 cars for the active day, no additional filtering
-    return selectedDayCars;
-  }, [selectedDayCars]);
+    // Always return exactly the 10 cars for the active group, no additional filtering
+    return selectedGroupCars;
+  }, [selectedGroupCars]);
 
   // Route grouping using Baltimore data
   const routeGroups: any[] = []; // Simplified for now
@@ -338,35 +333,35 @@ const TowDriver: React.FC = () => {
     return stepMap;
   }, [routeGroups]);
 
-  // Support demo mode but always limit to 5 cards per day
-  const baseList = filtered; // exactly 5 cars for the active day
+  // Support demo mode but always limit to 10 cards per group
+  const baseList = filtered; // exactly 10 cars for the active group
   const cardsToRender = useMemo(() => {
     if (repeatTarget > 0) {
       // Convert TowCard to objects with id property for repeatToCount
       const carsWithId = baseList.map(car => ({ ...car, id: car.id }));
       return repeatToCount(carsWithId, repeatTarget);
     }
-    // Always show exactly 5 cards for the active day
-    return baseList.slice(0, 5);
+    // Always show exactly 10 cards for the active group
+    return baseList.slice(0, 10);
   }, [baseList, repeatTarget]);
 
-  // No active filters in 4-day mode - each day shows exactly 5 cards
+  // No active filters in 2-group mode - each group shows exactly 10 cards
   const hasActiveFilters = false;
 
-  // Reset when day changes and restore scroll position
+  // Reset when group changes and restore scroll position
   useEffect(() => {
-    const key = `scroll.${selectedDay}`;
+    const key = `scroll.${selectedGroup}`;
     const saved = sessionStorage.getItem(key);
     // Restore scroll after next paint if saved
     requestAnimationFrame(() => {
       if (saved) window.scrollTo({ top: Number(saved), behavior: "instant" as ScrollBehavior });
     });
     return () => {
-      // Save scroll on unmount or before day changes
+      // Save scroll on unmount or before group changes
       sessionStorage.setItem(key, String(window.scrollY));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDay]);
+  }, [selectedGroup]);
 
   // Back to top button visibility
   useEffect(() => {
@@ -444,7 +439,7 @@ const TowDriver: React.FC = () => {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-vizla-text-primary">Tow Truck Driver View</h1>
-              <p className="text-sm text-vizla-text-muted">Data: Akel's 20 Baltimore Addresses (4-day batching)</p>
+              <p className="text-sm text-vizla-text-muted">Data: Akel's 20 Baltimore Addresses (2-group batching)</p>
             </div>
           </div>
                  <div className="flex items-center gap-2">
@@ -472,26 +467,26 @@ const TowDriver: React.FC = () => {
       {/* Sticky Tabs Bar */}
       <div className="sticky top-[120px] z-30 bg-white/5 backdrop-blur-md ring-1 ring-white/10 rounded-2xl p-4 mb-6">
           <div className="flex flex-wrap gap-2" role="tablist">
-            {DAY_LABELS.map((label, index) => {
-              const day = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'][index];
-              const isEnabled = dayGroups[index]?.length === 5;
+            {GROUP_LABELS.map((label, index) => {
+              const group = ['Group 1', 'Group 2'][index];
+              const isEnabled = groupData[index]?.length === 10;
               
               return (
                 <button
-                  key={day}
+                  key={group}
                   onClick={() => {
                     if (isEnabled) {
-                      setSelectedDay(day as Day);
-                      setActiveDayIndex(index);
+                      setSelectedGroup(group as Group);
+                      setActiveGroupIndex(index);
                     }
                   }}
                   role="tab"
-                  aria-selected={selectedDay === day}
+                  aria-selected={selectedGroup === group}
                   aria-label={`Select ${label}`}
                   disabled={!isEnabled}
-                  title={!isEnabled ? "Not enough pickups for this day" : undefined}
+                  title={!isEnabled ? "Not enough pickups for this group" : undefined}
                   className={`relative px-4 py-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vizla-ring-focus ${
-                    selectedDay === day
+                    selectedGroup === group
                       ? 'bg-white text-slate-900'
                       : isEnabled 
                         ? 'bg-white/5 text-neutral-200 ring-1 ring-white/10 hover:bg-white/10'
@@ -501,7 +496,7 @@ const TowDriver: React.FC = () => {
                   {label}
                   {/* Count bubble */}
                   <span className="ml-2 inline-flex min-w-[1.25rem] h-5 items-center justify-center rounded-full bg-white text-slate-900 text-[11px] px-1.5 ring-1 ring-white/40">
-                    5
+                    10
                   </span>
                 </button>
               );
@@ -638,21 +633,21 @@ const TowDriver: React.FC = () => {
             {(() => {
               const demoActive = repeatTarget > 0;
               if (demoActive) {
-                return `(Preview) Day ${activeDayIndex + 1} • showing ${cardsToRender.length} of ${baseList.length} base`;
+                return `(Preview) Group ${activeGroupIndex + 1} • showing ${cardsToRender.length} of ${baseList.length} base`;
               }
-              return `Day ${activeDayIndex + 1} • 5 cards`;
+              return `Group ${activeGroupIndex + 1} • 10 cards`;
             })()}
           </h2>
         </div>
 
 
         {/* Capacity Card */}
-        {currentDayPoints.length > 0 && (
+        {currentGroupPoints.length > 0 && (
           <div className="mb-6">
             <CapacityCard
               inputs={{
                 mode: planMode === 'hybrid' ? 'optimized' : planMode,
-                pickups: currentDayPoints.map(point => ({
+                pickups: currentGroupPoints.map(point => ({
                   lat: point.lat,
                   lng: point.lng,
                   address: `Pickup ${point.id}`,
@@ -742,7 +737,7 @@ const TowDriver: React.FC = () => {
                 Loading more…
               </div>
             ) : (
-              <div className="py-6 text-center text-neutral-400">You're all caught up for {selectedDay}</div>
+              <div className="py-6 text-center text-neutral-400">You're all caught up for {selectedGroup}</div>
             )}
           </>
         )}
