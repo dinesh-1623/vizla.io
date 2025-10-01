@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Settings, MapPin, Clock, Users, Target, AlertCircle } from 'lucide-react';
+import { Settings, MapPin, Clock, Users, Target, AlertCircle, ChevronDown, ChevronUp, Navigation, Map } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { RouteGroupCard } from '@/components/driver/RouteGroupCard';
@@ -14,8 +14,9 @@ import {
 import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS } from '@/app/tow-driver/data/baltimoreRun';
 import { haversineMiles } from '@/lib/geo';
 
-const LOT_COORDS = { lat: 39.238, lng: -76.589 };
-const STASH_COORDS = { lat: 39.245, lng: -76.580 };
+// Correct coordinates from TowDriver
+const LOT_COORDS = { lat: 39.238, lng: -76.589 }; // 4221 Curtis Ave, Baltimore, MD 21226
+const STASH_COORDS = { lat: 39.245, lng: -76.580 }; // 751 W Patapsco Ave, Halethorpe, MD 21227 (approximate)
 
 const DriverProgress: React.FC = () => {
   // State
@@ -123,159 +124,248 @@ const DriverProgress: React.FC = () => {
   
   return (
     <AppShell title="Driver Progress">
-      {/* KPI Tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
-          <div className="p-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Users className="w-5 h-5 text-vizla-text-muted" />
-              <span className="text-sm font-medium text-vizla-text-secondary">Towed</span>
+      {/* Header Section */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-vizla-text-primary mb-2">Driver Progress</h1>
+            <p className="text-vizla-text-muted text-lg">Real-time capacity planning and route optimization</p>
+          </div>
+          <div className="flex items-center gap-4">
+            {!import.meta.env.VITE_GOOGLE_MAPS_KEY && (
+              <span className="px-3 py-2 bg-amber-500/20 text-amber-400 text-sm rounded-full border border-amber-500/30">
+                Estimate Mode
+              </span>
+            )}
+            <button
+              onClick={() => setIsAssumptionsOpen(!isAssumptionsOpen)}
+              className="flex items-center gap-2 px-4 py-2 bg-vizla-glass text-vizla-text-secondary rounded-xl ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-all duration-200"
+            >
+              <Settings className="w-4 h-4" />
+              Settings
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder hover:ring-green-500/30 transition-all duration-300 group">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-green-500/20 rounded-xl group-hover:bg-green-500/30 transition-colors">
+                <Users className="w-6 h-6 text-green-400" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-green-400 mb-1">
+                  {completedBatches.length * 4}
+                </div>
+                <div className="text-sm text-vizla-text-muted">
+                  Towed
+                </div>
+              </div>
             </div>
-            <div className="text-2xl font-bold text-vizla-text-primary">
-              {completedBatches.length * 4}
-            </div>
-            <div className="text-xs text-vizla-text-muted mt-1">
+            <div className="text-xs text-vizla-text-muted">
               {completedBatches.length} batches completed
             </div>
           </div>
         </GlassCard>
         
-        <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
-          <div className="p-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Target className="w-5 h-5 text-blue-400" />
-              <span className="text-sm font-medium text-vizla-text-secondary">On Track For</span>
+        <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder hover:ring-blue-500/30 transition-all duration-300 group">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-blue-500/20 rounded-xl group-hover:bg-blue-500/30 transition-colors">
+                <Target className="w-6 h-6 text-blue-400" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-blue-400 mb-1">
+                  {capacityMetrics.onTrack * 4}
+                </div>
+                <div className="text-sm text-vizla-text-muted">
+                  On Track
+                </div>
+              </div>
             </div>
-            <div className="text-2xl font-bold text-blue-400">
-              {capacityMetrics.onTrack * 4}
-            </div>
-            <div className="text-xs text-vizla-text-muted mt-1">
+            <div className="text-xs text-vizla-text-muted">
               {capacityMetrics.onTrack} batches
             </div>
           </div>
         </GlassCard>
         
-        <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
-          <div className="p-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <AlertCircle className="w-5 h-5 text-amber-400" />
-              <span className="text-sm font-medium text-vizla-text-secondary">At Risk For</span>
+        <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder hover:ring-amber-500/30 transition-all duration-300 group">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-amber-500/20 rounded-xl group-hover:bg-amber-500/30 transition-colors">
+                <AlertCircle className="w-6 h-6 text-amber-400" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-amber-400 mb-1">
+                  {capacityMetrics.atRisk * 4}
+                </div>
+                <div className="text-sm text-vizla-text-muted">
+                  At Risk
+                </div>
+              </div>
             </div>
-            <div className="text-2xl font-bold text-amber-400">
-              {capacityMetrics.atRisk * 4}
-            </div>
-            <div className="text-xs text-vizla-text-muted mt-1">
+            <div className="text-xs text-vizla-text-muted">
               {capacityMetrics.atRisk} batches
             </div>
           </div>
         </GlassCard>
         
-        <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
-          <div className="p-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Clock className="w-5 h-5 text-red-400" />
-              <span className="text-sm font-medium text-vizla-text-secondary">Behind For</span>
+        <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder hover:ring-red-500/30 transition-all duration-300 group">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-red-500/20 rounded-xl group-hover:bg-red-500/30 transition-colors">
+                <Clock className="w-6 h-6 text-red-400" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-red-400 mb-1">
+                  {capacityMetrics.behind * 4}
+                </div>
+                <div className="text-sm text-vizla-text-muted">
+                  Behind
+                </div>
+              </div>
             </div>
-            <div className="text-2xl font-bold text-red-400">
-              {capacityMetrics.behind * 4}
-            </div>
-            <div className="text-xs text-vizla-text-muted mt-1">
+            <div className="text-xs text-vizla-text-muted">
               {capacityMetrics.behind} batches
             </div>
           </div>
         </GlassCard>
       </div>
       
-      {/* Progress Bar */}
-      <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder mb-6">
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-vizla-text-primary">Shift Progress</span>
-            <span className="text-sm text-vizla-text-muted">
-              {Math.round(capacityMetrics.shiftProgress)}% complete
-            </span>
+      {/* Shift Progress Bar */}
+      <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder mb-8">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-vizla-text-primary">Shift Progress</h3>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-vizla-text-muted">
+                {Math.round(capacityMetrics.shiftProgress)}% complete
+              </span>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full" />
+                  <span className="text-vizla-text-muted">Completed</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                  <span className="text-vizla-text-muted">On Track</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                  <span className="text-vizla-text-muted">At Risk</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-red-500 rounded-full" />
+                  <span className="text-vizla-text-muted">Behind</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="relative w-full h-4 bg-vizla-glass rounded-full overflow-hidden">
+          <div className="relative w-full h-6 bg-vizla-glass rounded-full overflow-hidden">
             {progressSegments.map((segment, index) => (
               <div
                 key={index}
-                className="absolute h-full rounded-full"
+                className="absolute h-full rounded-full transition-all duration-500"
                 style={{
                   left: `${segment.start}%`,
                   width: `${segment.end - segment.start}%`,
                   backgroundColor: segment.color
                 }}
               />
-            ))}
-            {/* Now marker */}
+            )}
+            {/* Current time marker */}
             <div
-              className="absolute top-0 w-1 h-full bg-white rounded-full"
+              className="absolute top-0 w-1 h-full bg-white rounded-full shadow-lg"
               style={{ left: `${capacityMetrics.shiftProgress}%` }}
             />
           </div>
         </div>
       </GlassCard>
       
-      {/* Filters and Assumptions */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <select
-            value={strategy}
-            onChange={(e) => setStrategy(e.target.value as 'lot' | 'stash' | 'optimized')}
-            className="px-3 py-2 bg-vizla-glass border border-vizla-glassBorder rounded-lg text-vizla-text-primary focus:ring-2 focus:ring-vizla-ring-focus focus:border-vizla-ring-focus"
-          >
-            <option value="lot">Return-to-Lot</option>
-            <option value="stash">Return-to-Stash</option>
-            <option value="optimized">Optimized (per stop)</option>
-          </select>
-          
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-vizla-text-muted">Shift Length:</label>
-            <input
-              type="number"
-              min="1"
-              max="24"
-              value={shiftLengthHours}
-              onChange={(e) => setShiftLengthHours(parseInt(e.target.value) || 10)}
-              className="w-20 px-2 py-1 bg-vizla-glass border border-vizla-glassBorder rounded text-vizla-text-primary focus:ring-2 focus:ring-vizla-ring-focus focus:border-vizla-ring-focus"
-            />
-            <span className="text-sm text-vizla-text-muted">hours</span>
+      {/* Strategy Configuration */}
+      <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder mb-8">
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-vizla-text-primary mb-4">Route Strategy</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-vizla-text-secondary">Strategy</label>
+              <select
+                value={strategy}
+                onChange={(e) => setStrategy(e.target.value as 'lot' | 'stash' | 'optimized')}
+                className="w-full px-4 py-3 bg-vizla-glass border border-vizla-glassBorder rounded-xl text-vizla-text-primary focus:ring-2 focus:ring-vizla-ring-focus focus:border-vizla-ring-focus transition-all"
+              >
+                <option value="lot">Return-to-Lot</option>
+                <option value="stash">Return-to-Stash</option>
+                <option value="optimized">Optimized (per stop)</option>
+              </select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-vizla-text-secondary">Shift Length</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={shiftLengthHours}
+                  onChange={(e) => setShiftLengthHours(parseInt(e.target.value) || 10)}
+                  className="flex-1 px-4 py-3 bg-vizla-glass border border-vizla-glassBorder rounded-xl text-vizla-text-primary focus:ring-2 focus:ring-vizla-ring-focus focus:border-vizla-ring-focus transition-all"
+                />
+                <span className="text-sm text-vizla-text-muted">hours</span>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-vizla-text-secondary">Options</label>
+              <label className="flex items-center gap-3 p-3 bg-vizla-glass rounded-xl cursor-pointer hover:bg-vizla-glassElev transition-colors">
+                <input
+                  type="checkbox"
+                  checked={finishStashAtLot}
+                  onChange={(e) => setFinishStashAtLot(e.target.checked)}
+                  className="w-5 h-5 text-vizla-brand-primary bg-vizla-glass border-vizla-glassBorder rounded focus:ring-vizla-ring-focus"
+                />
+                <span className="text-sm text-vizla-text-primary">Finish stash at lot</span>
+              </label>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-vizla-text-secondary">Status</label>
+              <div className="flex items-center gap-2">
+                {!import.meta.env.VITE_GOOGLE_MAPS_KEY && (
+                  <span className="px-3 py-2 bg-amber-500/20 text-amber-400 text-sm rounded-full border border-amber-500/30">
+                    Estimate Mode
+                  </span>
+                )}
+                {import.meta.env.VITE_GOOGLE_MAPS_KEY && (
+                  <span className="px-3 py-2 bg-green-500/20 text-green-400 text-sm rounded-full border border-green-500/30">
+                    Live Data
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </GlassCard>
+      
+      {/* Route Management - Four Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Now Column */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-500/20 rounded-lg">
+              <Clock className="w-5 h-5 text-green-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-vizla-text-primary">Now</h2>
+            <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
+              Active
+            </span>
           </div>
           
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={finishStashAtLot}
-              onChange={(e) => setFinishStashAtLot(e.target.checked)}
-              className="w-4 h-4 text-vizla-brand-primary bg-vizla-glass border-vizla-glassBorder rounded focus:ring-vizla-ring-focus"
-            />
-            <span className="text-sm text-vizla-text-muted">Finish stash at lot</span>
-          </label>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {!import.meta.env.VITE_GOOGLE_MAPS_KEY && (
-            <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">
-              Estimate mode
-            </span>
-          )}
-          <button
-            onClick={() => setIsAssumptionsOpen(!isAssumptionsOpen)}
-            className="flex items-center gap-2 px-3 py-2 bg-vizla-glass text-vizla-text-secondary rounded-lg ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-          >
-            <Settings className="w-4 h-4" />
-            Assumptions
-          </button>
-        </div>
-      </div>
-      
-      {/* Main Content - Four Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Now Column */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-vizla-text-primary">Now</h2>
           {vehiclesByStatus.now.map((batch) => (
-            <div key={batch.id} className="space-y-2">
+            <div key={batch.id} className="space-y-4">
               <RouteGroupCard
                 batch={batch}
                 lot={LOT_COORDS}
@@ -286,22 +376,36 @@ const DriverProgress: React.FC = () => {
               />
               <button
                 onClick={() => handleMarkBatchDone(batch.id)}
-                className="w-full px-4 py-2 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium hover:bg-green-500/30 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-500/20 text-green-400 rounded-xl text-sm font-medium hover:bg-green-500/30 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-all duration-200 border border-green-500/30"
               >
+                <Target className="w-4 h-4" />
                 Mark Batch Done
               </button>
             </div>
           ))}
           {vehiclesByStatus.now.length === 0 && (
-            <div className="text-center text-vizla-text-muted py-8">
-              No batches in progress
-            </div>
+            <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
+              <div className="p-8 text-center">
+                <Clock className="w-12 h-12 text-vizla-text-muted mx-auto mb-4" />
+                <p className="text-vizla-text-muted">No batches in progress</p>
+                <p className="text-xs text-vizla-text-muted mt-2">Ready to start the next batch</p>
+              </div>
+            </GlassCard>
           )}
         </div>
         
         {/* Next Column */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-vizla-text-primary">Next</h2>
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <Navigation className="w-5 h-5 text-blue-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-vizla-text-primary">Next</h2>
+            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full">
+              Queued
+            </span>
+          </div>
+          
           {vehiclesByStatus.next.map((batch) => (
             <RouteGroupCard
               key={batch.id}
@@ -314,16 +418,29 @@ const DriverProgress: React.FC = () => {
             />
           ))}
           {vehiclesByStatus.next.length === 0 && (
-            <div className="text-center text-vizla-text-muted py-8">
-              No upcoming batches
-            </div>
+            <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
+              <div className="p-8 text-center">
+                <Navigation className="w-12 h-12 text-vizla-text-muted mx-auto mb-4" />
+                <p className="text-vizla-text-muted">No upcoming batches</p>
+                <p className="text-xs text-vizla-text-muted mt-2">Schedule more routes</p>
+              </div>
+            </GlassCard>
           )}
         </div>
         
         {/* Later Column */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-vizla-text-primary">Later</h2>
-          <div className="space-y-4 max-h-96 overflow-y-auto">
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-500/20 rounded-lg">
+              <ChevronDown className="w-5 h-5 text-purple-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-vizla-text-primary">Later</h2>
+            <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs rounded-full">
+              {vehiclesByStatus.later.length}
+            </span>
+          </div>
+          
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
             {vehiclesByStatus.later.map((batch) => (
               <RouteGroupCard
                 key={batch.id}
@@ -337,28 +454,48 @@ const DriverProgress: React.FC = () => {
             ))}
           </div>
           {vehiclesByStatus.later.length === 0 && (
-            <div className="text-center text-vizla-text-muted py-8">
-              No future batches
-            </div>
+            <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
+              <div className="p-8 text-center">
+                <ChevronDown className="w-12 h-12 text-vizla-text-muted mx-auto mb-4" />
+                <p className="text-vizla-text-muted">No future batches</p>
+                <p className="text-xs text-vizla-text-muted mt-2">All routes scheduled</p>
+              </div>
+            </GlassCard>
           )}
         </div>
         
         {/* Located Column */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-vizla-text-primary">Located</h2>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gray-500/20 rounded-lg">
+              <MapPin className="w-5 h-5 text-gray-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-vizla-text-primary">Located</h2>
+            <span className="px-2 py-1 bg-gray-500/20 text-gray-400 text-xs rounded-full">
+              {TOW_CARDS.length}
+            </span>
+          </div>
+          
+          <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
             {TOW_CARDS.map((card) => (
-              <GlassCard key={card.id} className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
-                <div className="p-3">
-                  <div className="text-sm font-medium text-vizla-text-primary mb-1">
-                    {card.client}
+              <GlassCard key={card.id} className="backdrop-blur-md ring-1 ring-vizla-glassBorder hover:ring-vizla-brand-primary/30 transition-all duration-200 group">
+                <div className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-vizla-text-primary group-hover:text-vizla-brand-primary transition-colors">
+                        {card.client}
+                      </h4>
+                      <p className="text-xs text-vizla-text-muted mt-1">
+                        {card.year} {card.make} {card.model}
+                      </p>
+                    </div>
+                    <div className="ml-3 flex-shrink-0">
+                      <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    </div>
                   </div>
-                  <div className="text-xs text-vizla-text-muted mb-1">
-                    {card.year} {card.make} {card.model}
-                  </div>
-                  <div className="text-xs text-vizla-text-muted truncate">
-                    {card.address}
-                  </div>
+                  <p className="text-xs text-vizla-text-muted truncate">
+                    {card.fullAddress}
+                  </p>
                 </div>
               </GlassCard>
             ))}

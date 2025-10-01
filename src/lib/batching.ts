@@ -39,7 +39,7 @@ export interface BatchingOptions {
 // Convert TowCard to BatchVehicle
 function towCardToBatchVehicle(card: TowCard): BatchVehicle {
   // Generate fake difficulty based on vehicle type/age
-  const year = parseInt(card.year);
+  const year = card.year;
   const currentYear = new Date().getFullYear();
   const age = currentYear - year;
   
@@ -52,13 +52,32 @@ function towCardToBatchVehicle(card: TowCard): BatchVehicle {
     difficulty = 'hard';
   }
   
+  // Extract coordinates from address (same logic as TowDriver)
+  const coordMatch = card.fullAddress.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
+  let lat: number, lng: number;
+  
+  if (coordMatch) {
+    // Use actual coordinates from address
+    lat = parseFloat(coordMatch[1]);
+    lng = parseFloat(coordMatch[2]);
+  } else {
+    // Generate deterministic pseudo-coordinates based on card index
+    const baseLat = 39.238;
+    const baseLng = -76.589;
+    const cardIndex = parseInt(card.id);
+    const offsetLat = (cardIndex % 10) * 0.001;
+    const offsetLng = (cardIndex % 10) * 0.001;
+    lat = baseLat + offsetLat;
+    lng = baseLng + offsetLng;
+  }
+  
   return {
     id: card.id,
-    address: card.address,
-    lat: card.lat,
-    lng: card.lng,
+    address: card.fullAddress,
+    lat,
+    lng,
     client: card.client,
-    year: card.year,
+    year: card.year.toString(),
     make: card.make,
     model: card.model,
     difficulty
