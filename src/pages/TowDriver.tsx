@@ -359,6 +359,29 @@ const TowDriver: React.FC = () => {
     return [];
   }, []);
 
+  // Handle mark as done actions
+  const handleMarkAsDone = (carId: string, action: 'delete' | 'collected' | 'dropped-lot' | 'dropped-stash') => {
+    console.log(`Mark as done: ${carId} - ${action}`);
+    
+    // For now, just show a toast notification
+    // In a real app, this would update the database and remove the vehicle from the current view
+    const actionMessages = {
+      'delete': 'Vehicle deleted successfully',
+      'collected': 'Vehicle marked as collected',
+      'dropped-lot': 'Vehicle marked as dropped at lot',
+      'dropped-stash': 'Vehicle marked as dropped at stash'
+    };
+    
+    alert(`${actionMessages[action]} for vehicle ${carId}`);
+    
+    // TODO: Implement actual removal/status update logic
+    // This could involve:
+    // 1. Updating the vehicle status in the database
+    // 2. Removing the vehicle from the current view
+    // 3. Moving it to a "completed" section
+    // 4. Updating the route optimization
+  };
+
   // Get all cars combined for display
   const allCars = useMemo(() => {
     // Return all 20 cards (both groups combined)
@@ -751,6 +774,7 @@ const TowDriver: React.FC = () => {
                   key={(car as any).__dupKey ?? car.vin} 
                   car={car} 
                   stepNumber={carStepMap.get(car.vin)}
+                  onMarkAsDone={handleMarkAsDone}
                 />
               ))}
             </div>
@@ -812,6 +836,7 @@ const TowDriver: React.FC = () => {
                   key={(car as any).__dupKey ?? car.vin} 
                   car={car} 
                   stepNumber={carStepMap.get(car.vin)}
+                  onMarkAsDone={handleMarkAsDone}
                 />
               ))}
             </div>
