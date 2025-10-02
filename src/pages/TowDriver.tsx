@@ -371,6 +371,18 @@ const TowDriver: React.FC = () => {
     return [];
   }, []);
 
+  // Debug: Log spotter submissions to see image URLs
+  useEffect(() => {
+    const storedSubmissions = localStorage.getItem('spotter-submissions');
+    if (storedSubmissions) {
+      const submissions = JSON.parse(storedSubmissions);
+      console.log('Spotter submissions in localStorage:', submissions);
+      submissions.forEach((sub: any) => {
+        console.log(`Submission ${sub.id} image URL:`, sub.photoUrl);
+      });
+    }
+  }, []);
+
   // Handle mark as done actions
   const handleMarkAsDone = (carId: string, action: 'delete' | 'collected' | 'dropped-lot' | 'dropped-stash') => {
     console.log(`Mark as done: ${carId} - ${action}`);
