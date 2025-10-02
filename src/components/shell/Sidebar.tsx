@@ -68,7 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
         { label: "Users", href: "/admin/users" },
         { label: "Markets", href: "/markets" },
         { label: "Shifts", href: "/admin/shifts" },
-        { label: "Client Prefs", href: "/admin/client-prefs" },
+        { label: "Client Preferences", href: "/admin/clients" },
         { label: "Scheduling", href: "/admin/scheduling" },
         { label: "Zones", href: "/admin/zones" },
         { label: "Reports", href: "/admin/reports" },
