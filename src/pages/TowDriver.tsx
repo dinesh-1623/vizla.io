@@ -141,14 +141,22 @@ const TowDriver: React.FC = () => {
     };
   }, [travelCache, serviceTimes.cityMph]);
 
+  // State to track completed/deleted vehicles
+  const [completedVehicles, setCompletedVehicles] = useState<Set<string>>(new Set());
+
   // Get combined TowCards (original + spotter submissions)
   const allTowCards = useMemo(() => {
     return getCombinedTowCards(TOW_CARDS);
   }, []);
 
-  // Convert TowCards to RoutePoints
+  // Filter out completed vehicles from allTowCards
+  const activeTowCards = useMemo(() => {
+    return allTowCards.filter(card => !completedVehicles.has(card.id));
+  }, [allTowCards, completedVehicles]);
+
+  // Convert active TowCards to RoutePoints
   const points: RoutePoint[] = useMemo(() => {
-    return allTowCards.map((card, index) => {
+    return activeTowCards.map((card, index) => {
       // Check if address contains coordinates
       const coordMatch = card.fullAddress.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
       
@@ -175,7 +183,7 @@ const TowDriver: React.FC = () => {
         };
       }
     });
-  }, []);
+  }, [activeTowCards]);
 
   // Check for new submission parameter
   const [searchParams] = useSearchParams();
@@ -305,16 +313,20 @@ const TowDriver: React.FC = () => {
     }
   };
 
-  // Get cars for Group 1
+  // Get cars for Group 1 (excluding completed vehicles)
   const getGroup1Cars = (): TowCard[] => {
     const group1PointIds = group1Points.map(p => p.id);
-    return allTowCards.filter(card => group1PointIds.includes(card.id));
+    return allTowCards.filter(card => 
+      group1PointIds.includes(card.id) && !completedVehicles.has(card.id)
+    );
   };
 
-  // Get cars for Group 2
+  // Get cars for Group 2 (excluding completed vehicles)
   const getGroup2Cars = (): TowCard[] => {
     const group2PointIds = group2Points.map(p => p.id);
-    return allTowCards.filter(card => group2PointIds.includes(card.id));
+    return allTowCards.filter(card => 
+      group2PointIds.includes(card.id) && !completedVehicles.has(card.id)
+    );
   };
 
   // Check for demo mode and repeat functionality
@@ -349,10 +361,10 @@ const TowDriver: React.FC = () => {
   const group1Cars = getGroup1Cars();
   const group2Cars = getGroup2Cars();
   
-  // Get unique clients from all data (Baltimore + spotter submissions)
+  // Get unique clients from active data (excluding completed vehicles)
   const uniqueClients = useMemo(() => {
-    return [...new Set(allTowCards.map(car => car.client))].sort();
-  }, [allTowCards]);
+    return [...new Set(activeTowCards.map(car => car.client))].sort();
+  }, [activeTowCards]);
 
   const uniqueDrivers = useMemo(() => {
     // No driver data in this dataset
@@ -363,23 +375,35 @@ const TowDriver: React.FC = () => {
   const handleMarkAsDone = (carId: string, action: 'delete' | 'collected' | 'dropped-lot' | 'dropped-stash') => {
     console.log(`Mark as done: ${carId} - ${action}`);
     
-    // For now, just show a toast notification
-    // In a real app, this would update the database and remove the vehicle from the current view
-    const actionMessages = {
-      'delete': 'Vehicle deleted successfully',
-      'collected': 'Vehicle marked as collected',
-      'dropped-lot': 'Vehicle marked as dropped at lot',
-      'dropped-stash': 'Vehicle marked as dropped at stash'
-    };
-    
-    alert(`${actionMessages[action]} for vehicle ${carId}`);
-    
-    // TODO: Implement actual removal/status update logic
-    // This could involve:
-    // 1. Updating the vehicle status in the database
-    // 2. Removing the vehicle from the current view
-    // 3. Moving it to a "completed" section
-    // 4. Updating the route optimization
+    if (action === 'delete') {
+      // Remove from spotter submissions in localStorage
+      try {
+        const storedSubmissions = localStorage.getItem('spotter-submissions');
+        if (storedSubmissions) {
+          const submissions = JSON.parse(storedSubmissions);
+          const updatedSubmissions = submissions.filter((sub: any) => sub.id !== carId.replace('spotter-', ''));
+          localStorage.setItem('spotter-submissions', JSON.stringify(updatedSubmissions));
+        }
+      } catch (error) {
+        console.error('Error removing from localStorage:', error);
+      }
+      
+      // Add to completed vehicles to hide from view
+      setCompletedVehicles(prev => new Set([...prev, carId]));
+      
+      alert(`Vehicle deleted successfully for vehicle ${carId}`);
+    } else {
+      // For other actions, just mark as completed (could be moved to different section later)
+      setCompletedVehicles(prev => new Set([...prev, carId]));
+      
+      const actionMessages = {
+        'collected': 'Vehicle marked as collected',
+        'dropped-lot': 'Vehicle marked as dropped at lot',
+        'dropped-stash': 'Vehicle marked as dropped at stash'
+      };
+      
+      alert(`${actionMessages[action]} for vehicle ${carId}`);
+    }
   };
 
   // Get all cars combined for display
@@ -495,9 +519,10 @@ const TowDriver: React.FC = () => {
             <div>
               <h1 className="text-2xl font-bold text-vizla-text-primary">Tow Truck Driver View</h1>
               <p className="text-sm text-vizla-text-muted">
-                Data: {allTowCards.length} vehicles from spotter submissions in {groupData.length} groups with independent optimization
+                Data: {activeTowCards.length} active vehicles from spotter submissions in {groupData.length} groups with independent optimization
+                {completedVehicles.size > 0 && ` • ${completedVehicles.size} completed`}
                 {hasNewSubmission && ' • New spotter submission added!'}
-                {allTowCards.length === 0 && ' • Start by adding a spotter submission!'}
+                {activeTowCards.length === 0 && ' • Start by adding a spotter submission!'}
               </p>
             </div>
           </div>
@@ -544,7 +569,7 @@ const TowDriver: React.FC = () => {
           <div className="flex items-center gap-2 p-4">
             <AlertCircle className="w-5 h-5 text-vizla-danger" />
             <span className="text-sm font-medium text-vizla-danger">Error loading data: {error}</span>
-            <button
+              <button
               onClick={() => window.location.reload()}
               className="ml-auto px-3 py-1 rounded-md bg-vizla-danger text-white text-sm font-medium hover:bg-vizla-danger/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
             >
@@ -555,7 +580,7 @@ const TowDriver: React.FC = () => {
       )}
 
       {/* Empty State - No Vehicles */}
-      {!error && !isLoading && allTowCards.length === 0 && (
+      {!error && !isLoading && activeTowCards.length === 0 && (
         <GlassCard className="mb-6">
           <div className="text-center py-12">
             <div className="w-16 h-16 mx-auto mb-4 bg-vizla-brand-primary/20 rounded-full flex items-center justify-center">
@@ -570,7 +595,7 @@ const TowDriver: React.FC = () => {
               className="px-6 py-3 bg-vizla-brand-primary text-white rounded-lg hover:bg-vizla-brand-primary/90 transition-colors"
             >
               Add First Vehicle
-            </button>
+              </button>
           </div>
         </GlassCard>
       )}
@@ -595,7 +620,7 @@ const TowDriver: React.FC = () => {
       )}
 
       {/* Main Content */}
-      {!isLoading && !error && allTowCards.length > 0 && (
+      {!isLoading && !error && activeTowCards.length > 0 && (
         <div className="space-y-6">
         {/* Active Filter Chips */}
         {hasActiveFilters && (
@@ -690,7 +715,7 @@ const TowDriver: React.FC = () => {
               if (demoActive) {
                 return `(Preview) All Groups • showing ${cardsToRender.length} of ${baseList.length} base`;
               }
-              return `All Groups • ${allTowCards.length} vehicles in ${groupData.length} groups`;
+              return `All Groups • ${activeTowCards.length} vehicles in ${groupData.length} groups`;
             })()}
           </h2>
         </div>
@@ -867,7 +892,7 @@ const TowDriver: React.FC = () => {
             )}
           </>
         )}
-        </div>
+      </div>
       )}
 
       {/* Back to top button */}
