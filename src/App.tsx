@@ -15,7 +15,6 @@ import Dispatched from "./pages/Dispatched";
 import Stashed from "./pages/Stashed";
 import Spotters from "./pages/Spotters";
 import TowTrucks from "./pages/TowTrucks";
-import Fleet from "./pages/admin/Fleet";
 import Users from "./pages/admin/Users";
 import Shifts from "./pages/admin/Shifts";
 import ClientPrefs from "./pages/admin/ClientPrefs";
