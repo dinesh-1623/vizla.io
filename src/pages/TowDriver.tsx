@@ -157,7 +157,19 @@ const TowDriver: React.FC = () => {
   // Convert active TowCards to RoutePoints
   const points: RoutePoint[] = useMemo(() => {
     return activeTowCards.map((card, index) => {
-      // Check if address contains coordinates
+      // Use the coordinates and flags from the TowCard if available
+      if (card.lat !== undefined && card.lng !== undefined) {
+        return {
+          id: card.id,
+          label: `${card.client} - ${card.year} ${card.make} ${card.model}`,
+          lat: card.lat,
+          lng: card.lng,
+          address: card.fullAddress,
+          isDefaultCoords: card.isDefaultCoords
+        };
+      }
+      
+      // Fallback: Check if address contains coordinates
       const coordMatch = card.fullAddress.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
       
       if (coordMatch) {
@@ -166,7 +178,9 @@ const TowDriver: React.FC = () => {
           id: card.id,
           label: `${card.client} - ${card.year} ${card.make} ${card.model}`,
           lat: parseFloat(coordMatch[1]),
-          lng: parseFloat(coordMatch[2])
+          lng: parseFloat(coordMatch[2]),
+          address: card.fullAddress,
+          isDefaultCoords: false
         };
       } else {
         // Generate deterministic pseudo-coordinates based on index
@@ -179,7 +193,9 @@ const TowDriver: React.FC = () => {
           id: card.id,
           label: `${card.client} - ${card.year} ${card.make} ${card.model}`,
           lat: baseLat + offsetLat,
-          lng: baseLng + offsetLng
+          lng: baseLng + offsetLng,
+          address: card.fullAddress,
+          isDefaultCoords: true
         };
       }
     });

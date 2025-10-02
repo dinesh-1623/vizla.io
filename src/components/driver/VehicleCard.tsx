@@ -122,9 +122,14 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
               const baseUrl = 'https://www.google.com/maps/dir/';
               const origin = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226'); // LOT_ADDRESS
               
-              // Clean the vehicle address - remove any corrupted coordinates
+              // Use the best address for Google Maps
               let cleanVehicleAddress = car.fullAddress;
-              if (cleanVehicleAddress.includes('21231,')) {
+              
+              // If car has default coordinates, use the street address
+              if (car.isDefaultCoords && car.street) {
+                cleanVehicleAddress = `${car.street}, ${car.city}, ${car.zip}`;
+                console.log('🔍 Using street address for default coords:', cleanVehicleAddress);
+              } else if (cleanVehicleAddress.includes('21231,')) {
                 // Remove corrupted coordinates and use just the street address
                 cleanVehicleAddress = car.street + ', Baltimore, MD';
                 console.log('🧹 Cleaned corrupted address:', cleanVehicleAddress);
@@ -152,9 +157,14 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
               const baseUrl = 'https://www.google.com/maps/dir/';
               const origin = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226'); // LOT_ADDRESS
               
-              // Clean the vehicle address - remove any corrupted coordinates
+              // Use the best address for Google Maps
               let cleanVehicleAddress = car.fullAddress;
-              if (cleanVehicleAddress.includes('21231,')) {
+              
+              // If car has default coordinates, use the street address
+              if (car.isDefaultCoords && car.street) {
+                cleanVehicleAddress = `${car.street}, ${car.city}, ${car.zip}`;
+                console.log('🔍 Using street address for default coords (Stash):', cleanVehicleAddress);
+              } else if (cleanVehicleAddress.includes('21231,')) {
                 // Remove corrupted coordinates and use just the street address
                 cleanVehicleAddress = car.street + ', Baltimore, MD';
                 console.log('🧹 Cleaned corrupted address (Stash):', cleanVehicleAddress);

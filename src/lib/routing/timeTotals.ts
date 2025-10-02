@@ -104,7 +104,14 @@ function buildGoogleMapsUrl(
     return wp;
   });
   
-  const waypointStrs = cleanWaypoints.map(wp => `${wp.lat},${wp.lng}`);
+  const waypointStrs = cleanWaypoints.map(wp => {
+    // If using default coordinates, use the address string instead
+    if (wp.isDefaultCoords && wp.address) {
+      console.log('🔍 Using address string for waypoint:', wp.address);
+      return encodeURIComponent(wp.address);
+    }
+    return `${wp.lat},${wp.lng}`;
+  });
   
   console.log('🔍 Clean waypoints:', waypointStrs);
   

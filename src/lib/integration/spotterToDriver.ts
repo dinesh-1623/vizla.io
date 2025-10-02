@@ -51,6 +51,11 @@ export function convertSpotterToTowCard(submission: SpotterSubmission): TowCard 
     fullAddress
   });
 
+  // Determine if we're using default coordinates
+  const isUsingDefaultCoords = !coordMatch || 
+    !(parseFloat(coordMatch[1]) >= -90 && parseFloat(coordMatch[1]) <= 90 && 
+      parseFloat(coordMatch[2]) >= -180 && parseFloat(coordMatch[2]) <= 180);
+
   return {
     id: `spotter-${submission.id}`,
     day: 'Friday',
@@ -65,7 +70,10 @@ export function convertSpotterToTowCard(submission: SpotterSubmission): TowCard 
     city: 'Baltimore',
     zip: '21201',
     fullAddress: fullAddress,
-    img: submission.photoUrl || '/placeholder.svg'
+    img: submission.photoUrl || '/placeholder.svg',
+    lat: lat,
+    lng: lng,
+    isDefaultCoords: isUsingDefaultCoords
   };
 }
 

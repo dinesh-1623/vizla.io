@@ -13,6 +13,10 @@ export type TowCard = {
   zip: string;
   fullAddress: string;
   img: string;
+  // New fields for coordinate handling
+  lat?: number;
+  lng?: number;
+  isDefaultCoords?: boolean; // true if using default Baltimore coordinates
 };
 
 export const LOT_ADDRESS = "4221 Curtis Ave, Baltimore, MD 21226";

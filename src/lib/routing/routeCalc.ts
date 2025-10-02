@@ -1,7 +1,13 @@
 import { haversineMiles } from '../geo';
 
 export type LatLng = { lat: number; lng: number };
-export type Point = LatLng & { id: string; label: string };
+export type Point = LatLng & { 
+  id: string; 
+  label: string;
+  // Additional fields for address handling
+  address?: string;
+  isDefaultCoords?: boolean;
+};
 
 export type ServiceTimes = {
   hookupMin: number;    // per pickup
