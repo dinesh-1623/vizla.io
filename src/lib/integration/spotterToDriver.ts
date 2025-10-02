@@ -6,13 +6,37 @@ import { TowCard } from '@/app/tow-driver/data/baltimoreRun';
  */
 export function convertSpotterToTowCard(submission: SpotterSubmission): TowCard {
   // Parse coordinates from address if available, otherwise use default Baltimore coordinates
-  const coordMatch = submission.address.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
+  // Look for coordinates in the format "lat, lng" at the end of the address
+  const coordMatch = submission.address.match(/(-?\d{2}\.\d+),\s*(-?\d{2}\.\d+)$/);
   let lat = 39.2904; // Default Baltimore coordinates
   let lng = -76.6122;
   
+  console.log(`🔍 Converting spotter submission:`, {
+    id: submission.id,
+    address: submission.address,
+    coordMatch: coordMatch
+  });
+  
   if (coordMatch) {
-    lat = parseFloat(coordMatch[1]);
-    lng = parseFloat(coordMatch[2]);
+    const parsedLat = parseFloat(coordMatch[1]);
+    const parsedLng = parseFloat(coordMatch[2]);
+    
+    console.log(`🔍 Parsed coordinates:`, {
+      parsedLat,
+      parsedLng,
+      isValid: parsedLat >= 39.0 && parsedLat <= 40.0 && parsedLng >= -77.0 && parsedLng <= -76.0
+    });
+    
+    // Validate that coordinates are reasonable (Baltimore area)
+    if (parsedLat >= 39.0 && parsedLat <= 40.0 && parsedLng >= -77.0 && parsedLng <= -76.0) {
+      lat = parsedLat;
+      lng = parsedLng;
+      console.log(`✅ Using parsed coordinates: ${lat}, ${lng}`);
+    } else {
+      console.log(`⚠️ Invalid coordinates, using defaults: ${lat}, ${lng}`);
+    }
+  } else {
+    console.log(`📍 No coordinates found, using defaults: ${lat}, ${lng}`);
   }
 
   // Create full address with coordinates
