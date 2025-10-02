@@ -128,6 +128,9 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
                 // Remove corrupted coordinates and use just the street address
                 cleanVehicleAddress = car.street + ', Baltimore, MD';
                 console.log('🧹 Cleaned corrupted address:', cleanVehicleAddress);
+              } else {
+                // If no corrupted coordinates, use the full address
+                cleanVehicleAddress = car.fullAddress;
               }
               
               const vehicleAddress = encodeURIComponent(cleanVehicleAddress);
@@ -155,6 +158,9 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
                 // Remove corrupted coordinates and use just the street address
                 cleanVehicleAddress = car.street + ', Baltimore, MD';
                 console.log('🧹 Cleaned corrupted address (Stash):', cleanVehicleAddress);
+              } else {
+                // If no corrupted coordinates, use the full address
+                cleanVehicleAddress = car.fullAddress;
               }
               
               const vehicleAddress = encodeURIComponent(cleanVehicleAddress);
