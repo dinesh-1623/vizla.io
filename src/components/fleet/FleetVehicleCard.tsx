@@ -21,68 +21,19 @@ export const FleetVehicleCard: React.FC<FleetVehicleCardProps> = ({
     ? (vehicle.shiftGoal.current / vehicle.shiftGoal.total) * 100 
     : 0;
 
-    // Get vehicle image based on type and ID
+  // Get vehicle image based on type and ID
   const getVehicleImage = () => {
-    const imageIndex = (parseInt(vehicle.id.split('-')[1]) % 5) + 1; // Get 1-5 for each type
+    const imageIndex = (parseInt(vehicle.id.split('-')[1]) % 16) + 1; // Use existing car images as base
     
     switch (vehicle.type) {
       case 'Tow Truck':
-        return `data:image/svg+xml,${encodeURIComponent(`
-          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
-            <rect width="300" height="200" fill="#1f2937"/>
-            <rect x="40" y="130" width="220" height="50" fill="#374151" rx="6"/>
-            <rect x="70" y="100" width="160" height="30" fill="#4b5563" rx="4"/>
-            <rect x="90" y="80" width="120" height="20" fill="#6b7280" rx="3"/>
-            <circle cx="90" cy="200" r="20" fill="#1f2937"/>
-            <circle cx="210" cy="200" r="20" fill="#1f2937"/>
-            <circle cx="90" cy="200" r="15" fill="#374151"/>
-            <circle cx="210" cy="200" r="15" fill="#374151"/>
-            <rect x="260" y="110" width="30" height="60" fill="#dc2626" rx="4"/>
-            <polygon points="270,100 260,110 280,110" fill="#ef4444"/>
-            <text x="150" y="40" font-family="Arial" font-size="14" fill="#f3f4f6" text-anchor="middle">TOW TRUCK</text>
-          </svg>
-        `)}`;
+        return `/images/cars/cars${imageIndex}.jpg`;
       case 'Spotter':
-        return `data:image/svg+xml,${encodeURIComponent(`
-          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
-            <rect width="300" height="200" fill="#1f2937"/>
-            <rect x="80" y="140" width="140" height="40" fill="#374151" rx="6"/>
-            <rect x="100" y="110" width="100" height="30" fill="#4b5563" rx="4"/>
-            <rect x="110" y="90" width="80" height="20" fill="#6b7280" rx="3"/>
-            <circle cx="110" cy="200" r="18" fill="#1f2937"/>
-            <circle cx="190" cy="200" r="18" fill="#1f2937"/>
-            <circle cx="110" cy="200" r="12" fill="#374151"/>
-            <circle cx="190" cy="200" r="12" fill="#374151"/>
-            <rect x="60" y="120" width="40" height="40" fill="#dc2626" rx="3"/>
-            <rect x="200" y="120" width="40" height="40" fill="#dc2626" rx="3"/>
-            <text x="150" y="50" font-family="Arial" font-size="12" fill="#f3f4f6" text-anchor="middle">YARD TRACTOR</text>
-          </svg>
-        `)}`;
+        return `/images/cars/cars${imageIndex}.jpg`;
       case 'Rollback':
-        return `data:image/svg+xml,${encodeURIComponent(`
-          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
-            <rect width="300" height="200" fill="#1f2937"/>
-            <rect x="30" y="130" width="240" height="50" fill="#374151" rx="6"/>
-            <rect x="60" y="100" width="180" height="30" fill="#4b5563" rx="4"/>
-            <rect x="80" y="80" width="140" height="20" fill="#6b7280" rx="3"/>
-            <circle cx="80" cy="200" r="20" fill="#1f2937"/>
-            <circle cx="220" cy="200" r="20" fill="#1f2937"/>
-            <circle cx="80" cy="200" r="15" fill="#374151"/>
-            <circle cx="220" cy="200" r="15" fill="#374151"/>
-            <rect x="10" y="110" width="50" height="70" fill="#dc2626" rx="4"/>
-            <rect x="60" y="120" width="180" height="20" fill="#6b7280" rx="2"/>
-            <rect x="240" y="110" width="30" height="60" fill="#dc2626" rx="4"/>
-            <polygon points="250,100 240,110 260,110" fill="#ef4444"/>
-            <text x="150" y="40" font-family="Arial" font-size="14" fill="#f3f4f6" text-anchor="middle">ROLLBACK TRUCK</text>
-          </svg>
-        `)}`;
+        return `/images/cars/cars${imageIndex}.jpg`;
       default:
-        return `data:image/svg+xml,${encodeURIComponent(`
-          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
-            <rect width="300" height="200" fill="#1f2937"/>
-            <text x="150" y="100" font-family="Arial" font-size="16" fill="#f3f4f6" text-anchor="middle">FLEET VEHICLE</text>
-          </svg>
-        `)}`;
+        return `/images/cars/cars1.jpg`;
     }
   };
 
@@ -136,13 +87,14 @@ export const FleetVehicleCard: React.FC<FleetVehicleCardProps> = ({
               alt={`${vehicle.make} ${vehicle.model}`}
               className="w-full h-full object-cover"
               onError={(e) => {
-                // Fallback to a placeholder if image fails to load
-                e.currentTarget.src = `data:image/svg+xml,${encodeURIComponent(`
-                  <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="100" height="100" fill="#374151"/>
-                    <text x="50" y="50" font-family="Arial" font-size="20" fill="#9CA3AF" text-anchor="middle" dy=".3em">${getVehicleTypeIcon()}</text>
-                  </svg>
-                `)}`;
+                // Fallback to a vehicle type specific SVG if image fails to load
+                const svgContent = vehicle.type === 'Tow Truck' 
+                  ? `<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="200" fill="#1f2937"/><rect x="40" y="130" width="220" height="50" fill="#374151" rx="6"/><rect x="70" y="100" width="160" height="30" fill="#4b5563" rx="4"/><rect x="90" y="80" width="120" height="20" fill="#6b7280" rx="3"/><circle cx="90" cy="200" r="20" fill="#1f2937"/><circle cx="210" cy="200" r="20" fill="#1f2937"/><circle cx="90" cy="200" r="15" fill="#374151"/><circle cx="210" cy="200" r="15" fill="#374151"/><rect x="260" y="110" width="30" height="60" fill="#dc2626" rx="4"/><polygon points="270,100 260,110 280,110" fill="#ef4444"/><text x="150" y="40" font-family="Arial" font-size="14" fill="#f3f4f6" text-anchor="middle">TOW TRUCK</text></svg>`
+                  : vehicle.type === 'Spotter'
+                  ? `<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="200" fill="#1f2937"/><rect x="80" y="140" width="140" height="40" fill="#374151" rx="6"/><rect x="100" y="110" width="100" height="30" fill="#4b5563" rx="4"/><rect x="110" y="90" width="80" height="20" fill="#6b7280" rx="3"/><circle cx="110" cy="200" r="18" fill="#1f2937"/><circle cx="190" cy="200" r="18" fill="#1f2937"/><circle cx="110" cy="200" r="12" fill="#374151"/><circle cx="190" cy="200" r="12" fill="#374151"/><rect x="60" y="120" width="40" height="40" fill="#dc2626" rx="3"/><rect x="200" y="120" width="40" height="40" fill="#dc2626" rx="3"/><text x="150" y="50" font-family="Arial" font-size="12" fill="#f3f4f6" text-anchor="middle">YARD TRACTOR</text></svg>`
+                  : `<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="200" fill="#1f2937"/><rect x="30" y="130" width="240" height="50" fill="#374151" rx="6"/><rect x="60" y="100" width="180" height="30" fill="#4b5563" rx="4"/><rect x="80" y="80" width="140" height="20" fill="#6b7280" rx="3"/><circle cx="80" cy="200" r="20" fill="#1f2937"/><circle cx="220" cy="200" r="20" fill="#1f2937"/><circle cx="80" cy="200" r="15" fill="#374151"/><circle cx="220" cy="200" r="15" fill="#374151"/><rect x="10" y="110" width="50" height="70" fill="#dc2626" rx="4"/><rect x="60" y="120" width="180" height="20" fill="#6b7280" rx="2"/><rect x="240" y="110" width="30" height="60" fill="#dc2626" rx="4"/><polygon points="250,100 240,110 260,110" fill="#ef4444"/><text x="150" y="40" font-family="Arial" font-size="14" fill="#f3f4f6" text-anchor="middle">ROLLBACK TRUCK</text></svg>`;
+                
+                e.currentTarget.src = `data:image/svg+xml,${encodeURIComponent(svgContent)}`;
               }}
             />
             <div className="absolute top-2 right-2">
