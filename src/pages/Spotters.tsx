@@ -1,10 +1,13 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import AppShell from '@/components/shell/AppShell';
 import { getCarsByQueue } from '@/lib/mockState';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatTile } from '@/components/ui/StatTile';
+import { Button } from '@/components/ui/button';
+import { Plus, FileText, Users } from 'lucide-react';
 
 const Spotters: React.FC = () => {
   const allCars = getCarsByQueue('dispatched');
@@ -15,10 +18,26 @@ const Spotters: React.FC = () => {
     <AppShell title="Spotters">
       <div className="space-y-6">
         {/* Header */}
-        <SectionHeading
-          title="Spotters"
-          subtitle="Active spotter performance and assigned vehicles"
-        />
+        <div className="flex items-center justify-between">
+          <SectionHeading
+            title="Spotters"
+            subtitle="Active spotter performance and assigned vehicles"
+          />
+          <div className="flex gap-3">
+            <Link to="/spotters/new">
+              <Button className="bg-vizla-brand-primary hover:bg-vizla-brand-primary/90 text-white">
+                <Plus className="w-4 h-4 mr-2" />
+                New Intake
+              </Button>
+            </Link>
+            <Link to="/spotters/submissions">
+              <Button variant="outline" className="bg-vizla-glass text-vizla-text-secondary border-vizla-glassBorder hover:bg-vizla-glassElev">
+                <FileText className="w-4 h-4 mr-2" />
+                View Submissions
+              </Button>
+            </Link>
+          </div>
+        </div>
 
         {/* Spotter Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
