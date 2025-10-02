@@ -25,15 +25,30 @@ export type RouteTotals = {
 export function distanceMinutes(a: LatLng, b: LatLng, cityMph: number): number {
   const hasApiKey = !!import.meta.env.VITE_GOOGLE_MAPS_KEY;
   
+  // Calculate distances for debugging
+  const straightLineMiles = haversineMiles(a, b);
+  const roadMiles = straightLineMiles * 1.3; // Road distance is ~1.3x straight line
+  const timeMinutes = (roadMiles / cityMph) * 60;
+  
+  // Debug logging for large distances
+  if (straightLineMiles > 10) {
+    console.log(`🔍 Distance calculation debug:`, {
+      from: `${a.lat}, ${a.lng}`,
+      to: `${b.lat}, ${b.lng}`,
+      straightLineMiles: straightLineMiles.toFixed(2),
+      roadMiles: roadMiles.toFixed(2),
+      cityMph,
+      timeMinutes: timeMinutes.toFixed(2)
+    });
+  }
+  
   if (hasApiKey) {
     // TODO: Implement Google Distance Matrix API call
-    // For now, use Haversine fallback
-    const miles = haversineMiles(a, b);
-    return (miles / cityMph) * 60;
+    // For now, use Haversine fallback with road distance factor
+    return timeMinutes;
   } else {
-    // Use Haversine distance with city speed
-    const miles = haversineMiles(a, b);
-    return (miles / cityMph) * 60;
+    // Use Haversine distance with road distance factor and city speed
+    return timeMinutes;
   }
 }
 
