@@ -57,6 +57,7 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
             const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
             console.log('Compressed file created:', compressedFile.name, compressedFile.size);
             // Update form data directly instead of using callback
+            console.log('Setting photo file:', compressedFile.name, compressedFile.size, compressedFile.type);
             handleFieldChange('photo', compressedFile);
           } else {
             console.error('Failed to create blob');

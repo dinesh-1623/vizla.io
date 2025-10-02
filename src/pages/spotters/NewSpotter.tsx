@@ -127,7 +127,14 @@ const NewSpotter: React.FC = () => {
       locationType: formData.locationType,
       parked: formData.parked,
       notes: formData.notes,
-      photoUrl: formData.photo ? URL.createObjectURL(formData.photo) : ''
+      photoUrl: (() => {
+        try {
+          return formData.photo && formData.photo instanceof File ? URL.createObjectURL(formData.photo) : '';
+        } catch (error) {
+          console.error('Error creating object URL for submission:', error);
+          return '';
+        }
+      })()
     };
 
     try {
@@ -330,7 +337,7 @@ const NewSpotter: React.FC = () => {
                 <h2 className="text-xl font-semibold text-white">Live Preview</h2>
               </div>
               
-              {formData.photo ? (
+              {formData.photo && formData.photo instanceof File ? (
                 <SpotterCard
                   submission={{
                     id: 'preview',
@@ -349,7 +356,14 @@ const NewSpotter: React.FC = () => {
                     locationType: formData.locationType,
                     parked: formData.parked,
                     notes: formData.notes,
-                    photoUrl: formData.photo ? URL.createObjectURL(formData.photo) : ''
+                    photoUrl: (() => {
+                      try {
+                        return URL.createObjectURL(formData.photo);
+                      } catch (error) {
+                        console.error('Error creating object URL:', error);
+                        return '';
+                      }
+                    })()
                   }}
                 />
               ) : (
