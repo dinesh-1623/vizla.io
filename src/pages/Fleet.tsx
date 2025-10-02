@@ -24,6 +24,18 @@ const Fleet: React.FC = () => {
   const drivers = getUniqueDrivers(FLEET_VEHICLES);
   const maintenanceStatuses = getUniqueMaintenanceStatuses(FLEET_VEHICLES);
 
+  // Log fleet data to console for debugging
+  console.log('🚛 Fleet Management Data:', {
+    totalVehicles: FLEET_VEHICLES.length,
+    towTrucks: FLEET_VEHICLES.filter(v => v.type === 'Tow Truck').length,
+    spotters: FLEET_VEHICLES.filter(v => v.type === 'Spotter').length,
+    rollbacks: FLEET_VEHICLES.filter(v => v.type === 'Rollback').length,
+    markets,
+    zones,
+    drivers: drivers.length,
+    maintenanceStatuses
+  });
+
   // Filter vehicles based on active tab and filters
   const filteredVehicles = useMemo(() => {
     // Start with all vehicles, then filter by type (tab or filter)
