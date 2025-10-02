@@ -315,7 +315,7 @@ const NewSpotter: React.FC = () => {
                 <h2 className="text-xl font-semibold text-white">Live Preview</h2>
               </div>
               
-              {isValid && formData.photo ? (
+              {formData.photo ? (
                 <SpotterCard
                   submission={{
                     id: 'preview',
@@ -340,9 +340,9 @@ const NewSpotter: React.FC = () => {
               ) : (
                 <div className="text-center py-12 text-gray-400">
                   <Camera className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg mb-2">Complete the form to see preview</p>
+                  <p className="text-lg mb-2">Upload a photo to see preview</p>
                   <p className="text-sm">
-                    Fill in all required fields and upload a photo to generate the AI-style card
+                    Upload a vehicle photo to generate the AI-style card preview
                   </p>
                 </div>
               )}

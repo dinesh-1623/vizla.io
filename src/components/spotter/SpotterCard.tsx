@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Clock, Check, X } from 'lucide-react';
+import { MapPin, Clock, Check, X, Camera } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SpotterSubmission } from '@/lib/types/spotter';
 
@@ -9,6 +9,9 @@ interface SpotterCardProps {
 }
 
 export const SpotterCard: React.FC<SpotterCardProps> = ({ submission, className = '' }) => {
+  console.log('SpotterCard rendering with submission:', submission);
+  console.log('Photo URL:', submission.photoUrl);
+  
   const formatRelativeTime = (isoString: string) => {
     const now = new Date();
     const created = new Date(isoString);
@@ -27,11 +30,27 @@ export const SpotterCard: React.FC<SpotterCardProps> = ({ submission, className 
     <GlassCard className={`relative overflow-hidden ${className}`}>
       {/* Vehicle Photo */}
       <div className="relative w-full h-64 bg-gray-900 rounded-t-lg overflow-hidden">
-        <img
-          src={submission.photoUrl}
-          alt={`${submission.year} ${submission.make} ${submission.model}`}
-          className="w-full h-full object-cover"
-        />
+        {submission.photoUrl ? (
+          <img
+            src={submission.photoUrl}
+            alt={`${submission.year} ${submission.make} ${submission.model}`}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              console.error('Image failed to load:', submission.photoUrl);
+              e.currentTarget.style.display = 'none';
+            }}
+            onLoad={() => {
+              console.log('Image loaded successfully:', submission.photoUrl);
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-800">
+            <div className="text-center text-gray-400">
+              <Camera className="w-12 h-12 mx-auto mb-2" />
+              <p>No image available</p>
+            </div>
+          </div>
+        )}
         
         {/* Glass Panel Overlay */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
