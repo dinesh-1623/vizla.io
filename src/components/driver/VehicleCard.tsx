@@ -58,6 +58,36 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber }) => 
         </div>
       </div>
 
+      {/* Vehicle Image */}
+      {car.img && car.img !== '/placeholder.svg' && (
+        <div className="mb-4">
+          <div className="relative w-full h-32 rounded-lg overflow-hidden bg-gray-800">
+            <img
+              src={car.img}
+              alt={`${car.year} ${car.make} ${car.model}`}
+              className="w-full h-full object-cover"
+              onLoad={() => setImageLoading(false)}
+              onError={() => {
+                setImageLoading(false);
+                setImageError(true);
+              }}
+            />
+            {imageLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+                <Skeleton className="w-full h-full" />
+              </div>
+            )}
+            {imageError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-800 text-gray-400">
+                <div className="text-center">
+                  <div className="w-8 h-8 mx-auto mb-2">🚗</div>
+                  <p className="text-xs">Image unavailable</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Action buttons */}
       <div className="flex gap-2 mt-4">
