@@ -51,15 +51,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
     {
       title: "People",
       items: [
-        { label: "Spotters", href: "/spotters" },
         { label: "Tow Trucks", href: "/tow-trucks" },
         { label: "Driver Progress", href: "/driver/progress" }
       ]
     },
     {
-      title: "Admin",
+      title: "Fleet",
       items: [
         { label: "Fleet Management", href: "/fleet" },
+        { label: "Spotters", href: "/spotters" }
+      ]
+    },
+    {
+      title: "Admin",
+      items: [
         { label: "Users", href: "/admin/users" },
         { label: "Markets", href: "/markets" },
         { label: "Shifts", href: "/admin/shifts" },

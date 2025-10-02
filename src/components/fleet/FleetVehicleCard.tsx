@@ -2,7 +2,6 @@ import React from 'react';
 import { MapPin, Clock, Users, Target, Wrench, AlertCircle } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { FleetVehicle } from '@/lib/fleet/types';
-import { getVehicleImage, getVehicleSVGFallback } from '@/lib/fleet/vehicleImages';
 
 interface FleetVehicleCardProps {
   vehicle: FleetVehicle;
@@ -22,8 +21,67 @@ export const FleetVehicleCard: React.FC<FleetVehicleCardProps> = ({
     ? (vehicle.shiftGoal.current / vehicle.shiftGoal.total) * 100 
     : 0;
 
-  // Get vehicle image using the new image system
-  const vehicleImageConfig = getVehicleImage(vehicle.id, vehicle.type);
+  // Get vehicle image based on type
+  const getVehicleImage = () => {
+    switch (vehicle.type) {
+      case 'Tow Truck':
+        // Use a placeholder or specific tow truck image
+        return `data:image/svg+xml,${encodeURIComponent(`
+          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="200" fill="#1f2937"/>
+            <rect x="50" y="120" width="200" height="60" fill="#374151" rx="8"/>
+            <rect x="80" y="80" width="140" height="40" fill="#4b5563" rx="6"/>
+            <rect x="100" y="60" width="100" height="20" fill="#6b7280" rx="4"/>
+            <circle cx="100" cy="200" r="20" fill="#1f2937"/>
+            <circle cx="200" cy="200" r="20" fill="#1f2937"/>
+            <circle cx="100" cy="200" r="15" fill="#374151"/>
+            <circle cx="200" cy="200" r="15" fill="#374151"/>
+            <rect x="240" y="100" width="40" height="80" fill="#dc2626" rx="4"/>
+            <text x="150" y="30" font-family="Arial" font-size="16" fill="#f3f4f6" text-anchor="middle">TOW TRUCK</text>
+          </svg>
+        `)}`;
+      case 'Spotter':
+        // Use a placeholder for spotter vehicle
+        return `data:image/svg+xml,${encodeURIComponent(`
+          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="200" fill="#1f2937"/>
+            <rect x="80" y="140" width="140" height="40" fill="#374151" rx="6"/>
+            <rect x="100" y="100" width="100" height="40" fill="#4b5563" rx="4"/>
+            <rect x="110" y="80" width="80" height="20" fill="#6b7280" rx="3"/>
+            <circle cx="110" cy="200" r="18" fill="#1f2937"/>
+            <circle cx="190" cy="200" r="18" fill="#1f2937"/>
+            <circle cx="110" cy="200" r="12" fill="#374151"/>
+            <circle cx="190" cy="200" r="12" fill="#374151"/>
+            <rect x="50" y="110" width="30" height="60" fill="#dc2626" rx="3"/>
+            <text x="150" y="50" font-family="Arial" font-size="14" fill="#f3f4f6" text-anchor="middle">SPOTTER</text>
+          </svg>
+        `)}`;
+      case 'Rollback':
+        // Use a placeholder for rollback vehicle
+        return `data:image/svg+xml,${encodeURIComponent(`
+          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="200" fill="#1f2937"/>
+            <rect x="40" y="130" width="220" height="50" fill="#374151" rx="6"/>
+            <rect x="70" y="90" width="160" height="40" fill="#4b5563" rx="4"/>
+            <rect x="90" y="70" width="120" height="20" fill="#6b7280" rx="3"/>
+            <circle cx="90" cy="200" r="20" fill="#1f2937"/>
+            <circle cx="210" cy="200" r="20" fill="#1f2937"/>
+            <circle cx="90" cy="200" r="15" fill="#374151"/>
+            <circle cx="210" cy="200" r="15" fill="#374151"/>
+            <rect x="20" y="100" width="40" height="80" fill="#dc2626" rx="4"/>
+            <rect x="60" y="120" width="180" height="20" fill="#6b7280" rx="2"/>
+            <text x="150" y="40" font-family="Arial" font-size="16" fill="#f3f4f6" text-anchor="middle">ROLLBACK</text>
+          </svg>
+        `)}`;
+      default:
+        return `data:image/svg+xml,${encodeURIComponent(`
+          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="200" fill="#1f2937"/>
+            <text x="150" y="100" font-family="Arial" font-size="16" fill="#f3f4f6" text-anchor="middle">FLEET VEHICLE</text>
+          </svg>
+        `)}`;
+    }
+  };
 
   // Get vehicle type icon
   const getVehicleTypeIcon = () => {
@@ -71,12 +129,17 @@ export const FleetVehicleCard: React.FC<FleetVehicleCardProps> = ({
         <div className="mb-4">
           <div className="relative w-full h-32 mb-3 rounded-lg overflow-hidden bg-vizla-glass">
             <img 
-              src={vehicleImageConfig.url} 
-              alt={vehicleImageConfig.alt}
+              src={getVehicleImage()} 
+              alt={`${vehicle.make} ${vehicle.model}`}
               className="w-full h-full object-cover"
               onError={(e) => {
-                // Fallback to vehicle type specific SVG if image fails to load
-                e.currentTarget.src = getVehicleSVGFallback(vehicle.type);
+                // Fallback to a placeholder if image fails to load
+                e.currentTarget.src = `data:image/svg+xml,${encodeURIComponent(`
+                  <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="100" height="100" fill="#374151"/>
+                    <text x="50" y="50" font-family="Arial" font-size="20" fill="#9CA3AF" text-anchor="middle" dy=".3em">${getVehicleTypeIcon()}</text>
+                  </svg>
+                `)}`;
               }}
             />
             <div className="absolute top-2 right-2">

@@ -14,6 +14,8 @@ import ToDispatch from "./pages/ToDispatch";
 import Dispatched from "./pages/Dispatched";
 import Stashed from "./pages/Stashed";
 import Spotters from "./pages/Spotters";
+import NewSpotter from "./pages/spotters/NewSpotter";
+import SpotterSubmissions from "./pages/spotters/Submissions";
 import TowTrucks from "./pages/TowTrucks";
 import Users from "./pages/admin/Users";
 import Shifts from "./pages/admin/Shifts";
@@ -49,6 +51,8 @@ const App = () => (
           <Route path="/dispatched" element={<Dispatched />} />
           <Route path="/stashed" element={<Stashed />} />
           <Route path="/spotters" element={<Spotters />} />
+          <Route path="/spotters/new" element={<NewSpotter />} />
+          <Route path="/spotters/submissions" element={<SpotterSubmissions />} />
           <Route path="/tow-trucks" element={<TowTrucks />} />
           <Route path="/admin/fleet" element={<Fleet />} />
           <Route path="/admin/users" element={<Users />} />

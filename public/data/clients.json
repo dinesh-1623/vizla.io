@@ -1,0 +1,182 @@
+[
+  {
+    "id": "client-001",
+    "name": "First Commonwealth Bank",
+    "address": "15 Colony Hill Ct, Arbutus, MD 21227",
+    "phone": "(410) 555-0101"
+  },
+  {
+    "id": "client-002", 
+    "name": "Capital One Bank",
+    "address": "111 W Heath St, Baltimore, MD 21230",
+    "phone": "(410) 555-0102"
+  },
+  {
+    "id": "client-003",
+    "name": "M&T Bank",
+    "address": "3613 Mactavish Ave, Baltimore, MD 21229",
+    "phone": "(410) 555-0103"
+  },
+  {
+    "id": "client-004",
+    "name": "Pinnacle Financial",
+    "address": "11 S Eutaw St, Baltimore, MD 21201",
+    "phone": "(410) 555-0104"
+  },
+  {
+    "id": "client-005",
+    "name": "General Motors Financial",
+    "address": "200 E Cross St, Baltimore, MD 21230",
+    "phone": "(410) 555-0105"
+  },
+  {
+    "id": "client-006",
+    "name": "Mercedes-Benz Financial",
+    "address": "12 N Calvert St, Baltimore, MD 21202",
+    "phone": "(410) 555-0106"
+  },
+  {
+    "id": "client-007",
+    "name": "United Bank",
+    "address": "23 S Gay St, Baltimore, MD 21202",
+    "phone": "(410) 555-0107"
+  },
+  {
+    "id": "client-008",
+    "name": "Automotive Fleet Services",
+    "address": "421 W Lexington St, Baltimore, MD 21201",
+    "phone": "(410) 555-0108"
+  },
+  {
+    "id": "client-009",
+    "name": "Primeritus Financial",
+    "address": "7 Saint Paul St, Baltimore, MD 21202",
+    "phone": "(410) 555-0109"
+  },
+  {
+    "id": "client-010",
+    "name": "PK Willis Financial",
+    "address": "100 Violet Hill White Way, Baltimore, MD 21201",
+    "phone": "(410) 555-0110"
+  },
+  {
+    "id": "client-011",
+    "name": "Summs Skip Services",
+    "address": "828 Harlem Ave, Baltimore, MD 21201",
+    "phone": "(410) 555-0111"
+  },
+  {
+    "id": "client-012",
+    "name": "Mercedes-Benz Baltimore",
+    "address": "443 Watty Ct, Baltimore, MD 21201",
+    "phone": "(410) 555-0112"
+  },
+  {
+    "id": "client-013",
+    "name": "Mercedes-Benz Downtown",
+    "address": "859 Washington Blvd, Baltimore, MD 21230",
+    "phone": "(410) 555-0113"
+  },
+  {
+    "id": "client-014",
+    "name": "Bridgecrest Financial",
+    "address": "39.296204203161999, -76.625554409623007",
+    "phone": "(410) 555-0114"
+  },
+  {
+    "id": "client-015",
+    "name": "Wells Fargo Auto",
+    "address": "1000 Light St, Baltimore, MD 21230",
+    "phone": "(410) 555-0115"
+  },
+  {
+    "id": "client-016",
+    "name": "Chase Auto Finance",
+    "address": "200 E Pratt St, Baltimore, MD 21202",
+    "phone": "(410) 555-0116"
+  },
+  {
+    "id": "client-017",
+    "name": "Ally Financial",
+    "address": "500 E Pratt St, Baltimore, MD 21202",
+    "phone": "(410) 555-0117"
+  },
+  {
+    "id": "client-018",
+    "name": "Santander Consumer",
+    "address": "300 E Lombard St, Baltimore, MD 21202",
+    "phone": "(410) 555-0118"
+  },
+  {
+    "id": "client-019",
+    "name": "Westlake Financial",
+    "address": "400 E Baltimore St, Baltimore, MD 21202",
+    "phone": "(410) 555-0119"
+  },
+  {
+    "id": "client-020",
+    "name": "Credit Acceptance",
+    "address": "600 E Lombard St, Baltimore, MD 21202",
+    "phone": "(410) 555-0120"
+  },
+  {
+    "id": "client-021",
+    "name": "Exeter Finance",
+    "address": "700 E Pratt St, Baltimore, MD 21202",
+    "phone": "(410) 555-0121"
+  },
+  {
+    "id": "client-022",
+    "name": "Regional Acceptance",
+    "address": "800 E Baltimore St, Baltimore, MD 21202",
+    "phone": "(410) 555-0122"
+  },
+  {
+    "id": "client-023",
+    "name": "Flagship Credit",
+    "address": "900 E Lombard St, Baltimore, MD 21202",
+    "phone": "(410) 555-0123"
+  },
+  {
+    "id": "client-024",
+    "name": "American Credit",
+    "address": "1000 E Pratt St, Baltimore, MD 21202",
+    "phone": "(410) 555-0124"
+  },
+  {
+    "id": "client-025",
+    "name": "First Investors",
+    "address": "1100 E Baltimore St, Baltimore, MD 21202",
+    "phone": "(410) 555-0125"
+  },
+  {
+    "id": "client-026",
+    "name": "DriveTime Financial",
+    "address": "1200 E Lombard St, Baltimore, MD 21202",
+    "phone": "(410) 555-0126"
+  },
+  {
+    "id": "client-027",
+    "name": "CarMax Auto Finance",
+    "address": "1300 E Pratt St, Baltimore, MD 21202",
+    "phone": "(410) 555-0127"
+  },
+  {
+    "id": "client-028",
+    "name": "Vroom Auto Finance",
+    "address": "1400 E Baltimore St, Baltimore, MD 21202",
+    "phone": "(410) 555-0128"
+  },
+  {
+    "id": "client-029",
+    "name": "Carvana Financial",
+    "address": "1500 E Lombard St, Baltimore, MD 21202",
+    "phone": "(410) 555-0129"
+  },
+  {
+    "id": "client-030",
+    "name": "AutoNation Finance",
+    "address": "1600 E Pratt St, Baltimore, MD 21202",
+    "phone": "(410) 555-0130"
+  }
+]
