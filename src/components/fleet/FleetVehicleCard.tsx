@@ -27,13 +27,62 @@ export const FleetVehicleCard: React.FC<FleetVehicleCardProps> = ({
     
     switch (vehicle.type) {
       case 'Tow Truck':
-        return `/images/fleet/tow-trucks/tow_trucks_${imageIndex}.jpg`;
+        return `data:image/svg+xml,${encodeURIComponent(`
+          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="200" fill="#1f2937"/>
+            <rect x="40" y="130" width="220" height="50" fill="#374151" rx="6"/>
+            <rect x="70" y="100" width="160" height="30" fill="#4b5563" rx="4"/>
+            <rect x="90" y="80" width="120" height="20" fill="#6b7280" rx="3"/>
+            <circle cx="90" cy="200" r="20" fill="#1f2937"/>
+            <circle cx="210" cy="200" r="20" fill="#1f2937"/>
+            <circle cx="90" cy="200" r="15" fill="#374151"/>
+            <circle cx="210" cy="200" r="15" fill="#374151"/>
+            <rect x="260" y="110" width="30" height="60" fill="#dc2626" rx="4"/>
+            <polygon points="270,100 260,110 280,110" fill="#ef4444"/>
+            <text x="150" y="40" font-family="Arial" font-size="14" fill="#f3f4f6" text-anchor="middle">TOW TRUCK</text>
+          </svg>
+        `)}`;
       case 'Spotter':
-        return `/images/fleet/spotters/spotters_${imageIndex}.jpg`;
+        return `data:image/svg+xml,${encodeURIComponent(`
+          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="200" fill="#1f2937"/>
+            <rect x="80" y="140" width="140" height="40" fill="#374151" rx="6"/>
+            <rect x="100" y="110" width="100" height="30" fill="#4b5563" rx="4"/>
+            <rect x="110" y="90" width="80" height="20" fill="#6b7280" rx="3"/>
+            <circle cx="110" cy="200" r="18" fill="#1f2937"/>
+            <circle cx="190" cy="200" r="18" fill="#1f2937"/>
+            <circle cx="110" cy="200" r="12" fill="#374151"/>
+            <circle cx="190" cy="200" r="12" fill="#374151"/>
+            <rect x="60" y="120" width="40" height="40" fill="#dc2626" rx="3"/>
+            <rect x="200" y="120" width="40" height="40" fill="#dc2626" rx="3"/>
+            <text x="150" y="50" font-family="Arial" font-size="12" fill="#f3f4f6" text-anchor="middle">YARD TRACTOR</text>
+          </svg>
+        `)}`;
       case 'Rollback':
-        return `/images/fleet/rollbacks/rollbacks_${imageIndex}.jpg`;
+        return `data:image/svg+xml,${encodeURIComponent(`
+          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="200" fill="#1f2937"/>
+            <rect x="30" y="130" width="240" height="50" fill="#374151" rx="6"/>
+            <rect x="60" y="100" width="180" height="30" fill="#4b5563" rx="4"/>
+            <rect x="80" y="80" width="140" height="20" fill="#6b7280" rx="3"/>
+            <circle cx="80" cy="200" r="20" fill="#1f2937"/>
+            <circle cx="220" cy="200" r="20" fill="#1f2937"/>
+            <circle cx="80" cy="200" r="15" fill="#374151"/>
+            <circle cx="220" cy="200" r="15" fill="#374151"/>
+            <rect x="10" y="110" width="50" height="70" fill="#dc2626" rx="4"/>
+            <rect x="60" y="120" width="180" height="20" fill="#6b7280" rx="2"/>
+            <rect x="240" y="110" width="30" height="60" fill="#dc2626" rx="4"/>
+            <polygon points="250,100 240,110 260,110" fill="#ef4444"/>
+            <text x="150" y="40" font-family="Arial" font-size="14" fill="#f3f4f6" text-anchor="middle">ROLLBACK TRUCK</text>
+          </svg>
+        `)}`;
       default:
-        return '/images/placeholder.svg';
+        return `data:image/svg+xml,${encodeURIComponent(`
+          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="200" fill="#1f2937"/>
+            <text x="150" y="100" font-family="Arial" font-size="16" fill="#f3f4f6" text-anchor="middle">FLEET VEHICLE</text>
+          </svg>
+        `)}`;
     }
   };
 
