@@ -29,18 +29,20 @@ const Fleet: React.FC = () => {
     // Start with all vehicles, then filter by type (tab or filter)
     let vehicles = FLEET_VEHICLES;
     
-    console.log('Total vehicles:', vehicles.length);
-    console.log('Active tab:', activeTab);
-    console.log('Filters:', filters);
-    
     // Apply vehicle type filter (from tab or filter dropdown)
     if (filters.vehicleType) {
       vehicles = vehicles.filter(vehicle => vehicle.type === filters.vehicleType);
-      console.log('Filtered by vehicleType:', vehicles.length);
     } else {
-      // Use active tab to filter by type
-      vehicles = getVehiclesByType(FLEET_VEHICLES, activeTab);
-      console.log('Filtered by tab:', vehicles.length);
+      // Map tab names to vehicle types
+      const tabToTypeMap: Record<string, string> = {
+        'Tow Trucks': 'Tow Truck',
+        'Spotters': 'Spotter', 
+        'Rollbacks': 'Rollback'
+      };
+      const vehicleType = tabToTypeMap[activeTab];
+      if (vehicleType) {
+        vehicles = vehicles.filter(vehicle => vehicle.type === vehicleType);
+      }
     }
 
     // Apply search filter
@@ -80,11 +82,10 @@ const Fleet: React.FC = () => {
   // Get tab counts
   const tabCounts = useMemo(() => {
     const counts = {
-      'Tow Trucks': getVehiclesByType(FLEET_VEHICLES, 'Tow Truck').length,
-      'Spotters': getVehiclesByType(FLEET_VEHICLES, 'Spotter').length,
-      'Rollbacks': getVehiclesByType(FLEET_VEHICLES, 'Rollback').length
+      'Tow Trucks': FLEET_VEHICLES.filter(v => v.type === 'Tow Truck').length,
+      'Spotters': FLEET_VEHICLES.filter(v => v.type === 'Spotter').length,
+      'Rollbacks': FLEET_VEHICLES.filter(v => v.type === 'Rollback').length
     };
-    console.log('Tab counts:', counts);
     return counts;
   }, []);
 
