@@ -23,6 +23,9 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useClientPrefsStore } from '@/store/clientPrefsStore';
 import { ClientCard } from '@/components/clientPrefs/ClientCard';
+import { ClientAnalytics } from '@/components/clientPrefs/ClientAnalytics';
+import { ClientCharts } from '@/components/clientPrefs/ClientCharts';
+import { PresentationMode } from '@/components/clientPrefs/PresentationMode';
 import { ClientPrefsFormData, ClientPriority, getPriorityWeight } from '@/types/clientPrefs';
 import { downloadCSV, generateCSVTemplate } from '@/utils/csv/clientPrefsCsv';
 
@@ -68,6 +71,7 @@ const ClientPreferences: React.FC = () => {
     notes: ''
   });
   const [newClientErrors, setNewClientErrors] = useState<Record<string, string>>({});
+  const [viewMode, setViewMode] = useState<'list' | 'analytics' | 'charts' | 'presentation'>('list');
 
   // Load clients on mount
   useEffect(() => {
@@ -328,6 +332,31 @@ const ClientPreferences: React.FC = () => {
             </div>
           </div>
           
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-2">
+            <div className="flex bg-gray-800/50 rounded-lg p-1">
+              {[
+                { key: 'list', label: 'List', icon: '📋' },
+                { key: 'analytics', label: 'Analytics', icon: '📊' },
+                { key: 'charts', label: 'Charts', icon: '📈' },
+                { key: 'presentation', label: 'Presentation', icon: '🎯' }
+              ].map((mode) => (
+                <button
+                  key={mode.key}
+                  onClick={() => setViewMode(mode.key as any)}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === mode.key
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                  }`}
+                >
+                  <span className="mr-2">{mode.icon}</span>
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Actions */}
           <div className="flex items-center gap-3">
             <Button
@@ -571,6 +600,15 @@ const ClientPreferences: React.FC = () => {
             <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
             <p className="text-vizla-text-secondary">Loading client preferences...</p>
           </GlassCard>
+        ) : viewMode === 'presentation' ? (
+          <PresentationMode 
+            clients={filteredClients} 
+            onExport={handleExportCSV}
+          />
+        ) : viewMode === 'analytics' ? (
+          <ClientAnalytics clients={filteredClients} />
+        ) : viewMode === 'charts' ? (
+          <ClientCharts clients={filteredClients} />
         ) : filteredClients.length === 0 ? (
           <GlassCard className="p-8 text-center">
             <div className="text-gray-400 mb-4">
@@ -611,21 +649,23 @@ const ClientPreferences: React.FC = () => {
           </div>
         )}
 
-        {/* Stats */}
-        <GlassCard className="p-4">
-          <div className="flex items-center justify-between text-sm text-gray-400">
-            <span>
-              {filteredClients.length} of {clients.length} clients
-              {filters.search && ` matching "${filters.search}"`}
-              {filters.priority !== 'All' && ` with ${filters.priority} priority`}
-            </span>
-            <div className="flex items-center gap-4">
-              <span>High Priority: {clients.filter(c => c.priority === 'High').length}</span>
-              <span>Medium Priority: {clients.filter(c => c.priority === 'Medium').length}</span>
-              <span>Low Priority: {clients.filter(c => c.priority === 'Low').length}</span>
+        {/* Stats - Only show in list mode */}
+        {viewMode === 'list' && (
+          <GlassCard className="p-4">
+            <div className="flex items-center justify-between text-sm text-gray-400">
+              <span>
+                {filteredClients.length} of {clients.length} clients
+                {filters.search && ` matching "${filters.search}"`}
+                {filters.priority !== 'All' && ` with ${filters.priority} priority`}
+              </span>
+              <div className="flex items-center gap-4">
+                <span>High Priority: {clients.filter(c => c.priority === 'High').length}</span>
+                <span>Medium Priority: {clients.filter(c => c.priority === 'Medium').length}</span>
+                <span>Low Priority: {clients.filter(c => c.priority === 'Low').length}</span>
+              </div>
             </div>
-          </div>
-        </GlassCard>
+          </GlassCard>
+        )}
       </div>
     </AppShell>
   );
