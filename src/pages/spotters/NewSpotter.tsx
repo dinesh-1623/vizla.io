@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -10,7 +10,7 @@ import { SpotterCard } from '@/components/spotter/SpotterCard';
 import { useSpotterStore } from '@/lib/store/spotterStore';
 import { SpotterFormData, SpotterSubmission } from '@/lib/types/spotter';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, Camera, Download, Save } from 'lucide-react';
+import { Eye, Camera, Download, Save, ArrowLeft, Home } from 'lucide-react';
 
 const NewSpotter: React.FC = () => {
   const navigate = useNavigate();
@@ -215,6 +215,21 @@ const NewSpotter: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Link to="/spotters/submissions">
+              <Button variant="outline" className="flex items-center gap-2 bg-gray-800/50 text-gray-300 border-gray-600 hover:bg-gray-700/50">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Submissions
+              </Button>
+            </Link>
+            <Link to="/">
+              <Button variant="outline" className="flex items-center gap-2 bg-gray-800/50 text-gray-300 border-gray-600 hover:bg-gray-700/50">
+                <Home className="w-4 h-4" />
+                Dashboard
+              </Button>
+            </Link>
+          </div>
+          
           <div>
             <h1 className="text-3xl font-bold text-white">Spotter Intake</h1>
             <p className="text-gray-400 mt-1">

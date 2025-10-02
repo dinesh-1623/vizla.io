@@ -27,9 +27,9 @@ export const SpotterCard: React.FC<SpotterCardProps> = ({ submission, className 
   };
 
   return (
-    <GlassCard className={`relative overflow-hidden ${className}`}>
-      {/* Vehicle Photo */}
-      <div className="relative w-full h-64 bg-gray-900 rounded-t-lg overflow-hidden">
+    <GlassCard className={`overflow-hidden ${className}`}>
+      {/* Vehicle Photo - Clean image without overlay */}
+      <div className="w-full h-64 bg-gray-900 overflow-hidden">
         {submission.photoUrl ? (
           <img
             src={submission.photoUrl}
@@ -51,97 +51,93 @@ export const SpotterCard: React.FC<SpotterCardProps> = ({ submission, className 
             </div>
           </div>
         )}
-        
-        {/* Glass Panel Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
-          <div className="backdrop-blur-sm bg-white/10 rounded-lg p-4 border border-white/20">
-            {/* Title */}
-            <h3 className="text-xl font-bold text-white mb-2">
-              {submission.year} {submission.make} {submission.model}, {submission.color}
-            </h3>
-            
-            {/* Plate */}
-            <div className="flex items-center gap-2 text-white/90 mb-1">
-              <span className="font-mono text-sm bg-white/20 px-2 py-1 rounded">
-                {submission.plate}
-              </span>
-            </div>
-            
-            {/* Address */}
-            <div className="flex items-start gap-2 text-white/90 mb-2">
-              <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <div className="text-sm">
-                <div>{submission.address}</div>
-                <div className="text-white/70">{submission.client}</div>
-              </div>
-            </div>
-            
-            {/* Time */}
-            <div className="flex items-center gap-2 text-white/90 mb-3">
-              <Clock className="w-4 h-4" />
-              <span className="text-sm">{formatRelativeTime(submission.createdAtISO)}</span>
-            </div>
-            
-            {/* Status Indicators */}
-            <div className="flex items-center gap-4">
-              {/* Reachable */}
-              <div className="flex items-center gap-2">
-                {submission.reachable === 'Reachable' ? (
-                  <Check className="w-5 h-5 text-green-400" />
-                ) : (
-                  <X className="w-5 h-5 text-red-400" />
-                )}
-                <span className="text-sm text-white/90">
-                  {submission.reachable === 'Reachable' ? 'Reachable' : 'Not reachable'}
-                </span>
-              </div>
-              
-              {/* Rusted */}
-              <div className="flex items-center gap-2">
-                {submission.rusted === 'Not rusted' ? (
-                  <Check className="w-5 h-5 text-green-400" />
-                ) : (
-                  <X className="w-5 h-5 text-red-400" />
-                )}
-                <span className="text-sm text-white/90">
-                  {submission.rusted === 'Not rusted' ? 'Not rusted' : 'Rusted'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
       
-      {/* Additional Details */}
-      <div className="p-4 bg-gray-800/50">
-        <div className="grid grid-cols-2 gap-4 text-sm">
+      {/* Vehicle Information - Below the image */}
+      <div className="p-6 bg-vizla-glass">
+        {/* Title */}
+        <h3 className="text-xl font-bold text-vizla-text-primary mb-3">
+          {submission.year} {submission.make} {submission.model}, {submission.color}
+        </h3>
+        
+        {/* Plate */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="font-mono text-sm bg-vizla-glassElev px-3 py-1 rounded-full text-vizla-text-secondary">
+            {submission.plate}
+          </span>
+        </div>
+        
+        {/* Address and Client */}
+        <div className="flex items-start gap-2 mb-4">
+          <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-vizla-text-muted" />
+          <div className="text-sm">
+            <div className="text-vizla-text-primary">{submission.address}</div>
+            <div className="text-vizla-text-muted">{submission.client}</div>
+          </div>
+        </div>
+        
+        {/* Time */}
+        <div className="flex items-center gap-2 mb-4">
+          <Clock className="w-4 h-4 text-vizla-text-muted" />
+          <span className="text-sm text-vizla-text-secondary">{formatRelativeTime(submission.createdAtISO)}</span>
+        </div>
+        
+        {/* Status Indicators */}
+        <div className="flex items-center gap-4 mb-4">
+          {/* Reachable */}
+          <div className="flex items-center gap-2">
+            {submission.reachable === 'Reachable' ? (
+              <Check className="w-4 h-4 text-green-400" />
+            ) : (
+              <X className="w-4 h-4 text-red-400" />
+            )}
+            <span className="text-sm text-vizla-text-primary">
+              {submission.reachable === 'Reachable' ? 'Reachable' : 'Not reachable'}
+            </span>
+          </div>
+          
+          {/* Rusted */}
+          <div className="flex items-center gap-2">
+            {submission.rusted === 'Not rusted' ? (
+              <Check className="w-4 h-4 text-green-400" />
+            ) : (
+              <X className="w-4 h-4 text-red-400" />
+            )}
+            <span className="text-sm text-vizla-text-primary">
+              {submission.rusted === 'Not rusted' ? 'Not rusted' : 'Rusted'}
+            </span>
+          </div>
+        </div>
+        
+        {/* Additional Details */}
+        <div className="grid grid-cols-2 gap-4 text-sm pt-4 border-t border-vizla-glassBorder">
           <div>
-            <span className="text-gray-400">VIN:</span>
-            <span className="ml-2 font-mono text-white">{submission.vin}</span>
+            <span className="text-vizla-text-muted">VIN:</span>
+            <span className="ml-2 font-mono text-vizla-text-primary">{submission.vin}</span>
           </div>
           <div>
-            <span className="text-gray-400">Location:</span>
-            <span className="ml-2 text-white">{submission.locationType}</span>
+            <span className="text-vizla-text-muted">Location:</span>
+            <span className="ml-2 text-vizla-text-primary">{submission.locationType}</span>
           </div>
           <div>
-            <span className="text-gray-400">Parked:</span>
-            <span className="ml-2 text-white">{submission.parked}</span>
+            <span className="text-vizla-text-muted">Parked:</span>
+            <span className="ml-2 text-vizla-text-primary">{submission.parked}</span>
           </div>
           <div>
-            <span className="text-gray-400">Spotter:</span>
-            <span className="ml-2 text-white">{submission.createdBy}</span>
+            <span className="text-vizla-text-muted">Spotter:</span>
+            <span className="ml-2 text-vizla-text-primary">{submission.createdBy}</span>
           </div>
         </div>
         
         {/* Notes */}
         {submission.notes.length > 0 && (
-          <div className="mt-3">
-            <span className="text-gray-400 text-sm">Notes:</span>
-            <div className="flex flex-wrap gap-1 mt-1">
+          <div className="mt-4 pt-4 border-t border-vizla-glassBorder">
+            <span className="text-vizla-text-muted text-sm">Notes:</span>
+            <div className="flex flex-wrap gap-2 mt-2">
               {submission.notes.map((note, index) => (
                 <span
                   key={index}
-                  className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full"
+                  className="px-2 py-1 bg-vizla-brand-primary/20 text-vizla-brand-primary text-xs rounded-full"
                 >
                   {note}
                 </span>
