@@ -472,8 +472,9 @@ const TowDriver: React.FC = () => {
             <div>
               <h1 className="text-2xl font-bold text-vizla-text-primary">Tow Truck Driver View</h1>
               <p className="text-sm text-vizla-text-muted">
-                Data: {allTowCards.length} vehicles in {groupData.length} groups of 10 with independent optimization
+                Data: {allTowCards.length} vehicles from spotter submissions in {groupData.length} groups with independent optimization
                 {hasNewSubmission && ' • New spotter submission added!'}
+                {allTowCards.length === 0 && ' • Start by adding a spotter submission!'}
               </p>
             </div>
           </div>
@@ -530,6 +531,27 @@ const TowDriver: React.FC = () => {
         </GlassCard>
       )}
 
+      {/* Empty State - No Vehicles */}
+      {!error && !isLoading && allTowCards.length === 0 && (
+        <GlassCard className="mb-6">
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 bg-vizla-brand-primary/20 rounded-full flex items-center justify-center">
+              <Navigation className="w-8 h-8 text-vizla-brand-primary" />
+            </div>
+            <h3 className="text-xl font-semibold text-vizla-text-primary mb-2">No Vehicles Found</h3>
+            <p className="text-vizla-text-muted mb-6">
+              Start by adding vehicle information through the Spotter Intake form.
+            </p>
+            <button
+              onClick={() => navigate('/spotters/new')}
+              className="px-6 py-3 bg-vizla-brand-primary text-white rounded-lg hover:bg-vizla-brand-primary/90 transition-colors"
+            >
+              Add First Vehicle
+            </button>
+          </div>
+        </GlassCard>
+      )}
+
       {/* Loading State */}
       {isLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
@@ -550,7 +572,7 @@ const TowDriver: React.FC = () => {
       )}
 
       {/* Main Content */}
-      {!isLoading && !error && (
+      {!isLoading && !error && allTowCards.length > 0 && (
         <div className="space-y-6">
         {/* Active Filter Chips */}
         {hasActiveFilters && (
@@ -645,7 +667,7 @@ const TowDriver: React.FC = () => {
               if (demoActive) {
                 return `(Preview) All Groups • showing ${cardsToRender.length} of ${baseList.length} base`;
               }
-              return `All Groups • 20 vehicles (10 + 10)`;
+              return `All Groups • ${allTowCards.length} vehicles in ${groupData.length} groups`;
             })()}
           </h2>
         </div>

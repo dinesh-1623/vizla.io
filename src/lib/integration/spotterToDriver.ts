@@ -55,9 +55,10 @@ export function getSpotterTowCards(): TowCard[] {
 }
 
 /**
- * Get combined TowCards (original + spotter submissions)
+ * Get only spotter submissions as TowCards (removed original data)
  */
 export function getCombinedTowCards(originalCards: TowCard[]): TowCard[] {
   const spotterCards = getSpotterTowCards();
-  return [...originalCards, ...spotterCards];
+  // Return only spotter submissions, ignore original cards
+  return spotterCards;
 }
