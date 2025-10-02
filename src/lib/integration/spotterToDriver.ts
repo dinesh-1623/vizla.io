@@ -78,7 +78,35 @@ export function getSpotterTowCards(): TowCard[] {
     if (!storedSubmissions) return [];
     
     const submissions: SpotterSubmission[] = JSON.parse(storedSubmissions);
-    return submissions.map(convertSpotterToTowCard);
+    
+    // Check for corrupted data and clean it up
+    const cleanSubmissions = submissions.filter(submission => {
+      // Check if address contains invalid coordinates like "21231"
+      const hasInvalidCoords = submission.address.includes('21231,') || 
+                               submission.address.includes('21231 ');
+      
+      if (hasInvalidCoords) {
+        console.warn('🚨 Found corrupted submission with invalid coordinates:', {
+          id: submission.id,
+          address: submission.address
+        });
+        return false; // Filter out corrupted submissions
+      }
+      
+      return true;
+    });
+    
+    // If we filtered out corrupted data, update localStorage
+    if (cleanSubmissions.length !== submissions.length) {
+      console.log(`🧹 Cleaned up ${submissions.length - cleanSubmissions.length} corrupted submissions`);
+      if (cleanSubmissions.length === 0) {
+        localStorage.removeItem('spotter-submissions');
+      } else {
+        localStorage.setItem('spotter-submissions', JSON.stringify(cleanSubmissions));
+      }
+    }
+    
+    return cleanSubmissions.map(convertSpotterToTowCard);
   } catch (error) {
     console.error('Error loading spotter submissions:', error);
     return [];
@@ -92,4 +120,12 @@ export function getCombinedTowCards(originalCards: TowCard[]): TowCard[] {
   const spotterCards = getSpotterTowCards();
   // Return only spotter submissions, ignore original cards
   return spotterCards;
+}
+
+/**
+ * Clear all spotter submissions from localStorage (utility function)
+ */
+export function clearAllSpotterSubmissions(): void {
+  localStorage.removeItem('spotter-submissions');
+  console.log('🧹 Cleared all spotter submissions from localStorage');
 }

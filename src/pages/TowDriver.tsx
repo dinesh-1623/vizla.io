@@ -10,7 +10,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS, type TowCard } from '@/app/tow-driver/data/baltimoreRun';
-import { getCombinedTowCards } from '@/lib/integration/spotterToDriver';
+import { getCombinedTowCards, clearAllSpotterSubmissions } from '@/lib/integration/spotterToDriver';
 import { haversineMiles, type LatLng } from '@/lib/geo';
 import { totalReturnToLot, totalStash, totalHybridPerStop, minutesFromMiles, type ServiceTimes, type Point, type TravelFn, type HybridStep } from '@/lib/routing';
 import { clusterIntoTwoGroups, clusterIntoGroupsOfTen } from '@/lib/cluster';
@@ -539,6 +539,17 @@ const TowDriver: React.FC = () => {
             </div>
           </div>
                  <div className="flex items-center gap-2">
+                   <button
+                     onClick={() => {
+                       clearAllSpotterSubmissions();
+                       window.location.reload();
+                     }}
+                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/20 text-red-400 ring-1 ring-red-500/30 hover:bg-red-500/30 focus-visible:ring-2 focus-visible:ring-red-500/50 transition-colors"
+                     aria-label="Clear Corrupted Data"
+                   >
+                     <X className="w-4 h-4" />
+                     <span className="text-sm font-medium">Clear Data</span>
+                   </button>
                    <button
                      onClick={() => window.location.reload()}
                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vizla-glass text-vizla-text-secondary ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
