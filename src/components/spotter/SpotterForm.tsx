@@ -69,7 +69,12 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
         console.error('Failed to load image');
       };
       
-      img.src = URL.createObjectURL(file);
+      try {
+        img.src = URL.createObjectURL(file);
+      } catch (error) {
+        console.error('Error creating object URL for compression:', error);
+        return;
+      }
     } else {
       console.log('No file selected');
       handleFieldChange('photo', null);
@@ -375,12 +380,23 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
           }`}
         >
           <div className="p-8 text-center bg-vizla-glass rounded-xl">
-            {formData.photo ? (
+            {formData.photo && formData.photo instanceof File ? (
               <div className="space-y-4">
                 <img
-                  src={URL.createObjectURL(formData.photo)}
+                  src={(() => {
+                    try {
+                      return URL.createObjectURL(formData.photo);
+                    } catch (error) {
+                      console.error('Error creating preview URL:', error);
+                      return '';
+                    }
+                  })()}
                   alt="Vehicle preview"
                   className="max-w-full max-h-48 mx-auto rounded-lg"
+                  onError={(e) => {
+                    console.error('Preview image failed to load');
+                    e.currentTarget.style.display = 'none';
+                  }}
                 />
                 <div className="text-green-400">
                   <Upload className="w-8 h-8 mx-auto mb-2" />
