@@ -65,13 +65,42 @@ function buildGoogleMapsUrl(
   waypoints: GeocodedPoint[],
   label: string
 ): string {
+  console.log('🔍 buildGoogleMapsUrl called with:', {
+    label,
+    origin,
+    destination,
+    waypoints: waypoints.map(wp => ({ id: wp.id, address: wp.address, lat: wp.lat, lng: wp.lng }))
+  });
+  
   const baseUrl = 'https://www.google.com/maps/dir';
   const originStr = `${origin.lat},${origin.lng}`;
   const destStr = `${destination.lat},${destination.lng}`;
   
   // Google Maps supports up to 10 locations total (origin + dest + 8 waypoints)
   const maxWaypoints = Math.min(waypoints.length, 8);
-  const waypointStrs = waypoints.slice(0, maxWaypoints).map(wp => `${wp.lat},${wp.lng}`);
+  
+  // Clean waypoints - filter out corrupted coordinates
+  const cleanWaypoints = waypoints.slice(0, maxWaypoints).filter(wp => {
+    // Check for corrupted coordinates (like 21231)
+    const hasCorruptedLat = wp.lat > 90 || wp.lat < -90 || (wp.lat > 100 && wp.lat < 1000);
+    const hasCorruptedLng = wp.lng > 180 || wp.lng < -180 || (wp.lng > 100 && wp.lng < 1000);
+    
+    if (hasCorruptedLat || hasCorruptedLng) {
+      console.warn('🚨 Filtering out corrupted waypoint:', {
+        id: wp.id,
+        address: wp.address,
+        lat: wp.lat,
+        lng: wp.lng
+      });
+      return false;
+    }
+    
+    return true;
+  });
+  
+  const waypointStrs = cleanWaypoints.map(wp => `${wp.lat},${wp.lng}`);
+  
+  console.log('🔍 Clean waypoints:', waypointStrs);
   
   const params = [
     originStr,

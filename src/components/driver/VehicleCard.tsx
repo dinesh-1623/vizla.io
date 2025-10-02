@@ -117,11 +117,24 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
           <button
             onClick={() => {
               // Build Google Maps URL: Lot → Vehicle → Lot
+              console.log('🔍 VehicleCard - car.fullAddress:', car.fullAddress);
+              
               const baseUrl = 'https://www.google.com/maps/dir/';
               const origin = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226'); // LOT_ADDRESS
-              const vehicleAddress = encodeURIComponent(car.fullAddress);
+              
+              // Clean the vehicle address - remove any corrupted coordinates
+              let cleanVehicleAddress = car.fullAddress;
+              if (cleanVehicleAddress.includes('21231,')) {
+                // Remove corrupted coordinates and use just the street address
+                cleanVehicleAddress = car.street + ', Baltimore, MD';
+                console.log('🧹 Cleaned corrupted address:', cleanVehicleAddress);
+              }
+              
+              const vehicleAddress = encodeURIComponent(cleanVehicleAddress);
               const destination = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226'); // LOT_ADDRESS
               const url = `${baseUrl}${origin}/${vehicleAddress}/${destination}`;
+              
+              console.log('🔗 Google Maps URL:', url);
               window.open(url, '_blank', 'noopener,noreferrer');
             }}
             className="flex-1 bg-vizla-brand-primary text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
@@ -131,11 +144,24 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
           <button
             onClick={() => {
               // Build Google Maps URL: Lot → Vehicle → Stash
+              console.log('🔍 VehicleCard (Stash) - car.fullAddress:', car.fullAddress);
+              
               const baseUrl = 'https://www.google.com/maps/dir/';
               const origin = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226'); // LOT_ADDRESS
-              const vehicleAddress = encodeURIComponent(car.fullAddress);
+              
+              // Clean the vehicle address - remove any corrupted coordinates
+              let cleanVehicleAddress = car.fullAddress;
+              if (cleanVehicleAddress.includes('21231,')) {
+                // Remove corrupted coordinates and use just the street address
+                cleanVehicleAddress = car.street + ', Baltimore, MD';
+                console.log('🧹 Cleaned corrupted address (Stash):', cleanVehicleAddress);
+              }
+              
+              const vehicleAddress = encodeURIComponent(cleanVehicleAddress);
               const destination = encodeURIComponent('751 W Patapsco Ave, Halethorpe, MD 21227'); // STASH_ADDRESS
               const url = `${baseUrl}${origin}/${vehicleAddress}/${destination}`;
+              
+              console.log('🔗 Google Maps URL (Stash):', url);
               window.open(url, '_blank', 'noopener,noreferrer');
             }}
             className="flex-1 bg-vizla-glass text-vizla-text-secondary px-3 py-2 rounded-lg text-sm font-medium ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
