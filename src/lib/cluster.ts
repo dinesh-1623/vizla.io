@@ -259,3 +259,17 @@ export function clusterIntoTwoGroups(points: Point[]): Point[][] {
   
   return result;
 }
+
+// Create dynamic groups of 10 vehicles each
+export function clusterIntoGroupsOfTen(points: Point[]): Point[][] {
+  if (points.length === 0) return [];
+  
+  const groups: Point[][] = [];
+  const sorted = [...points].sort((a, b) => a.lng - b.lng);
+  
+  for (let i = 0; i < sorted.length; i += 10) {
+    groups.push(sorted.slice(i, i + 10));
+  }
+  
+  return groups;
+}

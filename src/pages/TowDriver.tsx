@@ -10,9 +10,10 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS, type TowCard } from '@/app/tow-driver/data/baltimoreRun';
+import { getCombinedTowCards } from '@/lib/integration/spotterToDriver';
 import { haversineMiles, type LatLng } from '@/lib/geo';
 import { totalReturnToLot, totalStash, totalHybridPerStop, minutesFromMiles, type ServiceTimes, type Point, type TravelFn, type HybridStep } from '@/lib/routing';
-import { clusterIntoTwoGroups } from '@/lib/cluster';
+import { clusterIntoTwoGroups, clusterIntoGroupsOfTen } from '@/lib/cluster';
 import { buildRoundTripLot, buildStashChain, buildHybridChainWithCoords } from '@/lib/mapsUrl';
 import { 
   computeReturnToLot, 
@@ -140,9 +141,14 @@ const TowDriver: React.FC = () => {
     };
   }, [travelCache, serviceTimes.cityMph]);
 
+  // Get combined TowCards (original + spotter submissions)
+  const allTowCards = useMemo(() => {
+    return getCombinedTowCards(TOW_CARDS);
+  }, []);
+
   // Convert TowCards to RoutePoints
   const points: RoutePoint[] = useMemo(() => {
-    return TOW_CARDS.map((card, index) => {
+    return allTowCards.map((card, index) => {
       // Check if address contains coordinates
       const coordMatch = card.fullAddress.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
       
@@ -171,12 +177,16 @@ const TowDriver: React.FC = () => {
     });
   }, []);
 
-  // Cluster points into exactly 2 groups with 10 pickups each
+  // Check for new submission parameter
+  const [searchParams] = useSearchParams();
+  const hasNewSubmission = searchParams.get('newSubmission') === 'true';
+
+  // Create dynamic groups of 10 vehicles each
   const groupData = useMemo(() => {
-    return clusterIntoTwoGroups(points);
+    return clusterIntoGroupsOfTen(points);
   }, [points]);
 
-  // Get points for each group
+  // Get points for each group dynamically
   const group1Points = useMemo(() => {
     return groupData[0] || [];
   }, [groupData]);
@@ -298,17 +308,16 @@ const TowDriver: React.FC = () => {
   // Get cars for Group 1
   const getGroup1Cars = (): TowCard[] => {
     const group1PointIds = group1Points.map(p => p.id);
-    return TOW_CARDS.filter(card => group1PointIds.includes(card.id));
+    return allTowCards.filter(card => group1PointIds.includes(card.id));
   };
 
   // Get cars for Group 2
   const getGroup2Cars = (): TowCard[] => {
     const group2PointIds = group2Points.map(p => p.id);
-    return TOW_CARDS.filter(card => group2PointIds.includes(card.id));
+    return allTowCards.filter(card => group2PointIds.includes(card.id));
   };
 
   // Check for demo mode and repeat functionality
-  const [searchParams] = useSearchParams();
   const forceSix = searchParams.get("demo") === "6";
   const repeatParam = searchParams.get("repeat");
   const repeatTarget = Math.max(0, Math.min(100, Number(repeatParam) || 0)); // clamp 0..100
@@ -340,10 +349,10 @@ const TowDriver: React.FC = () => {
   const group1Cars = getGroup1Cars();
   const group2Cars = getGroup2Cars();
   
-  // Get unique clients from Baltimore data
+  // Get unique clients from all data (Baltimore + spotter submissions)
   const uniqueClients = useMemo(() => {
-    return [...new Set(TOW_CARDS.map(car => car.client))].sort();
-  }, []);
+    return [...new Set(allTowCards.map(car => car.client))].sort();
+  }, [allTowCards]);
 
   const uniqueDrivers = useMemo(() => {
     // No driver data in this dataset
@@ -462,7 +471,10 @@ const TowDriver: React.FC = () => {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-vizla-text-primary">Tow Truck Driver View</h1>
-              <p className="text-sm text-vizla-text-muted">Data: Akel's 20 Baltimore Addresses (2 groups of 10 with independent optimization)</p>
+              <p className="text-sm text-vizla-text-muted">
+                Data: {allTowCards.length} vehicles in {groupData.length} groups of 10 with independent optimization
+                {hasNewSubmission && ' • New spotter submission added!'}
+              </p>
             </div>
           </div>
                  <div className="flex items-center gap-2">
@@ -487,6 +499,20 @@ const TowDriver: React.FC = () => {
         </div>
       </header>
 
+      {/* New Submission Notification */}
+      {hasNewSubmission && (
+        <div className="mb-6 p-4 bg-green-500/20 border border-green-500/30 rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            <div>
+              <h3 className="text-green-400 font-semibold">New Spotter Submission Added!</h3>
+              <p className="text-green-300 text-sm">
+                A new vehicle has been added to your route. Check the groups below for optimized pickup times.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error State */}
       {error && (
@@ -628,8 +654,8 @@ const TowDriver: React.FC = () => {
         {/* Group 1 Capacity Card */}
         {group1Points.length > 0 && (
           <div className="mb-6">
-            <div className="mb-4">
-              <h3 className="text-xl font-semibold text-vizla-text-primary">Group 1 • 10 Vehicles</h3>
+                <div className="mb-4">
+                  <h3 className="text-xl font-semibold text-vizla-text-primary">Group 1 • {group1Points.length} Vehicles</h3>
             </div>
             <CapacityCard
               inputs={{
@@ -716,7 +742,7 @@ const TowDriver: React.FC = () => {
             {group2Points.length > 0 && (
               <div className="mb-6">
                 <div className="mb-4">
-                  <h3 className="text-xl font-semibold text-vizla-text-primary">Group 2 • 10 Vehicles</h3>
+                  <h3 className="text-xl font-semibold text-vizla-text-primary">Group 2 • {group2Points.length} Vehicles</h3>
                 </div>
                 <CapacityCard
                   inputs={{

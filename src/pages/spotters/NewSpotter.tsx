@@ -162,7 +162,8 @@ const NewSpotter: React.FC = () => {
         description: 'Spotter submission has been saved successfully.',
       });
 
-      navigate('/spotters/submissions');
+      // Redirect to Tow Driver View to see the new group with optimized routes
+      navigate('/tow-driver?newSubmission=true');
     } catch (error) {
       toast({
         title: 'Error',
