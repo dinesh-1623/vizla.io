@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Dashboard from "./pages/Dashboard";
 import TowDriver from "./pages/TowDriver";
 import DriverProgress from "./pages/DriverProgress";
@@ -32,43 +33,45 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/located" element={<LocatedPage />} />
-          <Route path="/poc/baltimore" element={<BaltimorePOC />} />
-          <Route path="/tow-driver" element={<TowDriver />} />
-          <Route path="/driver/progress" element={<DriverProgress />} />
-          <Route path="/markets" element={<Markets />} />
-          <Route path="/fleet" element={<Fleet />} />
-          <Route path="/owner" element={<Owner />} />
-          <Route path="/order-confirmation" element={<OrderConfirmation />} />
-          <Route path="/to-dispatch" element={<ToDispatch />} />
-          <Route path="/dispatched" element={<Dispatched />} />
-          <Route path="/stashed" element={<Stashed />} />
-          <Route path="/spotters" element={<Spotters />} />
-          <Route path="/spotters/new" element={<NewSpotter />} />
-          <Route path="/spotters/submissions" element={<SpotterSubmissions />} />
-          <Route path="/tow-trucks" element={<TowTrucks />} />
-          <Route path="/admin/fleet" element={<Fleet />} />
-          <Route path="/admin/users" element={<Users />} />
-          <Route path="/admin/shifts" element={<Shifts />} />
-          <Route path="/admin/clients" element={<ClientPreferences />} />
-          <Route path="/admin/scheduling" element={<Scheduling />} />
-          <Route path="/admin/zones" element={<Zones />} />
-          <Route path="/admin/reports" element={<Reports />} />
-          <Route path="/admin/action-items" element={<ActionItems />} />
-          <Route path="/admin/storage-lots" element={<StorageLots />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/located" element={<LocatedPage />} />
+            <Route path="/poc/baltimore" element={<BaltimorePOC />} />
+            <Route path="/tow-driver" element={<TowDriver />} />
+            <Route path="/driver/progress" element={<DriverProgress />} />
+            <Route path="/markets" element={<Markets />} />
+            <Route path="/fleet" element={<Fleet />} />
+            <Route path="/owner" element={<Owner />} />
+            <Route path="/order-confirmation" element={<OrderConfirmation />} />
+            <Route path="/to-dispatch" element={<ToDispatch />} />
+            <Route path="/dispatched" element={<Dispatched />} />
+            <Route path="/stashed" element={<Stashed />} />
+            <Route path="/spotters" element={<Spotters />} />
+            <Route path="/spotters/new" element={<NewSpotter />} />
+            <Route path="/spotters/submissions" element={<SpotterSubmissions />} />
+            <Route path="/tow-trucks" element={<TowTrucks />} />
+            <Route path="/admin/fleet" element={<Fleet />} />
+            <Route path="/admin/users" element={<Users />} />
+            <Route path="/admin/shifts" element={<Shifts />} />
+            <Route path="/admin/clients" element={<ClientPreferences />} />
+            <Route path="/admin/scheduling" element={<Scheduling />} />
+            <Route path="/admin/zones" element={<Zones />} />
+            <Route path="/admin/reports" element={<Reports />} />
+            <Route path="/admin/action-items" element={<ActionItems />} />
+            <Route path="/admin/storage-lots" element={<StorageLots />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

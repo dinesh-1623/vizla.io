@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadLocated } from '@/lib/data/loaders';
 import { loadBaltimoreData } from '@/lib/data/baltimoreLoader';
@@ -100,6 +100,8 @@ const Dashboard: React.FC = () => {
 
   // Filter data based on global filters and drilldown selections
   const filteredData = useMemo(() => {
+    if (!data.length) return [];
+    
     const filtered = data.filter(row => {
       // Apply global filters
       if (market !== 'All Markets' && row.zone !== market) return false;
@@ -112,6 +114,7 @@ const Dashboard: React.FC = () => {
       
       return true;
     });
+    
     console.log('🔍 Filtered data:', filtered.length, 'rows');
     return filtered;
   }, [data, market, status, selClient, selZone, selDriver]);
