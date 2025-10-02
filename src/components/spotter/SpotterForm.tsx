@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Upload, X, Plus, MapPin } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,6 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [customNote, setCustomNote] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(clientSearch.toLowerCase())
@@ -367,24 +366,14 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
       {/* Photo Upload */}
       <div className="space-y-2">
         <Label>Photo *</Label>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/heic"
-          onChange={handlePhotoUpload}
-          className="hidden"
-        />
         
-        <GlassCard
-          className={`border-2 border-dashed cursor-pointer hover:border-blue-400 transition-colors ${
+        <label
+          htmlFor="photoFile"
+          className={`block w-full border-2 border-dashed rounded-xl cursor-pointer hover:border-blue-400 transition-colors ${
             errors.photo ? 'border-red-500' : 'border-gray-600'
           }`}
-          onClick={() => {
-            console.log('Upload area clicked, fileInputRef:', fileInputRef.current);
-            fileInputRef.current?.click();
-          }}
         >
-          <div className="p-8 text-center">
+          <div className="p-8 text-center bg-vizla-glass rounded-xl">
             {formData.photo ? (
               <div className="space-y-4">
                 <img
@@ -407,7 +396,16 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
               </div>
             )}
           </div>
-        </GlassCard>
+        </label>
+        
+        <input
+          id="photoFile"
+          type="file"
+          accept="image/jpeg,image/png,image/heic"
+          onChange={handlePhotoUpload}
+          className="hidden"
+        />
+        
         {errors.photo && <p className="text-red-400 text-sm">{errors.photo}</p>}
       </div>
     </div>
