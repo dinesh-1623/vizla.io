@@ -1,57 +1,57 @@
 import { FleetVehicle } from './types';
 
 export const FLEET_VEHICLES: FleetVehicle[] = [
-  // Tow Trucks (15 total)
+  // Tow Trucks (15 total) - Actual fleet vehicles that do the towing
   {
     id: 'truck-001',
-    vin: '1234567890ABCDEFG',
+    vin: '1FTBW2CM5GKA12345',
     make: 'Ford',
-    model: 'F-150',
-    year: 2020,
+    model: 'F-450 Super Duty',
+    year: 2022,
     driver: 'Ethan Carter',
     type: 'Tow Truck',
     status: 'Active',
     startingPoint: 'Fixed',
-    location: '123 Elm St, Anytown',
-    storageLot: 'Lot A, 456 Maple Ave, Anytown',
-    zone: 'North',
-    market: 'Local',
+    location: '4221 Curtis Ave, Baltimore, MD 21226',
+    storageLot: 'Curtis Ave Storage Lot',
+    zone: 'Balt CO',
+    market: 'Maryland',
     shift: 'Day',
-    shiftGoal: { current: 6, total: 10 }
+    shiftGoal: { current: 8, total: 12 }
   },
   {
     id: 'truck-002',
-    vin: '9876543210ZYXWVUT',
+    vin: '1FTBW2CM5GKA12346',
     make: 'Chevrolet',
-    model: 'Silverado',
-    year: 2018,
+    model: 'Silverado 3500HD',
+    year: 2021,
     driver: 'Liam Harper',
     type: 'Tow Truck',
-    status: 'Inactive',
+    status: 'Active',
     startingPoint: 'Not Fixed',
-    location: '789 Oak St, Anytown',
-    storageLot: 'Lot B, 101 Pine Ave, Anytown',
-    zone: 'South',
-    market: 'Regional',
+    location: '751 W Patapsco Ave, Halethorpe, MD 21227',
+    storageLot: 'Patapsco Storage Lot',
+    zone: 'Balt East',
+    market: 'Maryland',
     shift: 'Night',
-    shiftGoal: { current: 2, total: 8 }
+    shiftGoal: { current: 6, total: 10 }
   },
   {
     id: 'truck-003',
-    vin: 'ABCDEF1234567890',
+    vin: '1FTBW2CM5GKA12347',
     make: 'Ford',
-    model: 'F-250',
-    year: 2021,
+    model: 'F-550 Super Duty',
+    year: 2023,
     driver: 'Maya Patel',
     type: 'Tow Truck',
     status: 'Active',
     startingPoint: 'Fixed',
-    location: '456 Pine St, Anytown',
-    storageLot: 'Lot A, 456 Maple Ave, Anytown',
-    zone: 'North',
-    market: 'Local',
+    location: '4221 Curtis Ave, Baltimore, MD 21226',
+    storageLot: 'Curtis Ave Storage Lot',
+    zone: 'Balt CO',
+    market: 'Maryland',
     shift: 'Day',
-    shiftGoal: { current: 8, total: 12 }
+    shiftGoal: { current: 10, total: 12 }
   },
   {
     id: 'truck-004',
@@ -260,23 +260,23 @@ export const FLEET_VEHICLES: FleetVehicle[] = [
     shiftGoal: { current: 0, total: 10 }
   },
 
-  // Spotters (8 total)
+  // Spotters (8 total) - Yard trucks/terminal tractors for moving trailers
   {
     id: 'spotter-001',
     vin: 'SPOT001234567890',
-    make: 'Toyota',
-    model: 'Camry',
+    make: 'Ford',
+    model: 'F-350 Yard Tractor',
     year: 2021,
     driver: 'Alexander Thompson',
     type: 'Spotter',
     status: 'Active',
     startingPoint: 'Not Fixed',
-    location: '246 Willow Dr, Anytown',
-    storageLot: 'Lot A, 456 Maple Ave, Anytown',
-    zone: 'North',
-    market: 'Local',
+    location: '4221 Curtis Ave, Baltimore, MD 21226',
+    storageLot: 'Curtis Ave Storage Lot',
+    zone: 'Balt CO',
+    market: 'Maryland',
     shift: 'Day',
-    shiftGoal: { current: 7, total: 10 }
+    shiftGoal: { current: 15, total: 20 }
   },
   {
     id: 'spotter-002',
@@ -399,23 +399,23 @@ export const FLEET_VEHICLES: FleetVehicle[] = [
     shiftGoal: { current: 8, total: 12 }
   },
 
-  // Rollbacks (12 total)
+  // Rollbacks (12 total) - Flatbed tow trucks with sliding bed
   {
     id: 'rollback-001',
     vin: 'ROLL001234567890',
     make: 'Ford',
-    model: 'F-650',
+    model: 'F-650 Rollback',
     year: 2023,
     driver: 'Henry Wright',
     type: 'Rollback',
     status: 'Active',
     startingPoint: 'Fixed',
-    location: '124 Dogwood Dr, Anytown',
-    storageLot: 'Lot C, 789 Birch St, Anytown',
-    zone: 'East',
-    market: 'Local',
+    location: '4221 Curtis Ave, Baltimore, MD 21226',
+    storageLot: 'Curtis Ave Storage Lot',
+    zone: 'Balt CO',
+    market: 'Maryland',
     shift: 'Day',
-    shiftGoal: { current: 5, total: 8 }
+    shiftGoal: { current: 6, total: 8 }
   },
   {
     id: 'rollback-002',
