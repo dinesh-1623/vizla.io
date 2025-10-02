@@ -108,8 +108,8 @@ const TowDriver: React.FC = () => {
   }), []);
 
   const stashCoords: LatLng = useMemo(() => ({
-    lat: 39.238,  // 751 W Patapsco Ave, Halethorpe, MD 21227
-    lng: -76.589
+    lat: 39.245,  // 751 W Patapsco Ave, Halethorpe, MD 21227
+    lng: -76.580
   }), []);
 
   // Travel function with cache

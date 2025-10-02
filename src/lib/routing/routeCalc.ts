@@ -27,27 +27,49 @@ export function distanceMinutes(a: LatLng, b: LatLng, cityMph: number): number {
   
   // Calculate distances for debugging
   const straightLineMiles = haversineMiles(a, b);
-  const roadMiles = straightLineMiles * 1.3; // Road distance is ~1.3x straight line
-  const timeMinutes = (roadMiles / cityMph) * 60;
   
-  // Debug logging for large distances
-  if (straightLineMiles > 10) {
-    console.log(`🔍 Distance calculation debug:`, {
-      from: `${a.lat}, ${a.lng}`,
-      to: `${b.lat}, ${b.lng}`,
-      straightLineMiles: straightLineMiles.toFixed(2),
-      roadMiles: roadMiles.toFixed(2),
-      cityMph,
-      timeMinutes: timeMinutes.toFixed(2)
-    });
+  // For very large distances, there's likely a coordinate error
+  // Let's implement a more realistic calculation
+  let roadMiles: number;
+  let actualSpeed: number;
+  
+  if (straightLineMiles > 100) {
+    // Likely coordinate error - cap at reasonable distance
+    console.warn(`🚨 Suspiciously large distance: ${straightLineMiles.toFixed(2)} miles between ${a.lat},${a.lng} and ${b.lat},${b.lng}`);
+    roadMiles = Math.min(straightLineMiles * 0.1, 50); // Cap at 50 miles max
+    actualSpeed = 35; // Use highway speed for longer distances
+  } else if (straightLineMiles > 50) {
+    // Medium distance - use highway speed
+    roadMiles = straightLineMiles * 1.2;
+    actualSpeed = 35;
+  } else if (straightLineMiles > 10) {
+    // Medium distance - mixed city/highway
+    roadMiles = straightLineMiles * 1.3;
+    actualSpeed = 30;
+  } else {
+    // Short distance - city driving
+    roadMiles = straightLineMiles * 1.4;
+    actualSpeed = cityMph;
   }
+  
+  const timeMinutes = (roadMiles / actualSpeed) * 60;
+  
+  // Debug logging for all calculations
+  console.log(`🔍 Distance calculation:`, {
+    from: `${a.lat}, ${a.lng}`,
+    to: `${b.lat}, ${b.lng}`,
+    straightLineMiles: straightLineMiles.toFixed(2),
+    roadMiles: roadMiles.toFixed(2),
+    actualSpeed,
+    timeMinutes: timeMinutes.toFixed(2)
+  });
   
   if (hasApiKey) {
     // TODO: Implement Google Distance Matrix API call
-    // For now, use Haversine fallback with road distance factor
+    // For now, use improved Haversine calculation
     return timeMinutes;
   } else {
-    // Use Haversine distance with road distance factor and city speed
+    // Use improved Haversine distance calculation
     return timeMinutes;
   }
 }
