@@ -12,7 +12,6 @@ interface SpotterFormProps {
   onFormDataChange: (data: Partial<SpotterFormData>) => void;
   clients: Array<{ id: string; name: string; address?: string }>;
   errors: Record<string, string>;
-  onImageUpload: (file: File) => void;
 }
 
 export const SpotterForm: React.FC<SpotterFormProps> = ({
@@ -20,7 +19,6 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
   onFormDataChange,
   clients,
   errors,
-  onImageUpload
 }) => {
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
@@ -35,8 +33,8 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
     onFormDataChange({ [field]: value });
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('File upload triggered', event.target.files);
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('Photo upload triggered', event.target.files);
     const file = event.target.files?.[0];
     if (file) {
       console.log('File selected:', file.name, file.size, file.type);
@@ -59,7 +57,8 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
             console.log('Blob created, size:', blob.size);
             const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
             console.log('Compressed file created:', compressedFile.name, compressedFile.size);
-            onImageUpload(compressedFile);
+            // Update form data directly instead of using callback
+            handleFieldChange('photo', compressedFile);
           } else {
             console.error('Failed to create blob');
           }
@@ -73,6 +72,7 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
       img.src = URL.createObjectURL(file);
     } else {
       console.log('No file selected');
+      handleFieldChange('photo', null);
     }
   };
 
@@ -371,7 +371,7 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/heic"
-          onChange={handleFileUpload}
+          onChange={handlePhotoUpload}
           className="hidden"
         />
         

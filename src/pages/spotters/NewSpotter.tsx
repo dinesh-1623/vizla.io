@@ -97,10 +97,6 @@ const NewSpotter: React.FC = () => {
     setFormData(prev => ({ ...prev, ...changes }));
   };
 
-  const handleImageUpload = (file: File) => {
-    console.log('Parent handleImageUpload called with file:', file.name, file.size);
-    setFormData(prev => ({ ...prev, photo: file }));
-  };
 
   const handleSaveDraft = () => {
     const draftId = 'new-spotter-draft';
@@ -276,7 +272,6 @@ const NewSpotter: React.FC = () => {
                 onFormDataChange={handleFormDataChange}
                 clients={clients}
                 errors={errors}
-                onImageUpload={handleImageUpload}
               />
             </GlassCard>
 
