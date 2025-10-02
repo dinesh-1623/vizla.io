@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { loadLocated } from '@/lib/data/loaders';
 import { loadBaltimoreData } from '@/lib/data/baltimoreLoader';
 import { loadTowCars } from '@/lib/data/driverSource';
+import { MarketsOverview } from '@/components/MarketsOverview/MarketsOverview';
 import { Truck, User, RefreshCw, AlertCircle, Navigation } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { StatTile } from '@/components/ui/StatTile';
@@ -484,7 +485,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Breakdown Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="breakdown-panels grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* By Client */}
           <BreakdownPanel
             title="By Client"
@@ -596,6 +597,25 @@ const Dashboard: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Markets & Zones Overview */}
+        <div className="mt-8">
+          <MarketsOverview
+            onZoneClick={(market, zone) => {
+              // Filter dashboard by selected market/zone
+              setMarket(market);
+              setSelZone(zone);
+              // Scroll to breakdowns section
+              const breakdownsSection = document.querySelector('.breakdown-panels');
+              if (breakdownsSection) {
+                breakdownsSection.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
+            defaultViewMode="columns"
+            showViewAllButton={true}
+            maxColumns={4}
+          />
         </div>
       </div>
     </AppShell>
