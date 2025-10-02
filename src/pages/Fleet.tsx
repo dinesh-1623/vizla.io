@@ -27,6 +27,11 @@ const Fleet: React.FC = () => {
   // Filter vehicles based on active tab and filters
   const filteredVehicles = useMemo(() => {
     let vehicles = getVehiclesByType(FLEET_VEHICLES, activeTab);
+    
+    // Debug logging
+    console.log('Active tab:', activeTab);
+    console.log('Total vehicles for type:', vehicles.length);
+    console.log('All vehicles:', FLEET_VEHICLES.length);
 
     // Apply search filter
     if (filters.search) {
@@ -59,6 +64,7 @@ const Fleet: React.FC = () => {
       vehicles = vehicles.filter(vehicle => vehicle.maintenanceStatus === filters.maintenanceStatus);
     }
 
+    console.log('Filtered vehicles:', vehicles.length);
     return vehicles;
   }, [activeTab, filters]);
 

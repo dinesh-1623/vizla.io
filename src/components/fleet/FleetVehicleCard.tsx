@@ -20,6 +20,26 @@ export const FleetVehicleCard: React.FC<FleetVehicleCardProps> = ({
   const progressPercentage = vehicle.shiftGoal.total > 0 
     ? (vehicle.shiftGoal.current / vehicle.shiftGoal.total) * 100 
     : 0;
+
+  // Get vehicle image based on type and ID
+  const getVehicleImage = () => {
+    const imageIndex = parseInt(vehicle.id.split('-')[1]) % 16; // Use ID to get consistent image
+    return `/images/cars/cars${imageIndex + 1}.jpg`;
+  };
+
+  // Get vehicle type icon
+  const getVehicleTypeIcon = () => {
+    switch (vehicle.type) {
+      case 'Tow Truck':
+        return '🚛';
+      case 'Spotter':
+        return '👁️';
+      case 'Rollback':
+        return '🚚';
+      default:
+        return '🚗';
+    }
+  };
   
   const getProgressColor = () => {
     if (progressPercentage >= 80) return 'bg-green-500';
@@ -49,6 +69,29 @@ export const FleetVehicleCard: React.FC<FleetVehicleCardProps> = ({
   return (
     <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder hover:ring-vizla-brand-primary/30 transition-all duration-200">
       <div className="p-6">
+        {/* Vehicle Image and Header */}
+        <div className="mb-4">
+          <div className="relative w-full h-32 mb-3 rounded-lg overflow-hidden bg-vizla-glass">
+            <img 
+              src={getVehicleImage()} 
+              alt={`${vehicle.make} ${vehicle.model}`}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to a placeholder if image fails to load
+                e.currentTarget.src = `data:image/svg+xml,${encodeURIComponent(`
+                  <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="100" height="100" fill="#374151"/>
+                    <text x="50" y="50" font-family="Arial" font-size="20" fill="#9CA3AF" text-anchor="middle" dy=".3em">${getVehicleTypeIcon()}</text>
+                  </svg>
+                `)}`;
+              }}
+            />
+            <div className="absolute top-2 right-2">
+              <span className="text-2xl">{getVehicleTypeIcon()}</span>
+            </div>
+          </div>
+        </div>
+
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
