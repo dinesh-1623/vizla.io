@@ -98,6 +98,7 @@ const NewSpotter: React.FC = () => {
   };
 
   const handleImageUpload = (file: File) => {
+    console.log('Parent handleImageUpload called with file:', file.name, file.size);
     setFormData(prev => ({ ...prev, photo: file }));
   };
 

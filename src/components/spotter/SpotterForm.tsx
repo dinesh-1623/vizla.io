@@ -36,14 +36,17 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File upload triggered', event.target.files);
     const file = event.target.files?.[0];
     if (file) {
+      console.log('File selected:', file.name, file.size, file.type);
       // Compress image client-side
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
       
       img.onload = () => {
+        console.log('Image loaded, dimensions:', img.width, img.height);
         const maxWidth = 1600;
         const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
         canvas.width = img.width * ratio;
@@ -53,13 +56,23 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
         
         canvas.toBlob((blob) => {
           if (blob) {
+            console.log('Blob created, size:', blob.size);
             const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
+            console.log('Compressed file created:', compressedFile.name, compressedFile.size);
             onImageUpload(compressedFile);
+          } else {
+            console.error('Failed to create blob');
           }
         }, 'image/jpeg', 0.8);
       };
       
+      img.onerror = () => {
+        console.error('Failed to load image');
+      };
+      
       img.src = URL.createObjectURL(file);
+    } else {
+      console.log('No file selected');
     }
   };
 
@@ -366,7 +379,10 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
           className={`border-2 border-dashed cursor-pointer hover:border-blue-400 transition-colors ${
             errors.photo ? 'border-red-500' : 'border-gray-600'
           }`}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => {
+            console.log('Upload area clicked, fileInputRef:', fileInputRef.current);
+            fileInputRef.current?.click();
+          }}
         >
           <div className="p-8 text-center">
             {formData.photo ? (
