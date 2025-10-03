@@ -13,6 +13,7 @@ export type TowCard = {
   zip: string;
   fullAddress: string;
   img: string;
+  images?: string[]; // Multiple images from spotter submissions
   // New fields for coordinate handling
   lat?: number;
   lng?: number;

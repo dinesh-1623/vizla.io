@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { TowCard } from '@/app/tow-driver/data/baltimoreRun';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GLASS_SURFACE, TEXT_STYLES, STATUS_COLORS } from '@/lib/constants';
-import { CheckCircle, Trash2, MapPin, Home, Package } from 'lucide-react';
+import { CheckCircle, Trash2, MapPin, Home, Package, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface VehicleCardProps {
   car: TowCard;
@@ -14,10 +14,25 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [showMarkAsDone, setShowMarkAsDone] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Get all available images (multiple images from spotter submissions or fallback to single img)
+  const allImages = car.images && car.images.length > 0 ? car.images : (car.img ? [car.img] : []);
+  
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
+  };
+  
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+  };
 
   // Debug: Log the car data to see what image URL we're getting
   console.log(`VehicleCard for ${car.id}:`, { 
     img: car.img, 
+    images: car.images,
+    allImages,
+    currentIndex: currentImageIndex,
     vin: car.vin,
     isBlob: car.img?.startsWith('blob:'),
     isData: car.img?.startsWith('data:')
@@ -69,21 +84,66 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
         </div>
       </div>
 
-      {/* Vehicle Image */}
+      {/* Vehicle Images - Carousel */}
       <div className="mb-4">
         <div className="relative w-full h-32 rounded-lg overflow-hidden bg-gray-800">
-          {car.img && car.img !== '/placeholder.svg' ? (
-            <img
-              src={car.img}
-              alt={`${car.year} ${car.make} ${car.model}`}
-              className="w-full h-full object-cover"
-              onLoad={() => setImageLoading(false)}
-              onError={() => {
-                console.log('Image failed to load:', car.img);
-                setImageLoading(false);
-                setImageError(true);
-              }}
-            />
+          {allImages.length > 0 && allImages[currentImageIndex] !== '/placeholder.svg' ? (
+            <>
+              <img
+                src={allImages[currentImageIndex]}
+                alt={`${car.year} ${car.make} ${car.model} - Image ${currentImageIndex + 1}`}
+                className="w-full h-full object-cover"
+                onLoad={() => setImageLoading(false)}
+                onError={() => {
+                  console.log('Image failed to load:', allImages[currentImageIndex]);
+                  setImageLoading(false);
+                  setImageError(true);
+                }}
+              />
+              
+              {/* Navigation Arrows - only show if multiple images */}
+              {allImages.length > 1 && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-1 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full transition-colors"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full transition-colors"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+              
+              {/* Image Counter - only show if multiple images */}
+              {allImages.length > 1 && (
+                <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-2 py-1 rounded-full text-xs">
+                  {currentImageIndex + 1} / {allImages.length}
+                </div>
+              )}
+              
+              {/* Image Dots - only show if multiple images */}
+              {allImages.length > 1 && (
+                <div className="absolute bottom-1 right-1 flex gap-1">
+                  {allImages.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                        index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                      }`}
+                      aria-label={`Go to image ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-800 text-gray-400">
               <div className="text-center">

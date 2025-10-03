@@ -71,6 +71,7 @@ export function convertSpotterToTowCard(submission: SpotterSubmission): TowCard 
     zip: '21201',
     fullAddress: fullAddress,
     img: submission.photoUrls?.[0] || '/placeholder.svg',
+    images: submission.photoUrls || [],
     lat: lat,
     lng: lng,
     isDefaultCoords: isUsingDefaultCoords
