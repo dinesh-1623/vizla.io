@@ -33,9 +33,16 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
     images: car.images,
     allImages,
     currentIndex: currentImageIndex,
+    currentImageUrl: allImages[currentImageIndex],
     vin: car.vin,
     isBlob: car.img?.startsWith('blob:'),
-    isData: car.img?.startsWith('data:')
+    isData: car.img?.startsWith('data:'),
+    currentImageIsBlob: allImages[currentImageIndex]?.startsWith('blob:'),
+    currentImageIsData: allImages[currentImageIndex]?.startsWith('data:'),
+    allImagesTypes: allImages.map(url => ({
+      url: url?.substring(0, 50) + '...',
+      type: url?.startsWith('blob:') ? 'blob' : url?.startsWith('data:') ? 'data' : 'other'
+    }))
   });
 
   // Generate a status based on car properties

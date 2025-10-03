@@ -107,8 +107,39 @@ const NewSpotter: React.FC = () => {
     });
   };
 
+  // Convert file to base64 data URL
+  const fileToDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleSubmit = async () => {
     if (!isValid) return;
+
+    // Convert all photos to base64 data URLs
+    const photoUrls: string[] = [];
+    if (formData.photos && formData.photos.length > 0) {
+      try {
+        for (const photo of formData.photos) {
+          if (photo instanceof File) {
+            const dataUrl = await fileToDataURL(photo);
+            photoUrls.push(dataUrl);
+          }
+        }
+      } catch (error) {
+        console.error('Error converting photos to data URLs:', error);
+        toast({
+          title: "Error",
+          description: "Failed to process images. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
 
     const submission: SpotterSubmission = {
       id: crypto.randomUUID(),
@@ -127,16 +158,7 @@ const NewSpotter: React.FC = () => {
       locationType: formData.locationType,
       parked: formData.parked,
       notes: formData.notes,
-      photoUrls: (() => {
-        try {
-          return formData.photos?.map(photo => 
-            photo instanceof File ? URL.createObjectURL(photo) : ''
-          ).filter(url => url) || [];
-        } catch (error) {
-          console.error('Error creating object URLs for submission:', error);
-          return [];
-        }
-      })()
+      photoUrls: photoUrls
     };
 
     try {
@@ -361,6 +383,7 @@ const NewSpotter: React.FC = () => {
                     notes: formData.notes,
                     photoUrls: (() => {
                       try {
+                        // For live preview, we'll use object URLs for immediate display
                         return formData.photos?.map(photo => 
                           photo instanceof File ? URL.createObjectURL(photo) : ''
                         ).filter(url => url) || [];
