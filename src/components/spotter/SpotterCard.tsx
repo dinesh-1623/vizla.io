@@ -1,5 +1,5 @@
-import React from 'react';
-import { MapPin, Clock, Check, X, Camera } from 'lucide-react';
+import React, { useState } from 'react';
+import { MapPin, Clock, Check, X, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SpotterSubmission } from '@/lib/types/spotter';
 
@@ -9,8 +9,20 @@ interface SpotterCardProps {
 }
 
 export const SpotterCard: React.FC<SpotterCardProps> = ({ submission, className = '' }) => {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
   console.log('SpotterCard rendering with submission:', submission);
-  console.log('Photo URL:', submission.photoUrl);
+  console.log('Photo URLs:', submission.photoUrls);
+  
+  const images = submission.photoUrls || [];
+  
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+  
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
   
   const formatRelativeTime = (isoString: string) => {
     const now = new Date();
@@ -28,26 +40,71 @@ export const SpotterCard: React.FC<SpotterCardProps> = ({ submission, className 
 
   return (
     <GlassCard className={`overflow-hidden ${className}`}>
-      {/* Vehicle Photo - Clean image without overlay */}
-      <div className="w-full h-64 bg-gray-900 overflow-hidden">
-        {submission.photoUrl ? (
-          <img
-            src={submission.photoUrl}
-            alt={`${submission.year} ${submission.make} ${submission.model}`}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              console.error('Image failed to load:', submission.photoUrl);
-              e.currentTarget.style.display = 'none';
-            }}
-            onLoad={() => {
-              console.log('Image loaded successfully:', submission.photoUrl);
-            }}
-          />
+      {/* Vehicle Photos - Carousel */}
+      <div className="w-full h-64 bg-gray-900 overflow-hidden relative">
+        {images.length > 0 ? (
+          <>
+            <img
+              src={images[currentImageIndex]}
+              alt={`${submission.year} ${submission.make} ${submission.model} - Photo ${currentImageIndex + 1}`}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                console.error('Image failed to load:', images[currentImageIndex]);
+                e.currentTarget.style.display = 'none';
+              }}
+              onLoad={() => {
+                console.log('Image loaded successfully:', images[currentImageIndex]);
+              }}
+            />
+            
+            {/* Navigation Arrows */}
+            {images.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                  aria-label="Next image"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </>
+            )}
+            
+            {/* Image Counter */}
+            {images.length > 1 && (
+              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+                {currentImageIndex + 1} / {images.length}
+              </div>
+            )}
+            
+            {/* Image Dots */}
+            {images.length > 1 && (
+              <div className="absolute bottom-2 right-2 flex gap-1">
+                {images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-colors ${
+                      index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                    }`}
+                    aria-label={`Go to image ${index + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-800">
             <div className="text-center text-gray-400">
               <Camera className="w-12 h-12 mx-auto mb-2" />
-              <p>No image available</p>
+              <p>No images available</p>
             </div>
           </div>
         )}

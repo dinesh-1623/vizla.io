@@ -32,18 +32,13 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
     onFormDataChange({ [field]: value });
   };
 
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('Photo upload triggered', event.target.files);
-    const file = event.target.files?.[0];
-    if (file) {
-      console.log('File selected:', file.name, file.size, file.type);
-      // Compress image client-side
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
       
       img.onload = () => {
-        console.log('Image loaded, dimensions:', img.width, img.height);
         const maxWidth = 1600;
         const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
         canvas.width = img.width * ratio;
@@ -53,32 +48,51 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
         
         canvas.toBlob((blob) => {
           if (blob) {
-            console.log('Blob created, size:', blob.size);
             const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
-            console.log('Compressed file created:', compressedFile.name, compressedFile.size);
-            // Update form data directly instead of using callback
-            console.log('Setting photo file:', compressedFile.name, compressedFile.size, compressedFile.type);
-            handleFieldChange('photo', compressedFile);
+            resolve(compressedFile);
           } else {
-            console.error('Failed to create blob');
+            reject(new Error('Failed to create blob'));
           }
         }, 'image/jpeg', 0.8);
       };
       
-      img.onerror = () => {
-        console.error('Failed to load image');
-      };
+      img.onerror = () => reject(new Error('Failed to load image'));
       
       try {
         img.src = URL.createObjectURL(file);
       } catch (error) {
-        console.error('Error creating object URL for compression:', error);
-        return;
+        reject(error);
       }
-    } else {
-      console.log('No file selected');
-      handleFieldChange('photo', null);
+    });
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    
+    if (files.length === 0) return;
+    
+    // Limit to 5 images total
+    const currentPhotos = formData.photos || [];
+    const remainingSlots = 5 - currentPhotos.length;
+    const filesToProcess = files.slice(0, remainingSlots);
+    
+    if (files.length > remainingSlots) {
+      alert(`You can only upload up to 5 images total. ${files.length - remainingSlots} images were not added.`);
     }
+    
+    try {
+      const compressedFiles = await Promise.all(filesToProcess.map(compressImage));
+      const newPhotos = [...currentPhotos, ...compressedFiles];
+      handleFieldChange('photos', newPhotos);
+    } catch (error) {
+      console.error('Error compressing images:', error);
+      alert('Error processing images. Please try again.');
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    const newPhotos = formData.photos?.filter((_, i) => i !== index) || [];
+    handleFieldChange('photos', newPhotos);
   };
 
   const addCustomNote = () => {
@@ -371,47 +385,62 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
 
       {/* Photo Upload */}
       <div className="space-y-2">
-        <Label>Photo *</Label>
+        <Label>Photos * (Max 5)</Label>
         
-        <label
-          htmlFor="photoFile"
-          className={`block w-full border-2 border-dashed rounded-xl cursor-pointer hover:border-blue-400 transition-colors ${
-            errors.photo ? 'border-red-500' : 'border-gray-600'
-          }`}
-        >
-          <div className="p-8 text-center bg-vizla-glass rounded-xl">
-            {formData.photo && formData.photo instanceof File ? (
-              <div className="space-y-4">
+        {/* Photo Previews */}
+        {formData.photos && formData.photos.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+            {formData.photos.map((photo, index) => (
+              <div key={index} className="relative group">
                 <img
                   src={(() => {
                     try {
-                      return URL.createObjectURL(formData.photo);
+                      return URL.createObjectURL(photo);
                     } catch (error) {
                       console.error('Error creating preview URL:', error);
                       return '';
                     }
                   })()}
-                  alt="Vehicle preview"
-                  className="max-w-full max-h-48 mx-auto rounded-lg"
+                  alt={`Vehicle photo ${index + 1}`}
+                  className="w-full h-24 object-cover rounded-lg border border-gray-600"
                   onError={(e) => {
                     console.error('Preview image failed to load');
                     e.currentTarget.style.display = 'none';
                   }}
                 />
-                <div className="text-green-400">
-                  <Upload className="w-8 h-8 mx-auto mb-2" />
-                  <p>Photo uploaded successfully</p>
-                  <p className="text-sm text-gray-400">Click to change</p>
+                <button
+                  type="button"
+                  onClick={() => removePhoto(index)}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 rounded">
+                  {index + 1}
                 </div>
               </div>
-            ) : (
-              <div className="text-gray-400">
-                <Upload className="w-12 h-12 mx-auto mb-4" />
-                <p className="text-lg mb-2">Upload Vehicle Photo</p>
-                <p className="text-sm">JPG, PNG, or HEIC up to 10MB</p>
-                <p className="text-xs mt-2">Tap to select file</p>
-              </div>
-            )}
+            ))}
+          </div>
+        )}
+        
+        <label
+          htmlFor="photoFile"
+          className={`block w-full border-2 border-dashed rounded-xl cursor-pointer hover:border-blue-400 transition-colors ${
+            errors.photos ? 'border-red-500' : 'border-gray-600'
+          }`}
+        >
+          <div className="p-8 text-center bg-vizla-glass rounded-xl">
+            <div className="text-gray-400">
+              <Upload className="w-12 h-12 mx-auto mb-4" />
+              <p className="text-lg mb-2">
+                {formData.photos && formData.photos.length > 0 
+                  ? `Add More Photos (${formData.photos.length}/5)`
+                  : 'Upload Vehicle Photos'
+                }
+              </p>
+              <p className="text-sm">JPG, PNG, or HEIC up to 10MB each</p>
+              <p className="text-xs mt-2">Tap to select files (up to 5 total)</p>
+            </div>
           </div>
         </label>
         
@@ -419,12 +448,14 @@ export const SpotterForm: React.FC<SpotterFormProps> = ({
           id="photoFile"
           type="file"
           accept="image/jpeg,image/png,image/heic"
+          multiple
           onChange={handlePhotoUpload}
           className="hidden"
         />
         
-        {errors.photo && <p className="text-red-400 text-sm">{errors.photo}</p>}
+        {errors.photos && <p className="text-red-400 text-sm">{errors.photos}</p>}
       </div>
     </div>
   );
 };
+

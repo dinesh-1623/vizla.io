@@ -15,7 +15,7 @@ export interface SpotterSubmission {
   locationType: 'Apartment Secured' | 'Apartment Unsecured' | 'Parking Lot Secured' | 'Parking Lot Unsecured' | 'POE' | 'Retail' | 'Single Family Home' | 'Single Family Home Gated' | 'Townhouse';
   parked: 'Pulled in' | 'Backed in' | 'Parallel';
   notes: string[]; // multiselect chips; allow free text too
-  photoUrl: string; // object URL/base64
+  photoUrls: string[]; // array of object URLs/base64 (max 5)
 }
 
 export interface SpotterFormData {
@@ -32,7 +32,7 @@ export interface SpotterFormData {
   locationType: 'Apartment Secured' | 'Apartment Unsecured' | 'Parking Lot Secured' | 'Parking Lot Unsecured' | 'POE' | 'Retail' | 'Single Family Home' | 'Single Family Home Gated' | 'Townhouse';
   parked: 'Pulled in' | 'Backed in' | 'Parallel';
   notes: string[];
-  photo: File | null;
+  photos: File[]; // array of files (max 5)
 }
 
 export interface SpotterStore {

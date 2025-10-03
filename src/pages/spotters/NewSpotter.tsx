@@ -31,7 +31,7 @@ const NewSpotter: React.FC = () => {
     locationType: 'Single Family Home',
     parked: 'Pulled in',
     notes: [],
-    photo: null
+    photos: []
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -77,7 +77,7 @@ const NewSpotter: React.FC = () => {
     if (!formData.color.trim()) newErrors.color = 'Color is required';
     if (!formData.plate.trim()) newErrors.plate = 'Plate is required';
     if (!formData.address.trim()) newErrors.address = 'Address is required';
-    if (!formData.photo) newErrors.photo = 'Photo is required';
+    if (!formData.photos || formData.photos.length === 0) newErrors.photos = 'At least one photo is required';
     
     setErrors(newErrors);
     setIsValid(Object.keys(newErrors).length === 0);
@@ -127,12 +127,14 @@ const NewSpotter: React.FC = () => {
       locationType: formData.locationType,
       parked: formData.parked,
       notes: formData.notes,
-      photoUrl: (() => {
+      photoUrls: (() => {
         try {
-          return formData.photo && formData.photo instanceof File ? URL.createObjectURL(formData.photo) : '';
+          return formData.photos?.map(photo => 
+            photo instanceof File ? URL.createObjectURL(photo) : ''
+          ).filter(url => url) || [];
         } catch (error) {
-          console.error('Error creating object URL for submission:', error);
-          return '';
+          console.error('Error creating object URLs for submission:', error);
+          return [];
         }
       })()
     };
@@ -338,7 +340,7 @@ const NewSpotter: React.FC = () => {
                 <h2 className="text-xl font-semibold text-white">Live Preview</h2>
               </div>
               
-              {formData.photo && formData.photo instanceof File ? (
+              {formData.photos && formData.photos.length > 0 ? (
                 <SpotterCard
                   submission={{
                     id: 'preview',
@@ -357,12 +359,14 @@ const NewSpotter: React.FC = () => {
                     locationType: formData.locationType,
                     parked: formData.parked,
                     notes: formData.notes,
-                    photoUrl: (() => {
+                    photoUrls: (() => {
                       try {
-                        return URL.createObjectURL(formData.photo);
+                        return formData.photos?.map(photo => 
+                          photo instanceof File ? URL.createObjectURL(photo) : ''
+                        ).filter(url => url) || [];
                       } catch (error) {
-                        console.error('Error creating object URL:', error);
-                        return '';
+                        console.error('Error creating object URLs:', error);
+                        return [];
                       }
                     })()
                   }}

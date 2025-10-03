@@ -70,7 +70,7 @@ export function convertSpotterToTowCard(submission: SpotterSubmission): TowCard 
     city: 'Baltimore',
     zip: '21201',
     fullAddress: fullAddress,
-    img: submission.photoUrl || '/placeholder.svg',
+    img: submission.photoUrls?.[0] || '/placeholder.svg',
     lat: lat,
     lng: lng,
     isDefaultCoords: isUsingDefaultCoords
