@@ -181,6 +181,11 @@ const NewSpotter: React.FC = () => {
       // Clear draft
       clearDraft('new-spotter-draft');
 
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('spotterSubmissionAdded', {
+        detail: { submission }
+      }));
+
       toast({
         title: 'Submission saved',
         description: 'Spotter submission has been saved successfully.',

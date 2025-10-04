@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Settings, MapPin, Clock, Users, Target, AlertCircle, ChevronDown, ChevronUp, Navigation, Map } from 'lucide-react';
+import { Settings, MapPin, Clock, Users, Target, AlertCircle, ChevronDown, ChevronUp, Navigation, Map, RefreshCw } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { RouteGroupCard } from '@/components/driver/RouteGroupCard';
@@ -12,6 +12,7 @@ import {
   type RouteBatch 
 } from '@/lib/batching';
 import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS } from '@/app/tow-driver/data/baltimoreRun';
+import { getCombinedTowCards } from '@/lib/integration/spotterToDriver';
 import { haversineMiles } from '@/lib/geo';
 
 // Updated coordinates to match Tow Truck Driver View
@@ -26,6 +27,7 @@ const DriverProgress: React.FC = () => {
   const [completedBatches, setCompletedBatches] = useState<string[]>([]);
   const [selectedBatch, setSelectedBatch] = useState<RouteBatch | null>(null);
   const [isAssumptionsOpen, setIsAssumptionsOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   
   // Service times (reuse from existing constants)
   const serviceTimes = {
@@ -44,10 +46,43 @@ const DriverProgress: React.FC = () => {
     serviceTimes
   }), [strategy, shiftLengthHours, finishStashAtLot, serviceTimes]);
   
+  // Get combined TowCards (spotter submissions)
+  const allTowCards = useMemo(() => {
+    const cards = getCombinedTowCards(TOW_CARDS);
+    console.log('DriverProgress: Loaded TowCards:', {
+      count: cards.length,
+      cards: cards.map(card => ({
+        id: card.id,
+        client: card.client,
+        address: card.street,
+        images: card.images?.length || 0
+      }))
+    });
+    return cards;
+  }, [refreshKey]);
+
+  // Refresh data when localStorage changes (new spotter submissions)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      console.log('DriverProgress: Storage changed, refreshing data...');
+      setRefreshKey(prev => prev + 1);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom events (for same-tab updates)
+    window.addEventListener('spotterSubmissionAdded', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('spotterSubmissionAdded', handleStorageChange);
+    };
+  }, []);
+
   // Generate batches
   const allBatches = useMemo(() => {
-    return generateBatches(TOW_CARDS, batchingOptions, LOT_COORDS, STASH_COORDS);
-  }, [batchingOptions]);
+    return generateBatches(allTowCards, batchingOptions, LOT_COORDS, STASH_COORDS);
+  }, [allTowCards, batchingOptions]);
   
   // Filter completed batches
   const activeBatches = useMemo(() => {
@@ -137,6 +172,14 @@ const DriverProgress: React.FC = () => {
                 Estimate Mode
               </span>
             )}
+            <button
+              onClick={() => setRefreshKey(prev => prev + 1)}
+              className="flex items-center gap-2 px-4 py-2 bg-vizla-glass text-vizla-text-secondary rounded-xl ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-all duration-200"
+              title="Refresh data from spotter submissions"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
             <button
               onClick={() => setIsAssumptionsOpen(!isAssumptionsOpen)}
               className="flex items-center gap-2 px-4 py-2 bg-vizla-glass text-vizla-text-secondary rounded-xl ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-all duration-200"
