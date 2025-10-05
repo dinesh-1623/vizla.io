@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import AppShell from '@/components/shell/AppShell';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -248,19 +249,19 @@ const NewSpotter: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
-      <div className="max-w-7xl mx-auto">
+    <AppShell title="Spotter Intake">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/spotters/submissions">
-              <Button variant="outline" className="flex items-center gap-2 bg-gray-800/50 text-gray-300 border-gray-600 hover:bg-gray-700/50">
+              <Button variant="outline" className="flex items-center gap-2">
                 <ArrowLeft className="w-4 h-4" />
                 Back to Submissions
               </Button>
             </Link>
             <Link to="/">
-              <Button variant="outline" className="flex items-center gap-2 bg-gray-800/50 text-gray-300 border-gray-600 hover:bg-gray-700/50">
+              <Button variant="outline" className="flex items-center gap-2">
                 <Home className="w-4 h-4" />
                 Dashboard
               </Button>
@@ -268,18 +269,18 @@ const NewSpotter: React.FC = () => {
           </div>
           
           <div>
-            <h1 className="text-3xl font-bold text-white">Spotter Intake</h1>
-            <p className="text-gray-400 mt-1">
+            <h1 className="text-2xl font-bold text-vizla-text-primary">Spotter Intake</h1>
+            <p className="text-vizla-text-secondary mt-1">
               Fill out vehicle information and generate AI-style summary card
             </p>
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-400">
-              Spotter: <span className="text-white font-medium">{currentUser}</span>
+            <div className="text-sm text-vizla-text-secondary">
+              Spotter: <span className="text-vizla-text-primary font-medium">{currentUser}</span>
               <Dialog open={showUserDialog} onOpenChange={setShowUserDialog}>
                 <DialogTrigger asChild>
-                  <button className="ml-2 text-blue-400 hover:text-blue-300 underline">
+                  <button className="ml-2 text-vizla-brand-primary hover:text-vizla-brand-primary/80 underline">
                     Change
                   </button>
                 </DialogTrigger>
@@ -315,8 +316,8 @@ const NewSpotter: React.FC = () => {
           <div className="space-y-6">
             <GlassCard className="p-6">
               <div className="flex items-center gap-2 mb-6">
-                <Camera className="w-5 h-5 text-blue-400" />
-                <h2 className="text-xl font-semibold text-white">Vehicle Information</h2>
+                <Camera className="w-5 h-5 text-vizla-brand-primary" />
+                <h2 className="text-xl font-semibold text-vizla-text-primary">Vehicle Information</h2>
               </div>
               
               <SpotterForm
@@ -351,7 +352,7 @@ const NewSpotter: React.FC = () => {
                 <Button
                   onClick={handleSubmit}
                   disabled={!isValid}
-                  className="flex-1 min-w-32 bg-blue-600 hover:bg-blue-700"
+                  className="flex-1 min-w-32 bg-vizla-brand-primary hover:bg-vizla-brand-primary/90 disabled:bg-vizla-glassElev disabled:cursor-not-allowed"
                 >
                   Submit
                 </Button>
@@ -364,7 +365,7 @@ const NewSpotter: React.FC = () => {
             <GlassCard className="p-6">
               <div className="flex items-center gap-2 mb-6">
                 <Eye className="w-5 h-5 text-green-400" />
-                <h2 className="text-xl font-semibold text-white">Live Preview</h2>
+                <h2 className="text-xl font-semibold text-vizla-text-primary">Live Preview</h2>
               </div>
               
               {formData.photos && formData.photos.length > 0 ? (
@@ -412,7 +413,7 @@ const NewSpotter: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 };
 

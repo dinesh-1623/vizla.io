@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AppShell from '@/components/shell/AppShell';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -171,13 +172,13 @@ const Submissions: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
-      <div className="max-w-7xl mx-auto">
+    <AppShell title="Spotter Submissions">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white">Spotter Submissions</h1>
-            <p className="text-gray-400 mt-1">
+            <h1 className="text-2xl font-bold text-vizla-text-primary">Spotter Submissions</h1>
+            <p className="text-vizla-text-secondary mt-1">
               View and manage vehicle spotter submissions
             </p>
           </div>
@@ -185,7 +186,7 @@ const Submissions: React.FC = () => {
           <div className="flex items-center gap-4">
             <Button
               onClick={() => navigate('/spotters/new')}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-vizla-brand-primary hover:bg-vizla-brand-primary/90"
             >
               <Plus className="w-4 h-4 mr-2" />
               New Submission
@@ -194,59 +195,47 @@ const Submissions: React.FC = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-              <Calendar className="w-8 h-8 text-blue-400" />
-              <div>
-                <p className="text-2xl font-bold text-white">{submissions.length}</p>
-                <p className="text-sm text-gray-400">Total Submissions</p>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <GlassCard>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-vizla-brand-primary">{submissions.length}</div>
+              <div className="text-sm text-vizla-text-secondary mt-1">Total Submissions</div>
             </div>
           </GlassCard>
           
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-              <User className="w-8 h-8 text-green-400" />
-              <div>
-                <p className="text-2xl font-bold text-white">
-                  {new Set(submissions.map(s => s.createdBy)).size}
-                </p>
-                <p className="text-sm text-gray-400">Unique Spotters</p>
+          <GlassCard>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-vizla-brand-primary">
+                {new Set(submissions.map(s => s.createdBy)).size}
               </div>
+              <div className="text-sm text-vizla-text-secondary mt-1">Unique Spotters</div>
             </div>
           </GlassCard>
           
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-              <MapPin className="w-8 h-8 text-yellow-400" />
-              <div>
-                <p className="text-2xl font-bold text-white">
-                  {submissions.filter(s => s.reachable === 'Reachable').length}
-                </p>
-                <p className="text-sm text-gray-400">Reachable Vehicles</p>
+          <GlassCard>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-vizla-brand-primary">
+                {submissions.filter(s => s.reachable === 'Reachable').length}
               </div>
+              <div className="text-sm text-vizla-text-secondary mt-1">Reachable Vehicles</div>
             </div>
           </GlassCard>
           
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-              <Trash2 className="w-8 h-8 text-red-400" />
-              <div>
-                <p className="text-2xl font-bold text-white">
-                  {submissions.filter(s => s.rusted === 'Rusted').length}
-                </p>
-                <p className="text-sm text-gray-400">Rusted Vehicles</p>
+          <GlassCard>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-vizla-brand-primary">
+                {submissions.filter(s => s.rusted === 'Rusted').length}
               </div>
+              <div className="text-sm text-vizla-text-secondary mt-1">Rusted Vehicles</div>
             </div>
           </GlassCard>
         </div>
 
         {/* Search and Actions */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-vizla-text-muted" />
               <Input
                 placeholder="Search submissions..."
                 value={searchTerm}
@@ -292,32 +281,32 @@ const Submissions: React.FC = () => {
         <GlassCard className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-800/50">
+              <thead className="bg-vizla-glassElev/50">
                 <tr>
                   <th className="px-4 py-3 text-left">
                     <input
                       type="checkbox"
                       checked={selectedIds.size === filteredSubmissions.length && filteredSubmissions.length > 0}
                       onChange={handleSelectAll}
-                      className="rounded border-gray-600"
+                      className="rounded border-vizla-glassBorder"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Date/Time</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Spotter</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Client</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Vehicle</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Plate</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Reachable</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Rusted</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Address</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Actions</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-vizla-text-secondary">Date/Time</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-vizla-text-secondary">Spotter</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-vizla-text-secondary">Client</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-vizla-text-secondary">Vehicle</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-vizla-text-secondary">Plate</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-vizla-text-secondary">Reachable</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-vizla-text-secondary">Rusted</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-vizla-text-secondary">Address</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-vizla-text-secondary">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700">
+              <tbody className="divide-y divide-vizla-glassBorder">
                 {filteredSubmissions.map((submission) => (
                   <tr
                     key={submission.id}
-                    className="hover:bg-gray-800/30 cursor-pointer"
+                    className="hover:bg-vizla-glassElev/30 cursor-pointer"
                     onClick={() => handleViewCard(submission)}
                   >
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -325,22 +314,22 @@ const Submissions: React.FC = () => {
                         type="checkbox"
                         checked={selectedIds.has(submission.id)}
                         onChange={() => handleSelectSubmission(submission.id)}
-                        className="rounded border-gray-600"
+                        className="rounded border-vizla-glassBorder"
                       />
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-300">
+                    <td className="px-4 py-3 text-sm text-vizla-text-secondary">
                       {formatDate(submission.createdAtISO)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-300">
+                    <td className="px-4 py-3 text-sm text-vizla-text-secondary">
                       {submission.createdBy}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-300">
+                    <td className="px-4 py-3 text-sm text-vizla-text-secondary">
                       {submission.client}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-300">
+                    <td className="px-4 py-3 text-sm text-vizla-text-secondary">
                       {submission.year} {submission.make} {submission.model}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-300 font-mono">
+                    <td className="px-4 py-3 text-sm text-vizla-text-secondary font-mono">
                       {submission.plate}
                     </td>
                     <td className="px-4 py-3 text-sm">
@@ -361,7 +350,7 @@ const Submissions: React.FC = () => {
                         {submission.rusted}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-300 max-w-xs truncate">
+                    <td className="px-4 py-3 text-sm text-vizla-text-secondary max-w-xs truncate">
                       {submission.address}
                     </td>
                     <td className="px-4 py-3 text-sm" onClick={(e) => e.stopPropagation()}>
@@ -379,7 +368,7 @@ const Submissions: React.FC = () => {
             </table>
             
             {filteredSubmissions.length === 0 && (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-vizla-text-secondary">
                 <Calendar className="w-16 h-16 mx-auto mb-4 opacity-50" />
                 <p className="text-lg mb-2">No submissions found</p>
                 <p className="text-sm">
@@ -388,7 +377,7 @@ const Submissions: React.FC = () => {
                 {!searchTerm && (
                   <Button
                     onClick={() => navigate('/spotters/new')}
-                    className="mt-4 bg-blue-600 hover:bg-blue-700"
+                    className="mt-4 bg-vizla-brand-primary hover:bg-vizla-brand-primary/90"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     New Submission
@@ -411,7 +400,7 @@ const Submissions: React.FC = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
+    </AppShell>
   );
 };
 
