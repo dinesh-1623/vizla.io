@@ -26,7 +26,7 @@ import {
   Mail
 } from 'lucide-react';
 
-// Types for blocked vehicles
+// Types for physically blocked vehicles
 interface BlockedVehicle {
   id: string;
   year: number;
@@ -39,9 +39,11 @@ interface BlockedVehicle {
   address: string;
   city: string;
   zip: string;
-  blockedDate: string;
-  blockedBy: string;
-  blockedReason: 'legal_hold' | 'owner_dispute' | 'insurance_claim' | 'court_order' | 'payment_dispute' | 'other';
+  zone: string;
+  market: string;
+  spottedDate: string;
+  spottedBy: string;
+  blockedReason: 'behind_vehicle' | 'behind_fence' | 'in_garage' | 'blocked_by_client' | 'blocked_by_zone' | 'blocked_by_client_zone' | 'blocked_by_client_zone_market' | 'other';
   blockedNotes: string;
   estimatedResolution: string;
   status: 'active' | 'under_review' | 'resolved' | 'escalated';
@@ -50,15 +52,12 @@ interface BlockedVehicle {
   contactPhone: string;
   contactEmail: string;
   images: string[];
-  documents: Array<{
-    id: string;
-    name: string;
-    type: 'court_order' | 'insurance_doc' | 'legal_notice' | 'other';
-    url: string;
-  }>;
+  spotterNotes: string;
+  accessInstructions: string;
+  alternativeActions: string[];
 }
 
-// Mock data for blocked vehicles
+// Mock data for physically blocked vehicles
 const MOCK_BLOCKED_VEHICLES: BlockedVehicle[] = [
   {
     id: 'blocked-001',
@@ -72,20 +71,22 @@ const MOCK_BLOCKED_VEHICLES: BlockedVehicle[] = [
     address: '1234 Main St',
     city: 'Baltimore',
     zip: '21201',
-    blockedDate: '2024-01-15',
-    blockedBy: 'John Smith',
-    blockedReason: 'legal_hold',
-    blockedNotes: 'Court order preventing repossession pending bankruptcy hearing',
-    estimatedResolution: '2024-02-15',
+    zone: 'Downtown',
+    market: 'Baltimore',
+    spottedDate: '2024-01-15',
+    spottedBy: 'John Smith',
+    blockedReason: 'behind_vehicle',
+    blockedNotes: 'Vehicle is parked behind a white Honda Civic. Cannot access with tow truck.',
+    estimatedResolution: '2024-01-20',
     status: 'active',
-    priority: 'high',
+    priority: 'medium',
     contactPerson: 'Sarah Johnson',
     contactPhone: '(410) 555-0123',
     contactEmail: 'sarah.johnson@fnb.com',
     images: ['/placeholder.svg'],
-    documents: [
-      { id: 'doc-1', name: 'Court Order - Bankruptcy Stay', type: 'court_order', url: '#' }
-    ]
+    spotterNotes: 'Target vehicle is silver Toyota Camry, parked in driveway behind white Honda Civic. Need to coordinate with Honda owner to move vehicle.',
+    accessInstructions: 'Contact Honda owner at (410) 555-9999 to arrange vehicle movement. Honda plate: XYZ-456',
+    alternativeActions: ['Contact Honda owner', 'Schedule return visit', 'Coordinate with property owner']
   },
   {
     id: 'blocked-002',
@@ -99,20 +100,22 @@ const MOCK_BLOCKED_VEHICLES: BlockedVehicle[] = [
     address: '5678 Oak Ave',
     city: 'Baltimore',
     zip: '21202',
-    blockedDate: '2024-01-10',
-    blockedBy: 'Mike Davis',
-    blockedReason: 'owner_dispute',
-    blockedNotes: 'Vehicle owner claims payment was made, needs verification',
+    zone: 'Residential',
+    market: 'Baltimore',
+    spottedDate: '2024-01-10',
+    spottedBy: 'Mike Davis',
+    blockedReason: 'behind_fence',
+    blockedNotes: 'Vehicle is behind a locked gate/fence. No access from street.',
     estimatedResolution: '2024-01-25',
     status: 'under_review',
-    priority: 'medium',
+    priority: 'high',
     contactPerson: 'Robert Wilson',
     contactPhone: '(410) 555-0456',
     contactEmail: 'r.wilson@metrocu.com',
     images: ['/placeholder.svg'],
-    documents: [
-      { id: 'doc-2', name: 'Payment Receipt - Disputed', type: 'other', url: '#' }
-    ]
+    spotterNotes: 'Blue Honda Civic is visible behind 6-foot chain link fence. Gate is locked with padlock. Property appears vacant.',
+    accessInstructions: 'Need property owner contact or legal access permission. Check with city records for property owner.',
+    alternativeActions: ['Contact property owner', 'Obtain legal access', 'Coordinate with law enforcement']
   },
   {
     id: 'blocked-003',
@@ -126,21 +129,51 @@ const MOCK_BLOCKED_VEHICLES: BlockedVehicle[] = [
     address: '9012 Pine St',
     city: 'Baltimore',
     zip: '21203',
-    blockedDate: '2024-01-05',
-    blockedBy: 'Lisa Brown',
-    blockedReason: 'insurance_claim',
-    blockedNotes: 'Active insurance claim for accident damage, awaiting settlement',
-    estimatedResolution: '2024-02-28',
+    zone: 'Industrial',
+    market: 'Baltimore',
+    spottedDate: '2024-01-05',
+    spottedBy: 'Lisa Brown',
+    blockedReason: 'in_garage',
+    blockedNotes: 'Vehicle is inside a locked garage. Cannot access without keys or garage door opener.',
+    estimatedResolution: '2024-01-30',
     status: 'active',
     priority: 'medium',
     contactPerson: 'Jennifer Lee',
     contactPhone: '(410) 555-0789',
     contactEmail: 'j.lee@capitalauto.com',
     images: ['/placeholder.svg'],
-    documents: [
-      { id: 'doc-3', name: 'Insurance Claim Form', type: 'insurance_doc', url: '#' },
-      { id: 'doc-4', name: 'Accident Report', type: 'other', url: '#' }
-    ]
+    spotterNotes: 'Red Ford Focus is inside attached garage. Garage door is closed and locked. No visible access points.',
+    accessInstructions: 'Need garage door opener or keys from property owner. Check if garage has side door access.',
+    alternativeActions: ['Contact property owner for keys', 'Check for side door access', 'Schedule return with proper access']
+  },
+  {
+    id: 'blocked-004',
+    year: 2018,
+    make: 'Chevrolet',
+    model: 'Malibu',
+    color: 'Black',
+    plate: 'GHI-789',
+    vin: '4HGBH41JXMN109189',
+    client: 'Regional Bank',
+    address: '3456 Elm St',
+    city: 'Baltimore',
+    zip: '21204',
+    zone: 'Commercial',
+    market: 'Baltimore',
+    spottedDate: '2024-01-12',
+    spottedBy: 'Tom Wilson',
+    blockedReason: 'blocked_by_client',
+    blockedNotes: 'Client has requested hold on this vehicle. Do not tow until further notice.',
+    estimatedResolution: '2024-02-15',
+    status: 'active',
+    priority: 'low',
+    contactPerson: 'Maria Rodriguez',
+    contactPhone: '(410) 555-0321',
+    contactEmail: 'm.rodriguez@regionalbank.com',
+    images: ['/placeholder.svg'],
+    spotterNotes: 'Black Chevrolet Malibu is accessible but client has placed hold on towing. Vehicle is in good condition.',
+    accessInstructions: 'Contact client for removal of hold. Vehicle is ready for towing once hold is lifted.',
+    alternativeActions: ['Contact client to remove hold', 'Schedule follow-up', 'Monitor for hold removal']
   }
 ];
 
@@ -206,11 +239,13 @@ const Blocked: React.FC = () => {
   // Get reason label
   const getReasonLabel = (reason: string) => {
     switch (reason) {
-      case 'legal_hold': return 'Legal Hold';
-      case 'owner_dispute': return 'Owner Dispute';
-      case 'insurance_claim': return 'Insurance Claim';
-      case 'court_order': return 'Court Order';
-      case 'payment_dispute': return 'Payment Dispute';
+      case 'behind_vehicle': return 'Behind Vehicle';
+      case 'behind_fence': return 'Behind Fence';
+      case 'in_garage': return 'In Garage';
+      case 'blocked_by_client': return 'Blocked by Client';
+      case 'blocked_by_zone': return 'Blocked by Zone';
+      case 'blocked_by_client_zone': return 'Blocked by Client + Zone';
+      case 'blocked_by_client_zone_market': return 'Blocked by Client + Zone + Market';
       case 'other': return 'Other';
       default: return 'Unknown';
     }
@@ -275,7 +310,7 @@ const Blocked: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-vizla-text-primary">Blocked Vehicles</h1>
             <p className="text-vizla-text-secondary mt-1">
-              Manage vehicles that cannot be towed due to legal or administrative holds
+              Manage vehicles that are physically blocked and cannot be towed due to access restrictions
             </p>
           </div>
           
@@ -375,11 +410,13 @@ const Blocked: React.FC = () => {
                 className="px-3 py-2 bg-vizla-glass border border-vizla-glassBorder rounded-lg text-vizla-text-primary text-sm"
               >
                 <option value="all">All Reasons</option>
-                <option value="legal_hold">Legal Hold</option>
-                <option value="owner_dispute">Owner Dispute</option>
-                <option value="insurance_claim">Insurance Claim</option>
-                <option value="court_order">Court Order</option>
-                <option value="payment_dispute">Payment Dispute</option>
+                <option value="behind_vehicle">Behind Vehicle</option>
+                <option value="behind_fence">Behind Fence</option>
+                <option value="in_garage">In Garage</option>
+                <option value="blocked_by_client">Blocked by Client</option>
+                <option value="blocked_by_zone">Blocked by Zone</option>
+                <option value="blocked_by_client_zone">Blocked by Client + Zone</option>
+                <option value="blocked_by_client_zone_market">Blocked by Client + Zone + Market</option>
                 <option value="other">Other</option>
               </select>
             </div>
@@ -422,14 +459,14 @@ const Blocked: React.FC = () => {
                       <p className="font-medium text-vizla-text-primary">{vehicle.client}</p>
                     </div>
                     
-                    {/* Blocked Info */}
+                    {/* Spotted Info */}
                     <div>
-                      <p className="text-sm text-vizla-text-muted">Blocked Date</p>
+                      <p className="text-sm text-vizla-text-muted">Spotted Date</p>
                       <p className="font-medium text-vizla-text-primary">
-                        {formatDate(vehicle.blockedDate)}
+                        {formatDate(vehicle.spottedDate)}
                       </p>
                       <p className="text-xs text-vizla-text-muted">
-                        {getDaysSinceBlocked(vehicle.blockedDate)} days ago
+                        {getDaysSinceBlocked(vehicle.spottedDate)} days ago
                       </p>
                     </div>
                     
@@ -471,11 +508,11 @@ const Blocked: React.FC = () => {
                   <div className="flex items-center gap-6 text-sm text-vizla-text-secondary">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4" />
-                      <span>Blocked by: {vehicle.blockedBy}</span>
+                      <span>Spotted by: {vehicle.spottedBy}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4" />
-                      <span>{vehicle.address}, {vehicle.city}</span>
+                      <span>{vehicle.zone}, {vehicle.market}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
@@ -563,14 +600,22 @@ const Blocked: React.FC = () => {
                     </h3>
                     <div className="space-y-3">
                       <div className="flex justify-between">
-                        <span className="text-vizla-text-muted">Blocked Date:</span>
+                        <span className="text-vizla-text-muted">Spotted Date:</span>
                         <span className="text-vizla-text-primary font-medium">
-                          {formatDate(selectedVehicle.blockedDate)}
+                          {formatDate(selectedVehicle.spottedDate)}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-vizla-text-muted">Blocked By:</span>
-                        <span className="text-vizla-text-primary font-medium">{selectedVehicle.blockedBy}</span>
+                        <span className="text-vizla-text-muted">Spotted By:</span>
+                        <span className="text-vizla-text-primary font-medium">{selectedVehicle.spottedBy}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-vizla-text-muted">Zone:</span>
+                        <span className="text-vizla-text-primary font-medium">{selectedVehicle.zone}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-vizla-text-muted">Market:</span>
+                        <span className="text-vizla-text-primary font-medium">{selectedVehicle.market}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-vizla-text-muted">Reason:</span>
@@ -646,43 +691,45 @@ const Blocked: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Notes */}
+                {/* Spotter Notes */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-vizla-text-primary border-b border-vizla-glassBorder pb-2">
-                    Block Notes
+                    Spotter Notes
                   </h3>
                   <div className="bg-vizla-glassElev p-4 rounded-lg">
                     <p className="text-vizla-text-primary leading-relaxed">
-                      {selectedVehicle.blockedNotes}
+                      {selectedVehicle.spotterNotes}
                     </p>
                   </div>
                 </div>
 
-                {/* Documents */}
-                {selectedVehicle.documents.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-vizla-text-primary border-b border-vizla-glassBorder pb-2">
-                      Related Documents
-                    </h3>
-                    <div className="space-y-2">
-                      {selectedVehicle.documents.map((doc) => (
-                        <div key={doc.id} className="flex items-center justify-between p-3 bg-vizla-glassElev rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <FileText className="w-4 h-4 text-vizla-text-muted" />
-                            <span className="text-vizla-text-primary font-medium">{doc.name}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {doc.type.replace('_', ' ').toUpperCase()}
-                            </Badge>
-                          </div>
-                          <Button size="sm" variant="outline">
-                            <ExternalLink className="w-4 h-4 mr-2" />
-                            View
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                {/* Access Instructions */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-vizla-text-primary border-b border-vizla-glassBorder pb-2">
+                    Access Instructions
+                  </h3>
+                  <div className="bg-vizla-glassElev p-4 rounded-lg">
+                    <p className="text-vizla-text-primary leading-relaxed">
+                      {selectedVehicle.accessInstructions}
+                    </p>
                   </div>
-                )}
+                </div>
+
+                {/* Alternative Actions */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-vizla-text-primary border-b border-vizla-glassBorder pb-2">
+                    Alternative Actions
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedVehicle.alternativeActions.map((action, index) => (
+                      <div key={index} className="flex items-center gap-2 p-3 bg-vizla-glassElev rounded-lg">
+                        <div className="w-2 h-2 bg-vizla-brand-primary rounded-full"></div>
+                        <span className="text-vizla-text-primary">{action}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-4 border-t border-vizla-glassBorder">
@@ -691,12 +738,12 @@ const Blocked: React.FC = () => {
                     Update Status
                   </Button>
                   <Button variant="outline" className="flex-1">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Add Document
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Schedule Return Visit
                   </Button>
                   <Button variant="outline" className="flex-1">
                     <Phone className="w-4 h-4 mr-2" />
-                    Contact Client
+                    Contact Property Owner
                   </Button>
                 </div>
               </div>
