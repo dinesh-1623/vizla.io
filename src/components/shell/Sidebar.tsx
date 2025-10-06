@@ -33,7 +33,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
       orderConfirmation: orderConfirmationCount,
       toDispatch: counts.toDispatch,
       dispatched: counts.dispatched,
-      stashed: counts.stashed
+      stashed: counts.stashed,
+      blocked: 3 // Mock count for blocked vehicles
     };
   }, [getAssignmentVersion()]); // Re-compute when assignments are updated
 
@@ -45,7 +46,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
         { label: "Order Confirmation", href: "/order-confirmation", badge: badgeCounts.orderConfirmation },
         { label: "To Dispatch", href: "/to-dispatch", badge: badgeCounts.toDispatch },
         { label: "Dispatched", href: "/dispatched", badge: badgeCounts.dispatched },
-        { label: "Stashed", href: "/stashed", badge: badgeCounts.stashed }
+        { label: "Stashed", href: "/stashed", badge: badgeCounts.stashed },
+        { label: "Blocked", href: "/blocked", badge: badgeCounts.blocked }
       ]
     },
     {

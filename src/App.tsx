@@ -14,6 +14,7 @@ import OrderConfirmation from "./pages/OrderConfirmation";
 import ToDispatch from "./pages/ToDispatch";
 import Dispatched from "./pages/Dispatched";
 import Stashed from "./pages/Stashed";
+import Blocked from "./pages/Blocked";
 import Spotters from "./pages/Spotters";
 import NewSpotter from "./pages/spotters/NewSpotter";
 import SpotterSubmissions from "./pages/spotters/Submissions";
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/to-dispatch" element={<ToDispatch />} />
             <Route path="/dispatched" element={<Dispatched />} />
             <Route path="/stashed" element={<Stashed />} />
+            <Route path="/blocked" element={<Blocked />} />
             <Route path="/spotters" element={<Spotters />} />
             <Route path="/spotters/new" element={<NewSpotter />} />
             <Route path="/spotters/submissions" element={<SpotterSubmissions />} />
