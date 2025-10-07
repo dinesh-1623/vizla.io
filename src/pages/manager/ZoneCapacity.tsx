@@ -21,10 +21,8 @@ import {
   Table as TableIcon,
   Sparkles,
   ExternalLink,
-  AlertCircle,
-  Filter
+  AlertCircle
 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Types for zone tracking
 interface ZonePerformance {
@@ -114,20 +112,7 @@ const ZoneCapacity: React.FC = () => {
   const [lastSyncTime, setLastSyncTime] = useState(new Date());
   const [selectedZone, setSelectedZone] = useState<ZonePerformance | null>(null);
   const [showClusterDialog, setShowClusterDialog] = useState(false);
-  const [selectedMarket, setSelectedMarket] = useState<string>('all');
   const [clusterGroups, setClusterGroups] = useState<ClusterGroup[]>([]);
-
-  // Filter zones by selected market
-  const filteredZones = useMemo(() => {
-    if (selectedMarket === 'all') return zones;
-    return zones.filter(zone => zone.market === selectedMarket);
-  }, [zones, selectedMarket]);
-
-  // Get unique markets for filter
-  const availableMarkets = useMemo(() => {
-    const markets = [...new Set(zones.map(zone => zone.market))];
-    return markets.sort();
-  }, [zones]);
 
   // Auto-refresh every 5 minutes
   useEffect(() => {
@@ -252,24 +237,6 @@ const ZoneCapacity: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-4">
-            {/* Market Filter */}
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-vizla-text-secondary" />
-              <Select value={selectedMarket} onValueChange={setSelectedMarket}>
-                <SelectTrigger className="w-40 bg-vizla-glassElev border-vizla-glassBorder">
-                  <SelectValue placeholder="Select Market" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Markets</SelectItem>
-                  {availableMarkets.map((market) => (
-                    <SelectItem key={market} value={market}>
-                      {market}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
             <Button
               onClick={() => setLastSyncTime(new Date())}
               variant="outline"

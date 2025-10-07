@@ -41,7 +41,7 @@ import { AssignmentDetails } from '@/components/assignment/AssignmentDetails';
 import { assignVehiclesToDrivers } from '@/lib/assignment/engine';
 import { mockDrivers, mockVehicles } from '@/lib/assignment/mockData';
 import { runPerformanceTest } from '@/lib/assignment/performanceTest';
-import { QueueManager } from '@/components/driver/QueueManager';
+import { NowNextLater } from '@/components/driver/NowNextLater';
 import { VehicleImagePreview } from '@/components/driver/VehicleImagePreview';
 import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users, Zap } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
@@ -108,9 +108,10 @@ const TowDriver: React.FC = () => {
   const [isAssigning, setIsAssigning] = useState(false);
   const [showAssignmentDetails, setShowAssignmentDetails] = useState(false);
   
-  // Vehicle Image Preview State
+  // Now/Next/Later State
   const [selectedVehicle, setSelectedVehicle] = useState<TowCard | null>(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
   
   // Assumptions management
   const { assumptions, updateAssumptions } = useAssumptions();
@@ -670,11 +671,69 @@ const TowDriver: React.FC = () => {
     }
   };
 
-  // Handle vehicle click for image preview
+  // Now/Next/Later Functions
   const handleVehicleClick = (vehicle: TowCard) => {
-    setSelectedVehicle(vehicle);
+    // Convert TowCard to Vehicle format for the preview
+    const vehicleForPreview = {
+      ...vehicle,
+      fullAddress: vehicle.fullAddress,
+      address: vehicle.fullAddress // Add address property for compatibility
+    };
+    setSelectedVehicle(vehicleForPreview as any);
     setShowImagePreview(true);
   };
+
+  const handleStartRoute = (group: any) => {
+    console.log('Starting route for group:', group.title);
+    // In production, this would open Google Maps with the route
+    if (group.googleMapsUrl) {
+      window.open(group.googleMapsUrl, '_blank');
+    }
+  };
+
+  const handleMarkBatchDone = (group: any) => {
+    console.log('Marking batch as done:', group.title);
+    // Move to next batch
+    setCurrentBatchIndex(prev => prev + 1);
+  };
+
+  // Create route groups for Now/Next/Later
+  const createRouteGroups = () => {
+    if (activeTowCards.length === 0) return { nowGroup: null, nextGroup: null, laterGroups: [] };
+
+    const vehiclesPerBatch = carsPerRunGroup;
+    const totalBatches = Math.ceil(activeTowCards.length / vehiclesPerBatch);
+    
+    const batches = [];
+    for (let i = 0; i < totalBatches; i++) {
+      const startIndex = i * vehiclesPerBatch;
+      const endIndex = Math.min(startIndex + vehiclesPerBatch, activeTowCards.length);
+      const batchVehicles = activeTowCards.slice(startIndex, endIndex);
+      
+      // Calculate route durations (simplified for demo)
+      const lotDuration = batchVehicles.length * 15; // 15 minutes per vehicle to lot
+      const stashDuration = batchVehicles.length * 12; // 12 minutes per vehicle to stash
+      const timeSaved = lotDuration - stashDuration;
+      
+      batches.push({
+        id: `batch-${i + 1}`,
+        title: `Route Group ${i + 1} • ${batchVehicles.length} Vehicles`,
+        vehicles: batchVehicles,
+        lotDuration,
+        stashDuration,
+        timeSaved,
+        googleMapsUrl: `https://www.google.com/maps/dir/${batchVehicles.map(v => `${v.lat || 39.2904},${v.lng || -76.6122}`).join('/')}`
+      });
+    }
+
+    const nowGroup = batches[currentBatchIndex] || null;
+    const nextGroup = batches[currentBatchIndex + 1] || null;
+    const laterGroups = batches.slice(currentBatchIndex + 2);
+
+    return { nowGroup, nextGroup, laterGroups };
+  };
+
+  const { nowGroup, nextGroup, laterGroups } = createRouteGroups();
 
   const handleFilterClear = (key: string) => {
     // No filter clearing needed in 4-day mode
@@ -945,7 +1004,7 @@ const TowDriver: React.FC = () => {
           </GlassCard>
         )}
 
-        {/* Automated Driver Assessment Engine */}
+        {/* Automated Driver Assignment Engine */}
         {activeTowCards.length > 0 && (
           <GlassCard className="mb-6">
             <div className="flex items-center justify-between mb-4">
@@ -954,7 +1013,7 @@ const TowDriver: React.FC = () => {
                   <Zap className="w-6 h-6 text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-white">Automated Driver Assessment</h3>
+                  <h3 className="text-xl font-semibold text-white">Automated Driver Assignment</h3>
                   <p className="text-gray-300 text-sm">
                     Intelligent vehicle-to-driver matching based on zones, capacity, and distance
                   </p>
@@ -970,13 +1029,13 @@ const TowDriver: React.FC = () => {
                   {isAssigning ? (
                     <>
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Assessing...
+                      Assigning...
                     </>
                   ) : (
-                  <>
-                    <Zap className="w-4 h-4 mr-2" />
-                    Run Assessment
-                  </>
+                    <>
+                      <Zap className="w-4 h-4 mr-2" />
+                      Run Assignment
+                    </>
                   )}
                 </Button>
                 
@@ -1009,13 +1068,18 @@ const TowDriver: React.FC = () => {
           </GlassCard>
         )}
 
-        {/* Driver Queue Manager - Now/Next/Later */}
+        {/* Now/Next/Later Route Groups */}
         {activeTowCards.length > 0 && (
-          <QueueManager
-            vehicles={activeTowCards}
-            onVehicleClick={handleVehicleClick}
-            className="mb-6"
-          />
+          <GlassCard className="mb-6">
+            <NowNextLater
+              nowGroup={nowGroup}
+              nextGroup={nextGroup}
+              laterGroups={laterGroups}
+              onVehicleClick={handleVehicleClick}
+              onStartRoute={handleStartRoute}
+              onMarkBatchDone={handleMarkBatchDone}
+            />
+          </GlassCard>
         )}
 
         {/* Group 1 Capacity Card */}
