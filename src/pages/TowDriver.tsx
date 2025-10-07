@@ -35,6 +35,7 @@ import { Filters } from '@/components/driver/Filters';
 import { CapacityCard } from '@/components/driver/CapacityCard';
 import { ProgressTracker } from '@/components/driver/ProgressTracker';
 import { RouteCapacityAnalysis } from '@/components/driver/RouteCapacityAnalysis';
+import { RunGroupPlanning } from '@/components/driver/RunGroupPlanning';
 import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { FilterChips } from '@/components/ui/FilterChips';
@@ -67,6 +68,7 @@ const TowDriver: React.FC = () => {
   const [group2Mode, setGroup2Mode] = useState<'lot' | 'stash' | 'optimized'>('optimized');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [carsPerRunGroup, setCarsPerRunGroup] = useState(10); // Default 10 cars per group
   
   const [weekRange, setWeekRange] = useState('');
   const [client, setClient] = useState('');
@@ -385,6 +387,61 @@ const TowDriver: React.FC = () => {
     // Return total time in hours
     return (group1Time + group2Time) / 60;
   }, [computeGroup1Optimization, computeGroup2Optimization, group1Mode, group2Mode]);
+
+  // Create dynamic run groups based on carsPerRunGroup
+  const dynamicRunGroups = useMemo(() => {
+    const groups: Array<{
+      id: string;
+      vehicleCount: number;
+      estimatedDuration: number;
+      efficiency: number;
+      status: 'on-time' | 'at-risk' | 'behind';
+      vehicleIds: string[];
+      routeUrl: string;
+    }> = [];
+
+    const totalCars = activeTowCards.length;
+    const numGroups = Math.ceil(totalCars / carsPerRunGroup);
+
+    for (let i = 0; i < numGroups; i++) {
+      const startIdx = i * carsPerRunGroup;
+      const endIdx = Math.min(startIdx + carsPerRunGroup, totalCars);
+      const groupVehicles = activeTowCards.slice(startIdx, endIdx);
+      const vehicleCount = groupVehicles.length;
+
+      // Mock calculation: 0.5h per car + overhead
+      const estimatedDuration = (vehicleCount * 0.5) + 1.5;
+      
+      // Mock efficiency vs lot route (larger groups = more efficient)
+      const efficiency = ((vehicleCount - 4) / 16) * 20; // 0-20% savings
+
+      // Determine status based on estimated duration
+      const status = estimatedDuration <= 4 ? 'on-time' : 
+                     estimatedDuration <= 6 ? 'at-risk' : 'behind';
+
+      // Build Google Maps URL (limit to 10 waypoints)
+      const waypointsToUse = groupVehicles.slice(0, 10);
+      const waypoints = waypointsToUse.map(vehicle => 
+        encodeURIComponent(`${vehicle.street}, ${vehicle.city}, ${vehicle.zip}`)
+      ).join('/');
+      
+      const origin = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226');
+      const destination = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226');
+      const routeUrl = `https://www.google.com/maps/dir/${origin}/${waypoints}/${destination}`;
+
+      groups.push({
+        id: `${i + 1}`,
+        vehicleCount,
+        estimatedDuration,
+        efficiency,
+        status,
+        vehicleIds: groupVehicles.map(v => v.id),
+        routeUrl
+      });
+    }
+
+    return groups;
+  }, [activeTowCards, carsPerRunGroup]);
 
   // Check for demo mode and repeat functionality
   const forceSix = searchParams.get("demo") === "6";
@@ -808,6 +865,18 @@ const TowDriver: React.FC = () => {
               shiftLengthHours={assumptions.shiftLengthHours || 12}
               completedCars={completedVehicles.size}
               totalCars={allTowCards.length}
+            />
+          </GlassCard>
+        )}
+
+        {/* Run Group Planning */}
+        {activeTowCards.length > 0 && (
+          <GlassCard className="mb-6">
+            <RunGroupPlanning
+              totalVehicles={activeTowCards.length}
+              carsPerGroup={carsPerRunGroup}
+              onCarsPerGroupChange={setCarsPerRunGroup}
+              groups={dynamicRunGroups}
             />
           </GlassCard>
         )}
