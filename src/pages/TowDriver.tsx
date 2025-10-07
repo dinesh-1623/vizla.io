@@ -710,9 +710,13 @@ const TowDriver: React.FC = () => {
       const endIndex = Math.min(startIndex + vehiclesPerBatch, activeTowCards.length);
       const batchVehicles = activeTowCards.slice(startIndex, endIndex);
       
-      // Calculate route durations (simplified for demo)
-      const lotDuration = batchVehicles.length * 15; // 15 minutes per vehicle to lot
-      const stashDuration = batchVehicles.length * 12; // 12 minutes per vehicle to stash
+      // Calculate route durations based on realistic scenarios
+      const baseTimePerVehicle = 12; // Base time per vehicle (minutes)
+      const lotTravelTime = 25; // Additional time to travel to lot
+      const stashTravelTime = 18; // Additional time to travel to stash
+      
+      const lotDuration = (batchVehicles.length * baseTimePerVehicle) + lotTravelTime;
+      const stashDuration = (batchVehicles.length * baseTimePerVehicle) + stashTravelTime;
       const timeSaved = lotDuration - stashDuration;
       
       batches.push({

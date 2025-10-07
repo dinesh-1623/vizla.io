@@ -88,50 +88,43 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
           <div className="flex items-center gap-2">
             {getTypeIcon()}
             <h4 className="font-semibold text-white">{group.title}</h4>
-            <Badge className={`${getTypeColor()} border-0 text-xs`}>
-              {group.vehicles.length} vehicles
-            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-gray-400" />
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+          </div>
+        </div>
+
+        {/* Route Duration Details - Matching Driver Progress Style */}
+        <div className="space-y-3 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Home className="w-4 h-4 text-blue-400" />
+              <span className="text-sm text-gray-300">Time to Tow & Lot:</span>
+            </div>
+            <span className="text-white font-medium">{formatTime(group.lotDuration)}</span>
           </div>
           
-          {type === 'now' && (
-            <Button
-              size="sm"
-              onClick={() => onMarkBatchDone(group)}
-              className="bg-green-600 hover:bg-green-700 text-white border-0"
-            >
-              Mark Done
-            </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-orange-400" />
+              <span className="text-sm text-gray-300">Time to Tow & Stash:</span>
+            </div>
+            <span className="text-white font-medium">{formatTime(group.stashDuration)}</span>
+          </div>
+          
+          {group.timeSaved > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-300">Stash saves:</span>
+              <span className="text-green-400 font-medium">{formatTime(group.timeSaved)}</span>
+            </div>
           )}
-        </div>
-
-        {/* Route Duration Comparison */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
-            <Home className="w-4 h-4 text-blue-400" />
-            <div>
-              <div className="text-sm text-gray-400">To Lot</div>
-              <div className="text-white font-medium">{formatTime(group.lotDuration)}</div>
-            </div>
-          </div>
           
-          <div className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
-            <Package className="w-4 h-4 text-orange-400" />
-            <div>
-              <div className="text-sm text-gray-400">To Stash</div>
-              <div className="text-white font-medium">{formatTime(group.stashDuration)}</div>
-            </div>
+          <div className="flex items-center justify-between border-t border-white/10 pt-2">
+            <span className="text-sm font-medium text-white">Total Time:</span>
+            <span className="text-white font-bold">{formatTime(group.stashDuration)}</span>
           </div>
         </div>
-
-        {/* Time Saved */}
-        {group.timeSaved > 0 && (
-          <div className="mb-4 p-2 bg-green-500/10 border border-green-500/20 rounded-lg">
-            <div className="flex items-center gap-2 text-green-400 text-sm">
-              <Zap className="w-4 h-4" />
-              <span>Time Saved: {formatTime(group.timeSaved)}</span>
-            </div>
-          </div>
-        )}
 
         {/* Start Route Button */}
         <Button
@@ -142,21 +135,18 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
           Start Route
         </Button>
 
-        {/* Vehicle List */}
+        {/* Vehicle List - Matching Driver Progress Style */}
         <div className="space-y-2">
           {group.vehicles.map((vehicle, index) => (
             <div 
               key={vehicle.id}
-              className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-              onClick={() => onVehicleClick(vehicle)}
+              className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-xs text-blue-400">
-                  {index + 1}
-                </div>
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 <div className="flex-1">
                   <div className="text-white font-medium text-sm">
-                    {vehicle.client}
+                    {vehicle.client}:
                   </div>
                   <div className="text-gray-400 text-xs">
                     {vehicle.year} {vehicle.make} {vehicle.model}
@@ -170,11 +160,8 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onVehicleClick(vehicle);
-                }}
-                className="text-gray-400 hover:text-white hover:bg-white/10"
+                onClick={() => onVehicleClick(vehicle)}
+                className="text-gray-400 hover:text-white hover:bg-white/10 p-1"
               >
                 <Eye className="w-4 h-4" />
               </Button>
@@ -210,7 +197,16 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
           </div>
           
           {nowGroup ? (
-            <RouteGroupCard group={nowGroup} type="now" />
+            <>
+              <RouteGroupCard group={nowGroup} type="now" />
+              {/* Mark Batch Done Button - Separate from card like Driver Progress */}
+              <Button
+                onClick={() => onMarkBatchDone(nowGroup)}
+                className="w-full bg-green-600 hover:bg-green-700 text-white border-0 mt-4"
+              >
+                Mark Batch Done
+              </Button>
+            </>
           ) : (
             <GlassCard className="p-8 text-center border border-white/10">
               <div className="text-gray-400">
