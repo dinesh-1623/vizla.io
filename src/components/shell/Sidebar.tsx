@@ -51,6 +51,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
       ]
     },
     {
+      title: "Management",
+      items: [
+        { label: "Zone Capacity", href: "/manager/zone-capacity" }
+      ]
+    },
+    {
       title: "People",
       items: [
         { label: "Tow Trucks", href: "/tow-trucks" },

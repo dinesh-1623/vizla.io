@@ -22,6 +22,7 @@ import TowTrucks from "./pages/TowTrucks";
 import Users from "./pages/admin/Users";
 import Shifts from "./pages/admin/Shifts";
 import ClientPreferences from "./pages/admin/ClientPreferences";
+import ZoneCapacity from "./pages/manager/ZoneCapacity";
 import Scheduling from "./pages/admin/Scheduling";
 import Zones from "./pages/admin/Zones";
 import Reports from "./pages/admin/Reports";
@@ -61,6 +62,7 @@ const App = () => (
             <Route path="/admin/fleet" element={<Fleet />} />
             <Route path="/admin/users" element={<Users />} />
             <Route path="/admin/shifts" element={<Shifts />} />
+            <Route path="/manager/zone-capacity" element={<ZoneCapacity />} />
             <Route path="/admin/clients" element={<ClientPreferences />} />
             <Route path="/admin/scheduling" element={<Scheduling />} />
             <Route path="/admin/zones" element={<Zones />} />
