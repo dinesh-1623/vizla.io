@@ -33,6 +33,7 @@ import AssumptionsDrawer from '@/components/owner/AssumptionsDrawer';
 import { useAssumptions } from '@/hooks/useAssumptions';
 import { Filters } from '@/components/driver/Filters';
 import { CapacityCard } from '@/components/driver/CapacityCard';
+import { ProgressTracker } from '@/components/driver/ProgressTracker';
 import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { FilterChips } from '@/components/ui/FilterChips';
@@ -344,6 +345,45 @@ const TowDriver: React.FC = () => {
       group2PointIds.includes(card.id) && !completedVehicles.has(card.id)
     );
   };
+
+  // Calculate total time used across both groups for progress tracker
+  const totalTimeUsed = useMemo(() => {
+    let group1Time = 0;
+    let group2Time = 0;
+
+    // Get Group 1 time based on selected mode
+    if (computeGroup1Optimization) {
+      switch (group1Mode) {
+        case 'lot':
+          group1Time = computeGroup1Optimization.returnTotals.totalMin;
+          break;
+        case 'stash':
+          group1Time = computeGroup1Optimization.stashTotals.totalMin;
+          break;
+        case 'optimized':
+          group1Time = computeGroup1Optimization.optimizedTotals.totalMin;
+          break;
+      }
+    }
+
+    // Get Group 2 time based on selected mode
+    if (computeGroup2Optimization) {
+      switch (group2Mode) {
+        case 'lot':
+          group2Time = computeGroup2Optimization.returnTotals.totalMin;
+          break;
+        case 'stash':
+          group2Time = computeGroup2Optimization.stashTotals.totalMin;
+          break;
+        case 'optimized':
+          group2Time = computeGroup2Optimization.optimizedTotals.totalMin;
+          break;
+      }
+    }
+
+    // Return total time in hours
+    return (group1Time + group2Time) / 60;
+  }, [computeGroup1Optimization, computeGroup2Optimization, group1Mode, group2Mode]);
 
   // Check for demo mode and repeat functionality
   const forceSix = searchParams.get("demo") === "6";
@@ -759,6 +799,17 @@ const TowDriver: React.FC = () => {
           </h2>
         </div>
 
+        {/* Progress Tracker - Shift Performance */}
+        {activeTowCards.length > 0 && (
+          <GlassCard className="mb-6">
+            <ProgressTracker
+              totalTimeHours={totalTimeUsed}
+              shiftLengthHours={assumptions.shiftLengthHours || 12}
+              completedCars={completedVehicles.size}
+              totalCars={allTowCards.length}
+            />
+          </GlassCard>
+        )}
 
         {/* Group 1 Capacity Card */}
         {group1Points.length > 0 && (
