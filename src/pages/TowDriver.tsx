@@ -34,6 +34,7 @@ import { useAssumptions } from '@/hooks/useAssumptions';
 import { Filters } from '@/components/driver/Filters';
 import { CapacityCard } from '@/components/driver/CapacityCard';
 import { ProgressTracker } from '@/components/driver/ProgressTracker';
+import { RouteCapacityAnalysis } from '@/components/driver/RouteCapacityAnalysis';
 import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { FilterChips } from '@/components/ui/FilterChips';
@@ -817,6 +818,27 @@ const TowDriver: React.FC = () => {
                 <div className="mb-4">
                   <h3 className="text-xl font-semibold text-vizla-text-primary">Group 1 • {group1Points.length} Vehicles</h3>
             </div>
+            
+            {/* Route Capacity Analysis for Group 1 */}
+            {computeGroup1Optimization && (
+              <GlassCard className="mb-6">
+                <RouteCapacityAnalysis
+                  lotTotalMin={computeGroup1Optimization.returnTotals.totalMin}
+                  lotDriveMin={computeGroup1Optimization.returnTotals.driveMin}
+                  lotServiceMin={computeGroup1Optimization.returnTotals.serviceMin}
+                  stashTotalMin={computeGroup1Optimization.stashTotals.totalMin}
+                  stashDriveMin={computeGroup1Optimization.stashTotals.driveMin}
+                  stashServiceMin={computeGroup1Optimization.stashTotals.serviceMin}
+                  optimizedTotalMin={computeGroup1Optimization.optimizedTotals.totalMin}
+                  optimizedDriveMin={computeGroup1Optimization.optimizedTotals.driveMin}
+                  optimizedServiceMin={computeGroup1Optimization.optimizedTotals.serviceMin}
+                  shiftLengthHours={assumptions.shiftLengthHours || 12}
+                  finishAtLot={finishAtLot}
+                  onToggleFinishAtLot={() => setFinishAtLot(!finishAtLot)}
+                />
+              </GlassCard>
+            )}
+            
             <CapacityCard
               inputs={{
                 mode: group1Mode,
@@ -905,6 +927,27 @@ const TowDriver: React.FC = () => {
                 <div className="mb-4">
                   <h3 className="text-xl font-semibold text-vizla-text-primary">Group 2 • {group2Points.length} Vehicles</h3>
                 </div>
+                
+                {/* Route Capacity Analysis for Group 2 */}
+                {computeGroup2Optimization && (
+                  <GlassCard className="mb-6">
+                    <RouteCapacityAnalysis
+                      lotTotalMin={computeGroup2Optimization.returnTotals.totalMin}
+                      lotDriveMin={computeGroup2Optimization.returnTotals.driveMin}
+                      lotServiceMin={computeGroup2Optimization.returnTotals.serviceMin}
+                      stashTotalMin={computeGroup2Optimization.stashTotals.totalMin}
+                      stashDriveMin={computeGroup2Optimization.stashTotals.driveMin}
+                      stashServiceMin={computeGroup2Optimization.stashTotals.serviceMin}
+                      optimizedTotalMin={computeGroup2Optimization.optimizedTotals.totalMin}
+                      optimizedDriveMin={computeGroup2Optimization.optimizedTotals.driveMin}
+                      optimizedServiceMin={computeGroup2Optimization.optimizedTotals.serviceMin}
+                      shiftLengthHours={assumptions.shiftLengthHours || 12}
+                      finishAtLot={finishAtLot}
+                      onToggleFinishAtLot={() => setFinishAtLot(!finishAtLot)}
+                    />
+                  </GlassCard>
+                )}
+                
                 <CapacityCard
                   inputs={{
                     mode: group2Mode,
