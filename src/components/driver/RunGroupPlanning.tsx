@@ -3,6 +3,12 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { 
   Users, 
   Clock, 
@@ -13,7 +19,9 @@ import {
   Car,
   CheckCircle,
   AlertTriangle,
-  XCircle
+  XCircle,
+  Info,
+  Zap
 } from 'lucide-react';
 
 interface RunGroup {
@@ -120,7 +128,7 @@ export const RunGroupPlanning: React.FC<RunGroupPlanningProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <label htmlFor="cars-per-group" className="text-sm font-medium text-vizla-text-primary">
-            Cars per Run Group
+            Cars per Run Group (4-20)
           </label>
           
           <div className="flex items-center gap-3">
@@ -131,7 +139,7 @@ export const RunGroupPlanning: React.FC<RunGroupPlanningProps> = ({
               max={20}
               value={carsPerGroup}
               onChange={handleInputChange}
-              className="w-20 text-center"
+              className="w-20 text-center transition-all duration-200 focus:ring-2 focus:ring-vizla-brand-primary"
               aria-label="Cars per run group"
             />
             <span className="text-sm text-vizla-text-muted">vehicles</span>
@@ -140,32 +148,49 @@ export const RunGroupPlanning: React.FC<RunGroupPlanningProps> = ({
 
         {/* Slider */}
         <div className="space-y-2">
-          <Slider
-            value={[carsPerGroup]}
-            onValueChange={handleSliderChange}
-            min={4}
-            max={20}
-            step={1}
-            className="w-full"
-            aria-label="Adjust cars per run group"
-          />
+          <div className="relative">
+            <Slider
+              value={[carsPerGroup]}
+              onValueChange={handleSliderChange}
+              min={4}
+              max={20}
+              step={1}
+              className="w-full transition-all duration-200"
+              aria-label="Adjust cars per run group"
+            />
+            {/* Current value indicator */}
+            <div 
+              className="absolute -top-8 left-0 transition-all duration-200"
+              style={{ left: `calc(${((carsPerGroup - 4) / 16) * 100}% - 12px)` }}
+            >
+              <div className="bg-vizla-brand-primary text-white px-2 py-1 rounded text-xs font-medium">
+                {carsPerGroup}
+              </div>
+            </div>
+          </div>
           
           <div className="flex justify-between text-xs text-vizla-text-muted">
             <span>4 cars (more runs)</span>
+            <span className="text-vizla-text-primary font-medium">
+              {totalGroups} {totalGroups === 1 ? 'run' : 'runs'}
+            </span>
             <span>20 cars (fewer runs)</span>
           </div>
         </div>
 
         {/* Info */}
-        <div className="flex items-start gap-2 p-3 bg-vizla-glassElev rounded-lg text-xs text-vizla-text-secondary">
-          <AlertCircle className="w-4 h-4 mt-0.5 text-vizla-text-muted flex-shrink-0" />
-          <div>
-            <p className="mb-1">
-              Google Maps supports up to 10 waypoints per route. Groups larger than 10 vehicles 
-              will be split for route generation.
+        <div className="flex items-start gap-2 p-3 bg-vizla-glassElev/50 rounded-lg text-xs text-vizla-text-secondary border border-vizla-glassBorder/50">
+          <AlertCircle className="w-4 h-4 mt-0.5 text-vizla-brand-primary flex-shrink-0" />
+          <div className="space-y-1">
+            <p className="font-medium text-vizla-text-primary">
+              Google Maps Waypoint Limit
             </p>
             <p>
-              Smaller groups = more flexibility. Larger groups = fewer total runs.
+              Routes support up to <span className="text-vizla-brand-primary font-medium">10 waypoints</span> per link. 
+              Groups with more vehicles will use the first 10 stops.
+            </p>
+            <p className="text-vizla-text-muted pt-1">
+              Smaller groups = more flexibility • Larger groups = fewer total runs
             </p>
           </div>
         </div>
@@ -183,97 +208,118 @@ export const RunGroupPlanning: React.FC<RunGroupPlanningProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {groups.map((group) => {
-              const statusDisplay = getStatusDisplay(group.status);
-              
-              return (
-                <div
-                  key={group.id}
-                  className="bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder rounded-lg p-4 hover:ring-vizla-brand-primary/50 transition-all"
-                  role="article"
-                  aria-label={`Run group ${group.id}`}
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-vizla-glassElev rounded-full flex items-center justify-center">
-                        <Car className="w-4 h-4 text-vizla-brand-primary" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-vizla-text-primary">
-                          Group {group.id}
-                        </div>
-                        <div className="text-xs text-vizla-text-muted">
-                          {group.vehicleCount} vehicles
-                        </div>
-                      </div>
-                    </div>
-
-                    <Badge 
-                      className={`${statusDisplay.bgColor} ${statusDisplay.color} text-xs border`}
-                    >
-                      {statusDisplay.label}
-                    </Badge>
-                  </div>
-
-                  {/* Metrics */}
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2 text-vizla-text-muted">
-                        <Clock className="w-4 h-4" />
-                        <span>Duration</span>
-                      </div>
-                      <span className="font-medium text-vizla-text-primary">
-                        {formatTime(group.estimatedDuration)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2 text-vizla-text-muted">
-                        <TrendingUp className="w-4 h-4" />
-                        <span>Efficiency</span>
-                      </div>
-                      <span className={`font-medium ${
-                        group.efficiency > 0 ? 'text-green-400' : 'text-vizla-text-secondary'
-                      }`}>
-                        {group.efficiency > 0 ? '+' : ''}{group.efficiency.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Tooltip Info */}
-                  {group.efficiency > 0 && (
-                    <div className="mb-3 p-2 bg-green-500/10 border border-green-500/20 rounded text-xs text-green-400">
-                      Driving {group.vehicleCount} cars in this batch saves {formatTime(group.estimatedDuration * group.efficiency / 100)} vs lot route
-                    </div>
-                  )}
-
-                  {/* Action Button */}
-                  <Button
-                    onClick={() => {
-                      if (group.routeUrl) {
-                        window.open(group.routeUrl, '_blank', 'noopener,noreferrer');
-                      }
-                    }}
-                    disabled={!group.routeUrl}
-                    className="w-full bg-vizla-brand-primary hover:bg-vizla-brand-primary/90 text-white"
-                    size="sm"
+          <TooltipProvider>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {groups.map((group) => {
+                const statusDisplay = getStatusDisplay(group.status);
+                const timeSaved = group.estimatedDuration * (group.efficiency / 100);
+                
+                return (
+                  <div
+                    key={group.id}
+                    className="bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder rounded-lg p-4 hover:ring-vizla-brand-primary/50 transition-all duration-200"
+                    role="article"
+                    aria-label={`Run group ${group.id}`}
                   >
-                    <Navigation className="w-4 h-4 mr-2" />
-                    Start Group
-                  </Button>
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-vizla-glassElev rounded-full flex items-center justify-center transition-transform hover:scale-110 duration-200">
+                          <Car className="w-4 h-4 text-vizla-brand-primary" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-vizla-text-primary">
+                            Run Group {group.id}
+                          </div>
+                          <div className="text-xs text-vizla-text-muted">
+                            {group.vehicleCount} {group.vehicleCount === 1 ? 'vehicle' : 'vehicles'}
+                          </div>
+                        </div>
+                      </div>
 
-                  {/* Note for large groups */}
-                  {group.vehicleCount > 10 && (
-                    <div className="mt-2 text-xs text-vizla-text-muted text-center">
-                      Route limited to 10 stops
+                      <Badge 
+                        className={`${statusDisplay.bgColor} ${statusDisplay.color} text-xs border flex items-center gap-1 transition-all duration-200`}
+                      >
+                        {statusDisplay.icon}
+                        <span>{statusDisplay.label}</span>
+                      </Badge>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+
+                    {/* Metrics */}
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-vizla-text-muted">
+                          <Clock className="w-4 h-4" />
+                          <span>Duration</span>
+                        </div>
+                        <span className="font-medium text-vizla-text-primary">
+                          {formatTime(group.estimatedDuration)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center gap-2 text-vizla-text-muted cursor-help">
+                              <TrendingUp className="w-4 h-4" />
+                              <span>Efficiency</span>
+                              <Info className="w-3 h-3" />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">
+                              Driving {group.vehicleCount} cars in this batch saves {formatTime(timeSaved)} vs lot route
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <span className={`font-medium ${
+                          group.efficiency > 0 ? 'text-green-400' : 'text-vizla-text-secondary'
+                        }`}>
+                          {group.efficiency > 0 ? '+' : ''}{group.efficiency.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Efficiency Callout */}
+                    {group.efficiency > 0 && (
+                      <div className="mb-3 p-2.5 bg-green-500/10 border border-green-500/30 rounded-lg transition-all duration-200 hover:bg-green-500/15">
+                        <div className="flex items-start gap-2">
+                          <Zap className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                          <div className="text-xs text-green-400 leading-relaxed">
+                            <span className="font-medium">Saves {formatTime(timeSaved)}</span> vs lot route
+                            <span className="text-green-400/70"> ({group.efficiency.toFixed(1)}% faster)</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Button */}
+                    <Button
+                      onClick={() => {
+                        if (group.routeUrl) {
+                          window.open(group.routeUrl, '_blank', 'noopener,noreferrer');
+                        }
+                      }}
+                      disabled={!group.routeUrl}
+                      className="w-full bg-vizla-brand-primary hover:bg-vizla-brand-primary/90 text-white transition-all duration-200 hover:scale-105"
+                      size="sm"
+                    >
+                      <Navigation className="w-4 h-4 mr-2" />
+                      Start Group
+                    </Button>
+
+                    {/* Note for large groups */}
+                    {group.vehicleCount > 10 && (
+                      <div className="mt-2 flex items-center gap-1 justify-center text-xs text-orange-400">
+                        <AlertCircle className="w-3 h-3" />
+                        <span>Route limited to first 10 stops</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </TooltipProvider>
         </div>
       )}
 
