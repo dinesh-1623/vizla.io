@@ -36,11 +36,18 @@ import { CapacityCard } from '@/components/driver/CapacityCard';
 import { ProgressTracker } from '@/components/driver/ProgressTracker';
 import { RouteCapacityAnalysis } from '@/components/driver/RouteCapacityAnalysis';
 import { RunGroupPlanning } from '@/components/driver/RunGroupPlanning';
-import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users } from 'lucide-react';
+import { AssignmentSummary } from '@/components/assignment/AssignmentSummary';
+import { AssignmentDetails } from '@/components/assignment/AssignmentDetails';
+import { assignVehiclesToDrivers } from '@/lib/assignment/engine';
+import { mockDrivers, mockVehicles } from '@/lib/assignment/mockData';
+import { runPerformanceTest } from '@/lib/assignment/performanceTest';
+import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users, Zap } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { FilterChips } from '@/components/ui/FilterChips';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 const PAGE_SIZE = 12; // cards per auto-load
 
@@ -93,6 +100,11 @@ const TowDriver: React.FC = () => {
     fitsOptimized: boolean;
   } | null>(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  
+  // Assignment Engine State
+  const [assignmentResult, setAssignmentResult] = useState<any>(null);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [showAssignmentDetails, setShowAssignmentDetails] = useState(false);
   
   // Assumptions management
   const { assumptions, updateAssumptions } = useAssumptions();
@@ -600,6 +612,58 @@ const TowDriver: React.FC = () => {
     setAssignedDriver('');
   };
 
+  // Assignment Engine Functions
+  const runAutoAssignment = async () => {
+    setIsAssigning(true);
+    try {
+      console.log('🚀 Starting automated driver assignment...');
+      
+      // Convert TowCard data to Vehicle format for assignment engine
+      const vehicles = activeTowCards.map(card => ({
+        id: card.id,
+        client: card.client,
+        zone: 'East', // Default zone - in production this would come from card data
+        address: card.fullAddress,
+        location: {
+          lat: card.lat || 39.2904,
+          lng: card.lng || -76.6122
+        },
+        priority: 'medium' as const, // Default priority - in production this would come from card data
+        estimatedPickupTime: 20 // Default 20 minutes
+      }));
+
+      // Use mock drivers for now (in production, this would come from your driver data)
+      const result = assignVehiclesToDrivers(vehicles, mockDrivers);
+      
+      setAssignmentResult(result);
+      console.log('✅ Assignment completed:', result.assignmentSummary);
+      
+    } catch (error) {
+      console.error('❌ Assignment failed:', error);
+      setError('Assignment failed. Please try again.');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  // Performance test function
+  const runPerformanceTestFunc = async () => {
+    console.log('🧪 Running performance test...');
+    try {
+      const result = await runPerformanceTest();
+      if (result.success) {
+        console.log('✅ Performance test PASSED!');
+        alert(`Performance Test PASSED!\nProcessing Time: ${result.processingTimeMs}ms\nVehicles: ${result.vehicleCount}\nAssigned: ${result.assignedCount}`);
+      } else {
+        console.log('❌ Performance test FAILED!');
+        alert(`Performance Test FAILED!\nProcessing Time: ${result.processingTimeMs}ms (Target: <200ms)`);
+      }
+    } catch (error) {
+      console.error('Performance test error:', error);
+      alert('Performance test failed with error');
+    }
+  };
+
   const handleFilterClear = (key: string) => {
     // No filter clearing needed in 4-day mode
     switch (key) {
@@ -862,10 +926,74 @@ const TowDriver: React.FC = () => {
           <GlassCard className="mb-6">
             <ProgressTracker
               totalTimeHours={totalTimeUsed}
-              shiftLengthHours={assumptions.shiftLengthHours || 12}
+              shiftLengthHours={12} // Default 12-hour shift
               completedCars={completedVehicles.size}
               totalCars={allTowCards.length}
             />
+          </GlassCard>
+        )}
+
+        {/* Automated Driver Assignment Engine */}
+        {activeTowCards.length > 0 && (
+          <GlassCard className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/20 rounded-lg">
+                  <Zap className="w-6 h-6 text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-white">Automated Driver Assignment</h3>
+                  <p className="text-gray-300 text-sm">
+                    Intelligent vehicle-to-driver matching based on zones, capacity, and distance
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  onClick={runAutoAssignment}
+                  disabled={isAssigning}
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-0"
+                >
+                  {isAssigning ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Assigning...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4 mr-2" />
+                      Run Assignment
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  onClick={runPerformanceTestFunc}
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/10"
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  Test Performance
+                </Button>
+              </div>
+            </div>
+
+            {assignmentResult && (
+              <div className="mt-4">
+                <AssignmentSummary
+                  result={assignmentResult}
+                  onReassign={runAutoAssignment}
+                  onViewDetails={() => setShowAssignmentDetails(!showAssignmentDetails)}
+                />
+                
+                {showAssignmentDetails && (
+                  <div className="mt-4">
+                    <AssignmentDetails result={assignmentResult} />
+                  </div>
+                )}
+              </div>
+            )}
           </GlassCard>
         )}
 
@@ -893,15 +1021,15 @@ const TowDriver: React.FC = () => {
               <GlassCard className="mb-6">
                 <RouteCapacityAnalysis
                   lotTotalMin={computeGroup1Optimization.returnTotals.totalMin}
-                  lotDriveMin={computeGroup1Optimization.returnTotals.driveMin}
+                      lotDriveMin={computeGroup1Optimization.returnTotals.travelMin}
                   lotServiceMin={computeGroup1Optimization.returnTotals.serviceMin}
                   stashTotalMin={computeGroup1Optimization.stashTotals.totalMin}
-                  stashDriveMin={computeGroup1Optimization.stashTotals.driveMin}
+                  stashDriveMin={computeGroup1Optimization.stashTotals.travelMin}
                   stashServiceMin={computeGroup1Optimization.stashTotals.serviceMin}
                   optimizedTotalMin={computeGroup1Optimization.optimizedTotals.totalMin}
-                  optimizedDriveMin={computeGroup1Optimization.optimizedTotals.driveMin}
+                  optimizedDriveMin={computeGroup1Optimization.optimizedTotals.travelMin}
                   optimizedServiceMin={computeGroup1Optimization.optimizedTotals.serviceMin}
-                  shiftLengthHours={assumptions.shiftLengthHours || 12}
+                  shiftLengthHours={12}
                   finishAtLot={finishAtLot}
                   onToggleFinishAtLot={() => setFinishAtLot(!finishAtLot)}
                 />
@@ -1002,15 +1130,15 @@ const TowDriver: React.FC = () => {
                   <GlassCard className="mb-6">
                     <RouteCapacityAnalysis
                       lotTotalMin={computeGroup2Optimization.returnTotals.totalMin}
-                      lotDriveMin={computeGroup2Optimization.returnTotals.driveMin}
+                      lotDriveMin={computeGroup2Optimization.returnTotals.travelMin}
                       lotServiceMin={computeGroup2Optimization.returnTotals.serviceMin}
                       stashTotalMin={computeGroup2Optimization.stashTotals.totalMin}
-                      stashDriveMin={computeGroup2Optimization.stashTotals.driveMin}
+                      stashDriveMin={computeGroup2Optimization.stashTotals.travelMin}
                       stashServiceMin={computeGroup2Optimization.stashTotals.serviceMin}
                       optimizedTotalMin={computeGroup2Optimization.optimizedTotals.totalMin}
-                      optimizedDriveMin={computeGroup2Optimization.optimizedTotals.driveMin}
+                      optimizedDriveMin={computeGroup2Optimization.optimizedTotals.travelMin}
                       optimizedServiceMin={computeGroup2Optimization.optimizedTotals.serviceMin}
-                      shiftLengthHours={assumptions.shiftLengthHours || 12}
+                      shiftLengthHours={12}
                       finishAtLot={finishAtLot}
                       onToggleFinishAtLot={() => setFinishAtLot(!finishAtLot)}
                     />
@@ -1066,6 +1194,47 @@ const TowDriver: React.FC = () => {
                   onMarkAsDone={handleMarkAsDone}
                 />
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pending Assignment - Unassigned Vehicles */}
+        {assignmentResult && assignmentResult.unassignedVehicles.length > 0 && (
+          <div className="mt-8">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="p-2 bg-amber-500/20 rounded-lg">
+                <AlertCircle className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-white">Pending Assignment</h3>
+                <p className="text-gray-300 text-sm">
+                  {assignmentResult.unassignedVehicles.length} vehicles awaiting driver assignment
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+              {assignmentResult.unassignedVehicles.map((vehicle: any) => {
+                // Find the corresponding TowCard for display
+                const towCard = activeTowCards.find(card => card.id === vehicle.id);
+                if (!towCard) return null;
+                
+                return (
+                  <div key={vehicle.id} className="relative">
+                    <VehicleCard 
+                      car={towCard} 
+                      stepNumber={carStepMap.get(towCard.vin)}
+                      onMarkAsDone={handleMarkAsDone}
+                    />
+                    {/* Unassigned indicator */}
+                    <div className="absolute top-2 right-2">
+                      <Badge className="bg-amber-500/20 text-amber-400 border-0 text-xs">
+                        Pending
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
