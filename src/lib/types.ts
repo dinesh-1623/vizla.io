@@ -1,4 +1,4 @@
-export type Status = 'Located' | 'Blocked' | 'Stashed';
+export type Status = 'Located' | 'Blocked' | 'Stashed' | 'Dispatched';
 
 export interface LocatedRow {
   id: string;

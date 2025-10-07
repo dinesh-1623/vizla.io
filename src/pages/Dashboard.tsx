@@ -13,6 +13,7 @@ import { StatTile } from '@/components/ui/StatTile';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { FilterBar } from '@/components/dashboard/FilterBar';
 import { FilterChips } from '@/components/dashboard/FilterChips';
 import { BreakdownPanel } from '@/components/dashboard/BreakdownPanel';
@@ -687,7 +688,12 @@ const Dashboard: React.FC = () => {
 
         {/* Client-Market Heat Map */}
         <GlassCard className="mt-8">
-          <ClientMarketHeatMap data={filteredData} />
+          <ClientMarketHeatMap 
+            data={filteredData.map(row => ({
+              client: row.client,
+              market: row.zone
+            }))} 
+          />
         </GlassCard>
 
         {/* Markets & Zones Overview */}
