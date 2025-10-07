@@ -41,6 +41,8 @@ import { AssignmentDetails } from '@/components/assignment/AssignmentDetails';
 import { assignVehiclesToDrivers } from '@/lib/assignment/engine';
 import { mockDrivers, mockVehicles } from '@/lib/assignment/mockData';
 import { runPerformanceTest } from '@/lib/assignment/performanceTest';
+import { QueueManager } from '@/components/driver/QueueManager';
+import { VehicleImagePreview } from '@/components/driver/VehicleImagePreview';
 import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users, Zap } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { FilterChips } from '@/components/ui/FilterChips';
@@ -105,6 +107,10 @@ const TowDriver: React.FC = () => {
   const [assignmentResult, setAssignmentResult] = useState<any>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [showAssignmentDetails, setShowAssignmentDetails] = useState(false);
+  
+  // Vehicle Image Preview State
+  const [selectedVehicle, setSelectedVehicle] = useState<TowCard | null>(null);
+  const [showImagePreview, setShowImagePreview] = useState(false);
   
   // Assumptions management
   const { assumptions, updateAssumptions } = useAssumptions();
@@ -664,6 +670,12 @@ const TowDriver: React.FC = () => {
     }
   };
 
+  // Handle vehicle click for image preview
+  const handleVehicleClick = (vehicle: TowCard) => {
+    setSelectedVehicle(vehicle);
+    setShowImagePreview(true);
+  };
+
   const handleFilterClear = (key: string) => {
     // No filter clearing needed in 4-day mode
     switch (key) {
@@ -933,7 +945,7 @@ const TowDriver: React.FC = () => {
           </GlassCard>
         )}
 
-        {/* Automated Driver Assignment Engine */}
+        {/* Automated Driver Assessment Engine */}
         {activeTowCards.length > 0 && (
           <GlassCard className="mb-6">
             <div className="flex items-center justify-between mb-4">
@@ -942,7 +954,7 @@ const TowDriver: React.FC = () => {
                   <Zap className="w-6 h-6 text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-white">Automated Driver Assignment</h3>
+                  <h3 className="text-xl font-semibold text-white">Automated Driver Assessment</h3>
                   <p className="text-gray-300 text-sm">
                     Intelligent vehicle-to-driver matching based on zones, capacity, and distance
                   </p>
@@ -958,13 +970,13 @@ const TowDriver: React.FC = () => {
                   {isAssigning ? (
                     <>
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Assigning...
+                      Assessing...
                     </>
                   ) : (
-                    <>
-                      <Zap className="w-4 h-4 mr-2" />
-                      Run Assignment
-                    </>
+                  <>
+                    <Zap className="w-4 h-4 mr-2" />
+                    Run Assessment
+                  </>
                   )}
                 </Button>
                 
@@ -997,16 +1009,13 @@ const TowDriver: React.FC = () => {
           </GlassCard>
         )}
 
-        {/* Run Group Planning */}
+        {/* Driver Queue Manager - Now/Next/Later */}
         {activeTowCards.length > 0 && (
-          <GlassCard className="mb-6">
-            <RunGroupPlanning
-              totalVehicles={activeTowCards.length}
-              carsPerGroup={carsPerRunGroup}
-              onCarsPerGroupChange={setCarsPerRunGroup}
-              groups={dynamicRunGroups}
-            />
-          </GlassCard>
+          <QueueManager
+            vehicles={activeTowCards}
+            onVehicleClick={handleVehicleClick}
+            className="mb-6"
+          />
         )}
 
         {/* Group 1 Capacity Card */}
@@ -1282,6 +1291,16 @@ const TowDriver: React.FC = () => {
         onClose={() => setIsAssumptionsOpen(false)}
         assumptions={assumptions}
         onAssumptionsChange={updateAssumptions}
+      />
+
+      {/* Vehicle Image Preview Modal */}
+      <VehicleImagePreview
+        vehicle={selectedVehicle}
+        isOpen={showImagePreview}
+        onClose={() => {
+          setShowImagePreview(false);
+          setSelectedVehicle(null);
+        }}
       />
     </AppShell>
   );
