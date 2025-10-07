@@ -6,7 +6,8 @@ import { loadLocated } from '@/lib/data/loaders';
 import { loadBaltimoreData } from '@/lib/data/baltimoreLoader';
 import { loadTowCars } from '@/lib/data/driverSource';
 import { MarketsOverview } from '@/components/MarketsOverview/MarketsOverview';
-import { Truck, User, RefreshCw, AlertCircle, Navigation } from 'lucide-react';
+import { ClientMarketHeatMap } from '@/components/dashboard/ClientMarketHeatMap';
+import { Truck, User, RefreshCw, AlertCircle, Navigation, MapPin, Shield, Satellite } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { StatTile } from '@/components/ui/StatTile';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -40,6 +41,9 @@ const Dashboard: React.FC = () => {
   // Global filter state
   const [market, setMarket] = useState<string>('All Markets');
   const [status, setStatus] = useState<Status | 'All Statuses'>('All Statuses');
+  
+  // KPI Category filters
+  const [kpiCategory, setKpiCategory] = useState<'all' | 'located' | 'blocked' | 'bank-gps'>('all');
   
   // Drilldown selection state
   const [selClient, setSelClient] = useState<string | undefined>();
@@ -108,6 +112,18 @@ const Dashboard: React.FC = () => {
       if (market !== 'All Markets' && row.zone !== market) return false;
       if (status !== 'All Statuses' && row.status !== status) return false;
       
+      // Apply KPI category filters
+      if (kpiCategory === 'located') {
+        // Only show located vehicles (all active status)
+        if (row.status === 'Dispatched' || row.status === 'Stashed') return false;
+      } else if (kpiCategory === 'blocked') {
+        // Only show blocked vehicles (mock: vehicles with certain client names)
+        if (!row.client.toLowerCase().includes('block')) return false;
+      } else if (kpiCategory === 'bank-gps') {
+        // Only show bank vehicles with GPS (mock: bank clients)
+        if (!row.client.toLowerCase().includes('bank')) return false;
+      }
+      
       // Apply drilldown filters (cross-filtering - exclude own dimension)
       if (selClient && row.client !== selClient) return false;
       if (selZone && row.zone !== selZone) return false;
@@ -118,7 +134,7 @@ const Dashboard: React.FC = () => {
     
     console.log('🔍 Filtered data:', filtered.length, 'rows');
     return filtered;
-  }, [data, market, status, selClient, selZone, selDriver]);
+  }, [data, market, status, kpiCategory, selClient, selZone, selDriver]);
 
   // Compute KPIs from filtered data
   const kpis = useMemo(() => {
@@ -402,6 +418,76 @@ const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <div className="space-y-6">
+        {/* KPI Category Chips */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm text-vizla-text-secondary font-medium">Categories:</span>
+          
+          <button
+            onClick={() => setKpiCategory('all')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              kpiCategory === 'all'
+                ? 'bg-vizla-brand-primary text-white'
+                : 'bg-vizla-glass text-vizla-text-secondary hover:bg-vizla-glassElev ring-1 ring-vizla-glassBorder'
+            }`}
+          >
+            All Vehicles
+            {kpiCategory === 'all' && (
+              <Badge className="bg-white/20 text-white border-0">{data.length}</Badge>
+            )}
+          </button>
+          
+          <button
+            onClick={() => setKpiCategory('located')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              kpiCategory === 'located'
+                ? 'bg-vizla-brand-primary text-white'
+                : 'bg-vizla-glass text-vizla-text-secondary hover:bg-vizla-glassElev ring-1 ring-vizla-glassBorder'
+            }`}
+          >
+            <MapPin className="w-4 h-4" />
+            Located
+            {kpiCategory === 'located' && (
+              <Badge className="bg-white/20 text-white border-0">
+                {data.filter(r => r.status !== 'Dispatched' && r.status !== 'Stashed').length}
+              </Badge>
+            )}
+          </button>
+          
+          <button
+            onClick={() => setKpiCategory('blocked')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              kpiCategory === 'blocked'
+                ? 'bg-vizla-brand-primary text-white'
+                : 'bg-vizla-glass text-vizla-text-secondary hover:bg-vizla-glassElev ring-1 ring-vizla-glassBorder'
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            Blocked
+            {kpiCategory === 'blocked' && (
+              <Badge className="bg-white/20 text-white border-0">
+                {data.filter(r => r.client.toLowerCase().includes('block')).length}
+              </Badge>
+            )}
+          </button>
+          
+          <button
+            onClick={() => setKpiCategory('bank-gps')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              kpiCategory === 'bank-gps'
+                ? 'bg-vizla-brand-primary text-white'
+                : 'bg-vizla-glass text-vizla-text-secondary hover:bg-vizla-glassElev ring-1 ring-vizla-glassBorder'
+            }`}
+          >
+            <Satellite className="w-4 h-4" />
+            Bank GPS
+            {kpiCategory === 'bank-gps' && (
+              <Badge className="bg-white/20 text-white border-0">
+                {data.filter(r => r.client.toLowerCase().includes('bank')).length}
+              </Badge>
+            )}
+          </button>
+        </div>
+
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <GlassCard>
@@ -598,6 +684,11 @@ const Dashboard: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Client-Market Heat Map */}
+        <GlassCard className="mt-8">
+          <ClientMarketHeatMap data={filteredData} />
+        </GlassCard>
 
         {/* Markets & Zones Overview */}
         <div className="mt-8">
