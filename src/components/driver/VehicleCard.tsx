@@ -81,61 +81,64 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
           <span className={`${TEXT_STYLES.BODY_SECONDARY} text-xs`}>{car.street}, {car.city} {car.zip}</span>
         </div>
         
-        {/* Spotter Information */}
-        {car.createdBy && (
-          <div className="flex justify-between text-sm">
-            <span className={TEXT_STYLES.BODY_MUTED}>Spotted by:</span>
-            <span className={`${TEXT_STYLES.BODY_SECONDARY}`}>{car.createdBy}</span>
+        {/* Spotter Information - Prominent Badges */}
+        <div className="space-y-2">
+          {/* Status Indicators */}
+          <div className="flex flex-wrap gap-2">
+            {car.reachable && (
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                car.reachable === 'Reachable' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+              }`}>
+                {car.reachable === 'Reachable' ? '✓ Reachable' : '✗ Not reachable'}
+              </span>
+            )}
+            {car.rusted && (
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                car.rusted === 'Not rusted' ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-400'
+              }`}>
+                {car.rusted === 'Not rusted' ? '✓ Good condition' : '⚠ Rusted'}
+              </span>
+            )}
           </div>
-        )}
-        {car.createdAtISO && (
-          <div className="flex justify-between text-sm">
-            <span className={TEXT_STYLES.BODY_MUTED}>Spotted:</span>
-            <span className={`${TEXT_STYLES.BODY_SECONDARY} text-xs`}>
-              {new Date(car.createdAtISO).toLocaleDateString()} {new Date(car.createdAtISO).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-            </span>
+          
+          {/* Location and Parking Info */}
+          <div className="flex flex-wrap gap-2">
+            {car.locationType && (
+              <span className="text-xs px-2 py-1 rounded-full font-medium bg-blue-500/20 text-blue-400">
+                {car.locationType}
+              </span>
+            )}
+            {car.parked && (
+              <span className="text-xs px-2 py-1 rounded-full font-medium bg-purple-500/20 text-purple-400">
+                {car.parked}
+              </span>
+            )}
           </div>
-        )}
-        {car.reachable && (
-          <div className="flex justify-between text-sm">
-            <span className={TEXT_STYLES.BODY_MUTED}>Reachable:</span>
-            <span className={`${TEXT_STYLES.BODY_SECONDARY} ${car.reachable === 'Reachable' ? 'text-green-400' : 'text-red-400'}`}>
-              {car.reachable === 'Reachable' ? '✓' : '✗'} {car.reachable}
-            </span>
-          </div>
-        )}
-        {car.rusted && (
-          <div className="flex justify-between text-sm">
-            <span className={TEXT_STYLES.BODY_MUTED}>Condition:</span>
-            <span className={`${TEXT_STYLES.BODY_SECONDARY} ${car.rusted === 'Not rusted' ? 'text-green-400' : 'text-orange-400'}`}>
-              {car.rusted === 'Not rusted' ? '✓' : '⚠'} {car.rusted}
-            </span>
-          </div>
-        )}
-        {car.locationType && (
-          <div className="flex justify-between text-sm">
-            <span className={TEXT_STYLES.BODY_MUTED}>Location:</span>
-            <span className={`${TEXT_STYLES.BODY_SECONDARY} text-xs`}>{car.locationType}</span>
-          </div>
-        )}
-        {car.parked && (
-          <div className="flex justify-between text-sm">
-            <span className={TEXT_STYLES.BODY_MUTED}>Parked:</span>
-            <span className={`${TEXT_STYLES.BODY_SECONDARY}`}>{car.parked}</span>
-          </div>
-        )}
-        {car.notes && car.notes.length > 0 && (
-          <div className="flex flex-col gap-1">
-            <span className={TEXT_STYLES.BODY_MUTED}>Notes:</span>
+          
+          {/* Notes */}
+          {car.notes && car.notes.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {car.notes.map((note, index) => (
-                <span key={index} className="bg-vizla-brand-primary/20 text-vizla-brand-primary text-xs px-2 py-1 rounded-full">
+                <span key={index} className="text-xs px-2 py-1 rounded-full font-medium bg-vizla-brand-primary/20 text-vizla-brand-primary">
                   {note}
                 </span>
               ))}
             </div>
-          </div>
-        )}
+          )}
+          
+          {/* Spotted Info */}
+          {(car.createdBy || car.createdAtISO) && (
+            <div className="text-xs text-vizla-text-muted">
+              {car.createdBy && <span>Spotted by {car.createdBy}</span>}
+              {car.createdBy && car.createdAtISO && <span> • </span>}
+              {car.createdAtISO && (
+                <span>
+                  {new Date(car.createdAtISO).toLocaleDateString()} {new Date(car.createdAtISO).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Vehicle Images - Carousel */}

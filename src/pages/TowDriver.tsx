@@ -910,8 +910,8 @@ const TowDriver: React.FC = () => {
                 <div className="flex gap-2">
                   <Skeleton className="h-8 w-20" />
                   <Skeleton className="h-8 w-20" />
-                </div>
-              </div>
+        </div>
+      </div>
             </GlassCard>
           ))}
         </div>
@@ -1039,7 +1039,7 @@ const TowDriver: React.FC = () => {
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-500/20 rounded-lg">
                   <Zap className="w-6 h-6 text-blue-400" />
-                </div>
+          </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white">Automated Driver Assignment</h3>
                   <p className="text-gray-300 text-sm">
