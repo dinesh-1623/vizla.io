@@ -62,6 +62,7 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
     : [];
 
   const currentImage = images[currentImageIndex];
+  const [imageError, setImageError] = React.useState(false);
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % images.length);
@@ -86,14 +87,14 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden bg-gray-900 border-gray-700">
         <DialogHeader className="flex flex-row items-center justify-between">
-          <DialogTitle className="text-xl font-semibold text-white">
+          <DialogTitle className="text-2xl font-bold text-white bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
             Vehicle Details
           </DialogTitle>
           <Button
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
+            className="text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-full p-2"
           >
             <X className="w-5 h-5" />
           </Button>
@@ -103,12 +104,14 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
           {/* Image Section */}
           <div className="space-y-4">
             <div className="relative">
-              {currentImage ? (
+              {currentImage && !imageError ? (
                 <div className="relative">
                   <img
                     src={currentImage}
                     alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
                     className="w-full h-64 lg:h-80 object-cover rounded-lg"
+                    onError={() => setImageError(true)}
+                    onLoad={() => setImageError(false)}
                   />
                   
                   {/* Navigation Arrows */}
@@ -134,10 +137,11 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
                   )}
                 </div>
               ) : (
-                <div className="w-full h-64 lg:h-80 bg-gray-800 rounded-lg flex items-center justify-center">
-                  <div className="text-center text-gray-400">
-                    <Car className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No image available</p>
+                <div className="w-full h-64 lg:h-80 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-600">
+                  <div className="text-center text-gray-300">
+                    <Car className="w-16 h-16 mx-auto mb-3 opacity-60" />
+                    <p className="text-lg font-medium mb-1">No Image Available</p>
+                    <p className="text-sm opacity-75">Vehicle photo not captured</p>
                   </div>
                 </div>
               )}
@@ -167,16 +171,16 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
           </div>
 
           {/* Vehicle Details */}
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-2xl font-bold text-white mb-2">
+          <div className="space-y-6">
+            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+              <h3 className="text-3xl font-bold text-white mb-3 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                 {vehicle.year} {vehicle.make} {vehicle.model}
               </h3>
-              <div className="flex items-center gap-2 mb-4">
-                <Badge className="bg-blue-500/20 text-blue-400 border-0">
+              <div className="flex items-center gap-3">
+                <Badge className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-300 border border-blue-400/30 px-3 py-1">
                   {vehicle.color}
                 </Badge>
-                <Badge className="bg-green-500/20 text-green-400 border-0">
+                <Badge className="bg-gradient-to-r from-green-500/20 to-green-600/20 text-green-300 border border-green-400/30 px-3 py-1">
                   {vehicle.plate}
                 </Badge>
               </div>
@@ -219,85 +223,95 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
 
               {/* Spotter Information */}
               {vehicle.reachable && (
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    <div className={`w-3 h-3 rounded-full ${
-                      vehicle.reachable === 'Reachable' ? 'bg-green-400' : 'bg-red-400'
-                    }`}></div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-400">Reachable</div>
-                    <div className={`text-sm font-medium ${
-                      vehicle.reachable === 'Reachable' ? 'text-green-400' : 'text-red-400'
-                    }`}>
-                      {vehicle.reachable === 'Reachable' ? '✓ Reachable' : '✗ Not reachable'}
+                <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50">
+                      <div className={`w-4 h-4 rounded-full ${
+                        vehicle.reachable === 'Reachable' ? 'bg-green-400' : 'bg-red-400'
+                      }`}></div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400 uppercase tracking-wide">Reachable</div>
+                      <div className={`text-sm font-semibold ${
+                        vehicle.reachable === 'Reachable' ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {vehicle.reachable === 'Reachable' ? '✓ Reachable' : '✗ Not reachable'}
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
               {vehicle.rusted && (
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    <div className={`w-3 h-3 rounded-full ${
-                      vehicle.rusted === 'Not rusted' ? 'bg-green-400' : 'bg-orange-400'
-                    }`}></div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-400">Condition</div>
-                    <div className={`text-sm font-medium ${
-                      vehicle.rusted === 'Not rusted' ? 'text-green-400' : 'text-orange-400'
-                    }`}>
-                      {vehicle.rusted === 'Not rusted' ? '✓ Good condition' : '⚠ Rusted'}
+                <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50">
+                      <div className={`w-4 h-4 rounded-full ${
+                        vehicle.rusted === 'Not rusted' ? 'bg-green-400' : 'bg-orange-400'
+                      }`}></div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400 uppercase tracking-wide">Condition</div>
+                      <div className={`text-sm font-semibold ${
+                        vehicle.rusted === 'Not rusted' ? 'text-green-400' : 'text-orange-400'
+                      }`}>
+                        {vehicle.rusted === 'Not rusted' ? '✓ Good condition' : '⚠ Rusted'}
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
               {vehicle.locationType && (
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    <div className="w-3 h-3 rounded-full bg-blue-400"></div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-400">Location Type</div>
-                    <div className="text-sm font-medium text-blue-400">
-                      {vehicle.locationType}
+                <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50">
+                      <div className="w-4 h-4 rounded-full bg-blue-400"></div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400 uppercase tracking-wide">Location Type</div>
+                      <div className="text-sm font-semibold text-blue-400">
+                        {vehicle.locationType}
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
               {vehicle.parked && (
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    <div className="w-3 h-3 rounded-full bg-purple-400"></div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-400">Parked</div>
-                    <div className="text-sm font-medium text-purple-400">
-                      {vehicle.parked}
+                <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50">
+                      <div className="w-4 h-4 rounded-full bg-purple-400"></div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400 uppercase tracking-wide">Parked</div>
+                      <div className="text-sm font-semibold text-purple-400">
+                        {vehicle.parked}
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
               {vehicle.notes && vehicle.notes.length > 0 && (
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 flex items-center justify-center mt-1">
-                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm text-gray-400 mb-2">Notes</div>
-                    <div className="flex flex-wrap gap-2">
-                      {vehicle.notes.map((note, index) => (
-                        <span 
-                          key={index}
-                          className="text-xs px-2 py-1 rounded-full bg-yellow-400/20 text-yellow-400 border border-yellow-400/30"
-                        >
-                          {note}
-                        </span>
-                      ))}
+                <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50 mt-1">
+                      <div className="w-4 h-4 rounded-full bg-yellow-400"></div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs text-gray-400 uppercase tracking-wide mb-3">Notes</div>
+                      <div className="flex flex-wrap gap-2">
+                        {vehicle.notes.map((note, index) => (
+                          <span 
+                            key={index}
+                            className="text-xs px-3 py-1 rounded-full bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-300 border border-yellow-400/30"
+                          >
+                            {note}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>

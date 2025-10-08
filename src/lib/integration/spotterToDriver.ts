@@ -129,12 +129,12 @@ export function getSpotterTowCards(): TowCard[] {
 }
 
 /**
- * Get combined TowCards (original cards + spotter submissions)
+ * Get only spotter submissions as TowCards (no dummy data)
  */
 export function getCombinedTowCards(originalCards: TowCard[]): TowCard[] {
   const spotterCards = getSpotterTowCards();
-  // Return both original cards (with new spotter fields) and spotter submissions
-  return [...originalCards, ...spotterCards];
+  // Return only spotter submissions, ignore dummy data
+  return spotterCards;
 }
 
 /**
