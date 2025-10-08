@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { TowCard } from '@/app/tow-driver/data/baltimoreRun';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { GLASS_SURFACE, TEXT_STYLES, STATUS_COLORS } from '@/lib/constants';
+import { GLASS_SURFACE, TEXT_STYLES } from '@/lib/constants';
 import { CheckCircle, Trash2, MapPin, Home, Package, ChevronLeft, ChevronRight, Eye, X, Camera, Calendar } from 'lucide-react';
 
 interface VehicleCardProps {
@@ -10,6 +10,14 @@ interface VehicleCardProps {
   stepNumber?: number;
   onMarkAsDone?: (carId: string, action: 'delete' | 'collected' | 'dropped-lot' | 'dropped-stash') => void;
 }
+
+// Vehicle status colors
+const VEHICLE_STATUS_COLORS = {
+  Located: { color: 'bg-blue-500/20 text-blue-400', text: 'Located' },
+  Blocked: { color: 'bg-red-500/20 text-red-400', text: 'Blocked' },
+  Stashed: { color: 'bg-green-500/20 text-green-400', text: 'Stashed' },
+  Dispatched: { color: 'bg-purple-500/20 text-purple-400', text: 'Dispatched' },
+} as const;
 
 export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMarkAsDone }) => {
   const [imageLoading, setImageLoading] = useState(true);
@@ -29,7 +37,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
     setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
   };
 
-  const status = STATUS_COLORS['Located']; // Default to Located status
+  const status = VEHICLE_STATUS_COLORS['Located']; // Default to Located status
 
   return (
     <div className="rounded-2xl bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder p-4 hover:ring-vizla-ring-focus transition-all">
