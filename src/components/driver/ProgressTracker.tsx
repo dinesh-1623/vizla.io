@@ -49,24 +49,39 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
     };
   }, [group1TimeHours, group2TimeHours, shiftLengthHours]);
 
-  // Calculate current position based on completed cars and time used
+  // Calculate current position based on route group completion
   const currentProgress = useMemo(() => {
-    // Use shift utilization as the primary progress indicator
-    // This shows actual time progress vs shift length
-    const progress = Math.min(shiftUtilization, 100);
+    // Calculate progress based on route group completion
+    let progress = 0;
+    
+    if (completedCars === 0) {
+      progress = 0;
+    } else if (completedCars <= totalCars / 2) {
+      // In Group 1 - progress within Group 1
+      const group1Progress = (completedCars / (totalCars / 2)) * groupMarkers.group1;
+      progress = group1Progress;
+    } else {
+      // In Group 2 - Group 1 complete + progress within Group 2
+      const group1Complete = groupMarkers.group1;
+      const group2Progress = ((completedCars - totalCars / 2) / (totalCars / 2)) * (groupMarkers.group2 - groupMarkers.group1);
+      progress = group1Complete + group2Progress;
+    }
     
     // Debug logging
     console.log('ProgressTracker Debug:', {
+      completedCars,
+      totalCars,
+      group1TimeHours,
+      group2TimeHours,
       totalTimeHours,
       shiftLengthHours,
-      shiftUtilization,
+      groupMarkers,
       currentProgress: progress,
-      group1TimeHours,
-      group2TimeHours
+      shiftUtilization
     });
     
-    return progress;
-  }, [shiftUtilization, totalTimeHours, shiftLengthHours, group1TimeHours, group2TimeHours]);
+    return Math.min(progress, 100);
+  }, [completedCars, totalCars, groupMarkers, group1TimeHours, group2TimeHours, totalTimeHours, shiftLengthHours, shiftUtilization]);
 
   // Determine performance state
   const performanceState = useMemo<PerformanceState>(() => {
@@ -117,7 +132,7 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
         <div className="flex items-center gap-2">
           <Clock className="w-5 h-5 text-vizla-text-muted" />
           <h3 className="text-lg font-semibold text-vizla-text-primary">
-            Shift Utilization
+            Route Progress
           </h3>
         </div>
         
@@ -137,7 +152,7 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
           <span className="font-medium text-vizla-text-primary">
             {formatTime(totalTimeHours)}
           </span>
-          {' '}used of{' '}
+          {' '}planned of{' '}
           <span className="font-medium text-vizla-text-primary">
             {formatTime(shiftLengthHours)}
           </span>
@@ -147,7 +162,7 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
           </span>
           {' '}|{' '}
           <span className="text-vizla-text-primary font-medium">
-            {Math.round(shiftUtilization)}% complete
+            {Math.round(currentProgress)}% route progress
           </span>
         </p>
         
@@ -176,7 +191,7 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
         aria-valuenow={currentProgress}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`Shift progress: ${Math.round(currentProgress)}%`}
+        aria-label={`Route progress: ${Math.round(currentProgress)}%`}
         tabIndex={0}
       >
         {/* Background track */}
@@ -290,8 +305,9 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
       {/* Tooltip overlay (hidden, for screen readers) */}
       <div className="sr-only" role="status" aria-live="polite">
         Driver is {performanceState.label.toLowerCase()}.
-        Used {formatTime(totalTimeHours)} of {formatTime(shiftLengthHours)} shift time.
-        Completed {completedCars} of {totalCars} cars, which is {carCompletionPercent}% complete.
+        Route progress: {Math.round(currentProgress)}% complete.
+        Planned {formatTime(totalTimeHours)} of {formatTime(shiftLengthHours)} shift time.
+        Completed {completedCars} of {totalCars} cars.
       </div>
 
       <style jsx>{`
