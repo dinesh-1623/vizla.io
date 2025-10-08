@@ -43,6 +43,9 @@ import { mockDrivers, mockVehicles } from '@/lib/assignment/mockData';
 import { runPerformanceTest } from '@/lib/assignment/performanceTest';
 import { NowNextLater } from '@/components/driver/NowNextLater';
 import { VehicleImagePreview } from '@/components/driver/VehicleImagePreview';
+import { ShiftUtilizationMeter } from '@/components/driver/ShiftUtilizationMeter';
+import { GroupStatusPill } from '@/components/driver/GroupStatusPill';
+import { calculateShiftUtilization, calculateGroupUtilization, formatTimeDisplay, type ShiftStatus } from '@/lib/shiftUtilization';
 import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users, Zap } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { FilterChips } from '@/components/ui/FilterChips';
@@ -428,6 +431,21 @@ const TowDriver: React.FC = () => {
   const totalTimeUsed = useMemo(() => {
     return group1TimeUsed + group2TimeUsed;
   }, [group1TimeUsed, group2TimeUsed]);
+
+  // Shift Utilization Calculations
+  const shiftLength = 12; // 12-hour shift
+  
+  const shiftUtilization = useMemo(() => {
+    return calculateShiftUtilization(totalTimeUsed, shiftLength);
+  }, [totalTimeUsed, shiftLength]);
+
+  const group1Utilization = useMemo(() => {
+    return calculateGroupUtilization('group1', group1TimeUsed, group1Points.length, shiftLength);
+  }, [group1TimeUsed, group1Points.length, shiftLength]);
+
+  const group2Utilization = useMemo(() => {
+    return calculateGroupUtilization('group2', group2TimeUsed, group2Points.length, shiftLength);
+  }, [group2TimeUsed, group2Points.length, shiftLength]);
 
   // Create dynamic run groups based on carsPerRunGroup
   const dynamicRunGroups = useMemo(() => {
@@ -846,6 +864,15 @@ const TowDriver: React.FC = () => {
         </div>
       </header>
 
+      {/* Shift Utilization Meter */}
+      <div className="mb-6">
+        <ShiftUtilizationMeter
+          totalTimeUsed={shiftUtilization.totalTimeUsed}
+          shiftLength={shiftUtilization.shiftLength}
+          status={shiftUtilization.status}
+        />
+      </div>
+
       {/* New Submission Notification */}
       {hasNewSubmission && (
         <div className="mb-6 p-4 bg-green-500/20 border border-green-500/30 rounded-xl">
@@ -910,8 +937,8 @@ const TowDriver: React.FC = () => {
                 <div className="flex gap-2">
                   <Skeleton className="h-8 w-20" />
                   <Skeleton className="h-8 w-20" />
-                </div>
-              </div>
+        </div>
+      </div>
             </GlassCard>
           ))}
         </div>
@@ -1039,7 +1066,7 @@ const TowDriver: React.FC = () => {
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-500/20 rounded-lg">
                   <Zap className="w-6 h-6 text-blue-400" />
-                </div>
+          </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white">Automated Driver Assignment</h3>
                   <p className="text-gray-300 text-sm">
@@ -1115,8 +1142,13 @@ const TowDriver: React.FC = () => {
         {/* Group 1 Capacity Card */}
         {group1Points.length > 0 && (
           <div className="mb-6">
-                <div className="mb-4">
+                <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-xl font-semibold text-vizla-text-primary">Group 1 • {group1Points.length} Vehicles</h3>
+                  <GroupStatusPill
+                    timeUsed={group1Utilization.timeUsed}
+                    shiftLength={group1Utilization.shiftLength}
+                    vehicleCount={group1Utilization.vehicleCount}
+                  />
             </div>
             
             {/* Route Capacity Analysis for Group 1 */}
@@ -1224,8 +1256,13 @@ const TowDriver: React.FC = () => {
             {/* Group 2 Capacity Card */}
             {group2Points.length > 0 && (
               <div className="mb-6">
-                <div className="mb-4">
+                <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-xl font-semibold text-vizla-text-primary">Group 2 • {group2Points.length} Vehicles</h3>
+                  <GroupStatusPill
+                    timeUsed={group2Utilization.timeUsed}
+                    shiftLength={group2Utilization.shiftLength}
+                    vehicleCount={group2Utilization.vehicleCount}
+                  />
                 </div>
                 
                 {/* Route Capacity Analysis for Group 2 */}
