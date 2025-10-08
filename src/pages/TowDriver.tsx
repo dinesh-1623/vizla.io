@@ -1082,6 +1082,8 @@ const TowDriver: React.FC = () => {
               onVehicleClick={handleVehicleClick}
               onStartRoute={handleStartRoute}
               onMarkBatchDone={handleMarkBatchDone}
+              carsPerGroup={carsPerRunGroup}
+              onCarsPerGroupChange={setCarsPerRunGroup}
             />
           </GlassCard>
         )}

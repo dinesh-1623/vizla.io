@@ -41,6 +41,8 @@ interface NowNextLaterProps {
   onVehicleClick: (vehicle: any) => void;
   onStartRoute: (group: RouteGroup) => void;
   onMarkBatchDone: (group: RouteGroup) => void;
+  carsPerGroup: number;
+  onCarsPerGroupChange: (value: number) => void;
   className?: string;
 }
 
@@ -51,8 +53,12 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
   onVehicleClick,
   onStartRoute,
   onMarkBatchDone,
+  carsPerGroup,
+  onCarsPerGroupChange,
   className = ''
 }) => {
+  const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set());
+
   const formatTime = (minutes: number) => {
     if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
@@ -60,10 +66,24 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
     return `${hours}h ${mins}m`;
   };
 
+  const toggleGroupExpansion = (groupId: string) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupId)) {
+        newSet.delete(groupId);
+      } else {
+        newSet.add(groupId);
+      }
+      return newSet;
+    });
+  };
+
   const RouteGroupCard: React.FC<{ group: RouteGroup; type: 'now' | 'next' | 'later' }> = ({ 
     group, 
     type 
   }) => {
+    const isExpanded = expandedGroups.has(group.id);
+
     const getTypeColor = () => {
       switch (type) {
         case 'now': return 'bg-green-500/20 text-green-400 border-green-500/30';
@@ -84,90 +104,102 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
 
     return (
       <GlassCard className="p-4 border border-white/10">
-        <div className="flex items-center justify-between mb-3">
+        <div 
+          className="flex items-center justify-between mb-3 cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors"
+          onClick={() => toggleGroupExpansion(group.id)}
+        >
           <div className="flex items-center gap-2">
             {getTypeIcon()}
             <h4 className="font-semibold text-white">{group.title}</h4>
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="w-4 h-4 text-gray-400" />
-            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <ChevronRight 
+              className={`w-4 h-4 text-gray-400 transition-transform ${
+                isExpanded ? 'rotate-90' : ''
+              }`} 
+            />
           </div>
         </div>
 
-        {/* Route Duration Details - Matching Driver Progress Style */}
-        <div className="space-y-3 mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Home className="w-4 h-4 text-blue-400" />
-              <span className="text-sm text-gray-300">Time to Tow & Lot:</span>
-            </div>
-            <span className="text-white font-medium">{formatTime(group.lotDuration)}</span>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Package className="w-4 h-4 text-orange-400" />
-              <span className="text-sm text-gray-300">Time to Tow & Stash:</span>
-            </div>
-            <span className="text-white font-medium">{formatTime(group.stashDuration)}</span>
-          </div>
-          
-          {group.timeSaved > 0 && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-300">Stash saves:</span>
-              <span className="text-green-400 font-medium">{formatTime(group.timeSaved)}</span>
-            </div>
-          )}
-          
-          <div className="flex items-center justify-between border-t border-white/10 pt-2">
-            <span className="text-sm font-medium text-white">Total Time:</span>
-            <span className="text-white font-bold">{formatTime(group.stashDuration)}</span>
-          </div>
-        </div>
-
-        {/* Start Route Button */}
-        <Button
-          onClick={() => onStartRoute(group)}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 mb-3"
-        >
-          <Navigation className="w-4 h-4 mr-2" />
-          Start Route
-        </Button>
-
-        {/* Vehicle List - Matching Driver Progress Style */}
-        <div className="space-y-2">
-          {group.vehicles.map((vehicle, index) => (
-            <div 
-              key={vehicle.id}
-              className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
-            >
-              <div className="flex items-center gap-3 flex-1">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <div className="flex-1">
-                  <div className="text-white font-medium text-sm">
-                    {vehicle.client}:
-                  </div>
-                  <div className="text-gray-400 text-xs">
-                    {vehicle.year} {vehicle.make} {vehicle.model}
-                  </div>
-                  <div className="text-gray-500 text-xs truncate">
-                    {vehicle.address}
-                  </div>
+        {/* Collapsible Content */}
+        {isExpanded && (
+          <>
+            {/* Route Duration Details - Matching Driver Progress Style */}
+            <div className="space-y-3 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Home className="w-4 h-4 text-blue-400" />
+                  <span className="text-sm text-gray-300">Time to Tow & Lot:</span>
                 </div>
+                <span className="text-white font-medium">{formatTime(group.lotDuration)}</span>
               </div>
               
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onVehicleClick(vehicle)}
-                className="text-gray-400 hover:text-white hover:bg-white/10 p-1"
-              >
-                <Eye className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-orange-400" />
+                  <span className="text-sm text-gray-300">Time to Tow & Stash:</span>
+                </div>
+                <span className="text-white font-medium">{formatTime(group.stashDuration)}</span>
+              </div>
+              
+              {group.timeSaved > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Stash saves:</span>
+                  <span className="text-green-400 font-medium">{formatTime(group.timeSaved)}</span>
+                </div>
+              )}
+              
+              <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                <span className="text-sm font-medium text-white">Total Time:</span>
+                <span className="text-white font-bold">{formatTime(group.stashDuration)}</span>
+              </div>
             </div>
-          ))}
-        </div>
+
+            {/* Start Route Button */}
+            <Button
+              onClick={() => onStartRoute(group)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 mb-3"
+            >
+              <Navigation className="w-4 h-4 mr-2" />
+              Start Route
+            </Button>
+
+            {/* Vehicle List - Matching Driver Progress Style */}
+            <div className="space-y-2">
+              {group.vehicles.map((vehicle, index) => (
+                <div 
+                  key={vehicle.id}
+                  className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <div className="flex-1">
+                      <div className="text-white font-medium text-sm">
+                        {vehicle.client}:
+                      </div>
+                      <div className="text-gray-400 text-xs">
+                        {vehicle.year} {vehicle.make} {vehicle.model}
+                      </div>
+                      <div className="text-gray-500 text-xs truncate">
+                        {vehicle.address}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onVehicleClick(vehicle)}
+                    className="text-gray-400 hover:text-white hover:bg-white/10 p-1"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </GlassCard>
     );
   };
@@ -181,6 +213,37 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
           <p className="text-gray-300 text-sm">
             Now/Next/Later workflow for efficient vehicle pickup
           </p>
+        </div>
+      </div>
+
+      {/* Batch Size Control */}
+      <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h4 className="text-white font-medium">Batch Size</h4>
+            <p className="text-gray-400 text-sm">Adjust vehicles per batch (4-20)</p>
+          </div>
+          <div className="text-white font-bold text-lg">
+            {carsPerGroup} vehicles
+          </div>
+        </div>
+        
+        <input
+          type="range"
+          min="4"
+          max="20"
+          value={carsPerGroup}
+          onChange={(e) => onCarsPerGroupChange(parseInt(e.target.value))}
+          className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+          style={{
+            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((carsPerGroup - 4) / (20 - 4)) * 100}%, #374151 ${((carsPerGroup - 4) / (20 - 4)) * 100}%, #374151 100%)`
+          }}
+        />
+        
+        <div className="flex justify-between text-xs text-gray-400 mt-2">
+          <span>4</span>
+          <span>12</span>
+          <span>20</span>
         </div>
       </div>
 
