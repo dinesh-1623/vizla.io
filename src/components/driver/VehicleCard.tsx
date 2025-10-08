@@ -377,7 +377,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
                 )}
               </div>
 
-              {/* Vehicle Information Panel */}
+              {/* Vehicle Information Panel - Spotter Card Style */}
               <div className="p-6 space-y-4">
                 {/* Vehicle Title */}
                 <div className="flex items-center gap-3 mb-4">
@@ -428,50 +428,6 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
                     </div>
                   )}
                 </div>
-
-                {/* Detailed Information Grid */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-vizla-glassBorder">
-                  <div className="space-y-2">
-                    <div className="text-sm">
-                      <span className="text-vizla-text-muted">VIN:</span>
-                      <p className="text-vizla-text-primary font-mono text-sm">{car.vin}</p>
-                    </div>
-                    {car.parked && (
-                      <div className="text-sm">
-                        <span className="text-vizla-text-muted">Parked:</span>
-                        <p className="text-vizla-text-primary">{car.parked}</p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    {car.locationType && (
-                      <div className="text-sm">
-                        <span className="text-vizla-text-muted">Location:</span>
-                        <p className="text-vizla-text-primary">{car.locationType}</p>
-                      </div>
-                    )}
-                    {car.createdBy && (
-                      <div className="text-sm">
-                        <span className="text-vizla-text-muted">Spotter:</span>
-                        <p className="text-vizla-text-primary">{car.createdBy}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Notes */}
-                {car.notes && car.notes.length > 0 && (
-                  <div className="pt-4 border-t border-vizla-glassBorder">
-                    <span className="text-vizla-text-muted text-sm mb-2 block">Notes:</span>
-                    <div className="flex flex-wrap gap-2">
-                      {car.notes.map((note, index) => (
-                        <span key={index} className="bg-vizla-brand-primary/20 text-vizla-brand-primary text-sm px-3 py-1 rounded-full font-medium">
-                          {note}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* Action Button */}
                 <div className="pt-4 border-t border-vizla-glassBorder">
