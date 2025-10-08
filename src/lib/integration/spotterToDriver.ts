@@ -74,7 +74,13 @@ export function convertSpotterToTowCard(submission: SpotterSubmission): TowCard 
     images: submission.photoUrls || [],
     lat: lat,
     lng: lng,
-    isDefaultCoords: isUsingDefaultCoords
+    isDefaultCoords: isUsingDefaultCoords,
+    // Map spotter information fields
+    reachable: submission.reachable,
+    rusted: submission.rusted,
+    locationType: submission.locationType,
+    parked: submission.parked,
+    notes: submission.notes
   };
 }
 
@@ -123,12 +129,12 @@ export function getSpotterTowCards(): TowCard[] {
 }
 
 /**
- * Get only spotter submissions as TowCards (removed original data)
+ * Get combined TowCards (original cards + spotter submissions)
  */
 export function getCombinedTowCards(originalCards: TowCard[]): TowCard[] {
   const spotterCards = getSpotterTowCards();
-  // Return only spotter submissions, ignore original cards
-  return spotterCards;
+  // Return both original cards (with new spotter fields) and spotter submissions
+  return [...originalCards, ...spotterCards];
 }
 
 /**
