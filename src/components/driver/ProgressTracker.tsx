@@ -6,6 +6,8 @@ interface ProgressTrackerProps {
   shiftLengthHours?: number;
   completedCars: number;
   totalCars: number;
+  group1TimeHours?: number;
+  group2TimeHours?: number;
   className?: string;
 }
 
@@ -22,6 +24,8 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
   shiftLengthHours = 12,
   completedCars,
   totalCars,
+  group1TimeHours = 0,
+  group2TimeHours = 0,
   className = ''
 }) => {
   // Calculate shift utilization percentage
@@ -33,6 +37,32 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
   const carCompletionPercent = useMemo(() => {
     return totalCars > 0 ? Math.round((completedCars / totalCars) * 100) : 0;
   }, [completedCars, totalCars]);
+
+  // Calculate group marker positions on progress bar
+  const groupMarkers = useMemo(() => {
+    const group1Percent = (group1TimeHours / shiftLengthHours) * 100;
+    const group2Percent = ((group1TimeHours + group2TimeHours) / shiftLengthHours) * 100;
+    
+    return {
+      group1: Math.min(group1Percent, 100),
+      group2: Math.min(group2Percent, 100)
+    };
+  }, [group1TimeHours, group2TimeHours, shiftLengthHours]);
+
+  // Calculate current position based on completed cars
+  const currentProgress = useMemo(() => {
+    if (completedCars === 0) return 0;
+    if (completedCars <= totalCars / 2) {
+      // In group 1
+      const group1Progress = (completedCars / (totalCars / 2)) * groupMarkers.group1;
+      return group1Progress;
+    } else {
+      // In group 2
+      const group2Start = groupMarkers.group1;
+      const group2Progress = ((completedCars - totalCars / 2) / (totalCars / 2)) * (groupMarkers.group2 - groupMarkers.group1);
+      return group2Start + group2Progress;
+    }
+  }, [completedCars, totalCars, groupMarkers]);
 
   // Determine performance state
   const performanceState = useMemo<PerformanceState>(() => {
@@ -109,31 +139,44 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
           </span>
           {' '}|{' '}
           <span className={`font-medium ${performanceState.color}`}>
-            {Math.round(shiftUtilization)}% shift completed
-          </span>
-          {' '}|{' '}
-          <span className={`font-medium ${performanceState.color}`}>
             {performanceState.label}
           </span>
         </p>
+        
+        {/* Group Time Breakdown */}
+        {(group1TimeHours > 0 || group2TimeHours > 0) && (
+          <div className="flex items-center gap-4 text-xs text-vizla-text-muted">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+              <span>Group 1: {formatTime(group1TimeHours)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+              <span>Group 2: {formatTime(group2TimeHours)}</span>
+            </div>
+            <div className="text-vizla-text-secondary">
+              Total: {formatTime(group1TimeHours + group2TimeHours)}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress Bar with Group Markers */}
       <div 
         className="relative"
         role="progressbar"
-        aria-valuenow={shiftUtilization}
+        aria-valuenow={currentProgress}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`Shift utilization: ${Math.round(shiftUtilization)}%`}
+        aria-label={`Shift progress: ${Math.round(currentProgress)}%`}
         tabIndex={0}
       >
         {/* Background track */}
-        <div className="h-3 bg-vizla-glass rounded-full overflow-hidden ring-1 ring-vizla-glassBorder">
+        <div className="h-4 bg-vizla-glass rounded-full overflow-hidden ring-1 ring-vizla-glassBorder">
           {/* Animated fill bar */}
           <div
             className={`h-full ${performanceState.bgColor} transition-all duration-300 ease-out relative overflow-hidden`}
-            style={{ width: `${Math.min(shiftUtilization, 100)}%` }}
+            style={{ width: `${Math.min(currentProgress, 100)}%` }}
           >
             {/* Shimmer effect */}
             <div 
@@ -146,11 +189,35 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
           </div>
         </div>
 
-        {/* Performance markers */}
-        <div className="absolute top-0 left-3/4 transform -translate-x-1/2 h-3 w-0.5 bg-vizla-text-muted opacity-30" 
+        {/* Group 1 End Marker */}
+        {groupMarkers.group1 > 0 && groupMarkers.group1 < 100 && (
+          <div className="absolute top-0 transform -translate-x-1/2" 
+               style={{ left: `${groupMarkers.group1}%` }}
+               aria-hidden="true">
+            <div className="h-4 w-0.5 bg-blue-400 opacity-80" />
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 mt-1">
+              <span className="text-xs text-blue-400 font-medium">Group 1 End</span>
+            </div>
+          </div>
+        )}
+
+        {/* Group 2 End Marker */}
+        {groupMarkers.group2 > 0 && groupMarkers.group2 < 100 && (
+          <div className="absolute top-0 transform -translate-x-1/2" 
+               style={{ left: `${groupMarkers.group2}%` }}
+               aria-hidden="true">
+            <div className="h-4 w-0.5 bg-purple-400 opacity-80" />
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 mt-1">
+              <span className="text-xs text-purple-400 font-medium">Group 2 End</span>
+            </div>
+          </div>
+        )}
+
+        {/* Performance threshold markers */}
+        <div className="absolute top-0 left-3/4 transform -translate-x-1/2 h-4 w-0.5 bg-vizla-text-muted opacity-30" 
              aria-hidden="true"
         />
-        <div className="absolute top-3 left-3/4 transform -translate-x-1/2 mt-1">
+        <div className="absolute top-4 left-3/4 transform -translate-x-1/2 mt-1">
           <span className="text-xs text-vizla-text-muted">75%</span>
         </div>
       </div>

@@ -368,44 +368,41 @@ const TowDriver: React.FC = () => {
     );
   };
 
+  // Calculate individual group times for progress tracker
+  const group1TimeUsed = useMemo(() => {
+    if (!computeGroup1Optimization) return 0;
+    
+    switch (group1Mode) {
+      case 'lot':
+        return computeGroup1Optimization.returnTotals.totalMin / 60; // Convert to hours
+      case 'stash':
+        return computeGroup1Optimization.stashTotals.totalMin / 60;
+      case 'optimized':
+        return computeGroup1Optimization.optimizedTotals.totalMin / 60;
+      default:
+        return 0;
+    }
+  }, [computeGroup1Optimization, group1Mode]);
+
+  const group2TimeUsed = useMemo(() => {
+    if (!computeGroup2Optimization) return 0;
+    
+    switch (group2Mode) {
+      case 'lot':
+        return computeGroup2Optimization.returnTotals.totalMin / 60; // Convert to hours
+      case 'stash':
+        return computeGroup2Optimization.stashTotals.totalMin / 60;
+      case 'optimized':
+        return computeGroup2Optimization.optimizedTotals.totalMin / 60;
+      default:
+        return 0;
+    }
+  }, [computeGroup2Optimization, group2Mode]);
+
   // Calculate total time used across both groups for progress tracker
   const totalTimeUsed = useMemo(() => {
-    let group1Time = 0;
-    let group2Time = 0;
-
-    // Get Group 1 time based on selected mode
-    if (computeGroup1Optimization) {
-      switch (group1Mode) {
-        case 'lot':
-          group1Time = computeGroup1Optimization.returnTotals.totalMin;
-          break;
-        case 'stash':
-          group1Time = computeGroup1Optimization.stashTotals.totalMin;
-          break;
-        case 'optimized':
-          group1Time = computeGroup1Optimization.optimizedTotals.totalMin;
-          break;
-      }
-    }
-
-    // Get Group 2 time based on selected mode
-    if (computeGroup2Optimization) {
-      switch (group2Mode) {
-        case 'lot':
-          group2Time = computeGroup2Optimization.returnTotals.totalMin;
-          break;
-        case 'stash':
-          group2Time = computeGroup2Optimization.stashTotals.totalMin;
-          break;
-        case 'optimized':
-          group2Time = computeGroup2Optimization.optimizedTotals.totalMin;
-          break;
-      }
-    }
-
-    // Return total time in hours
-    return (group1Time + group2Time) / 60;
-  }, [computeGroup1Optimization, computeGroup2Optimization, group1Mode, group2Mode]);
+    return group1TimeUsed + group2TimeUsed;
+  }, [group1TimeUsed, group2TimeUsed]);
 
   // Create dynamic run groups based on carsPerRunGroup
   const dynamicRunGroups = useMemo(() => {
@@ -1004,6 +1001,8 @@ const TowDriver: React.FC = () => {
               shiftLengthHours={12} // Default 12-hour shift
               completedCars={completedVehicles.size}
               totalCars={allTowCards.length}
+              group1TimeHours={group1TimeUsed}
+              group2TimeHours={group2TimeUsed}
             />
           </GlassCard>
         )}
