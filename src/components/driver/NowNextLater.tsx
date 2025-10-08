@@ -23,7 +23,9 @@ interface RouteGroup {
     year: number;
     make: string;
     model: string;
-    address: string;
+    street: string;
+    city: string;
+    zip: string;
     lat?: number;
     lng?: number;
     img?: string;
@@ -186,7 +188,7 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                     <div className="flex-1">
                       <div className="text-white font-medium text-sm">
-                        {vehicle.address}:
+                        {vehicle.street}, {vehicle.zip}:
                       </div>
                       <div className="text-gray-400 text-xs">
                         {vehicle.year} {vehicle.make} {vehicle.model}
