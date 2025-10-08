@@ -86,8 +86,8 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden bg-gray-900 border-gray-700">
-        <DialogHeader className="flex flex-row items-center justify-between">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden bg-gray-900/80 backdrop-blur-md border border-gray-600/30 shadow-2xl">
+        <DialogHeader className="flex flex-row items-center justify-between border-b border-gray-600/30">
           <DialogTitle className="text-2xl font-bold text-white bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
             Vehicle Details
           </DialogTitle>
@@ -169,11 +169,30 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
                 </div>
               </div>
             )}
+
+            {/* View on Map Button */}
+            <div className="pt-2">
+              <Button
+                onClick={() => {
+                  // Open Google Maps with vehicle location
+                  if (vehicle.lat && vehicle.lng) {
+                    window.open(
+                      `https://www.google.com/maps?q=${vehicle.lat},${vehicle.lng}`,
+                      '_blank'
+                    );
+                  }
+                }}
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 shadow-lg"
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                View on Map
+              </Button>
+            </div>
           </div>
 
           {/* Vehicle Details */}
-          <div className="space-y-6">
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+          <div className="space-y-4">
+            <div className="bg-gray-900/40 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
               <h3 className="text-3xl font-bold text-white mb-3 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                 {vehicle.year} {vehicle.make} {vehicle.model}
               </h3>
@@ -224,7 +243,7 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
 
               {/* Spotter Information */}
               {vehicle.reachable && (
-                <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30">
+                <div className="bg-gray-900/40 backdrop-blur-sm rounded-lg p-3 border border-gray-600/30 shadow-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50">
                       <div className={`w-4 h-4 rounded-full ${
@@ -244,7 +263,7 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
               )}
 
               {vehicle.rusted && (
-                <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30">
+                <div className="bg-gray-900/40 backdrop-blur-sm rounded-lg p-3 border border-gray-600/30 shadow-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50">
                       <div className={`w-4 h-4 rounded-full ${
@@ -264,7 +283,7 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
               )}
 
               {vehicle.locationType && (
-                <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30">
+                <div className="bg-gray-900/40 backdrop-blur-sm rounded-lg p-3 border border-gray-600/30 shadow-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50">
                       <div className="w-4 h-4 rounded-full bg-blue-400"></div>
@@ -280,7 +299,7 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
               )}
 
               {vehicle.parked && (
-                <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30">
+                <div className="bg-gray-900/40 backdrop-blur-sm rounded-lg p-3 border border-gray-600/30 shadow-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50">
                       <div className="w-4 h-4 rounded-full bg-purple-400"></div>
@@ -296,7 +315,7 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
               )}
 
               {vehicle.notes && vehicle.notes.length > 0 && (
-                <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30">
+                <div className="bg-gray-900/40 backdrop-blur-sm rounded-lg p-3 border border-gray-600/30 shadow-lg">
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50 mt-1">
                       <div className="w-4 h-4 rounded-full bg-yellow-400"></div>
@@ -319,24 +338,6 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
               )}
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-2 pt-4">
-              <Button
-                onClick={() => {
-                  // Open Google Maps with vehicle location
-                  if (vehicle.lat && vehicle.lng) {
-                    window.open(
-                      `https://www.google.com/maps?q=${vehicle.lat},${vehicle.lng}`,
-                      '_blank'
-                    );
-                  }
-                }}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-0"
-              >
-                <MapPin className="w-4 h-4 mr-2" />
-                View on Map
-              </Button>
-            </div>
           </div>
         </div>
       </DialogContent>
