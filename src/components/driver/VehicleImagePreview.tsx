@@ -88,7 +88,7 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden bg-gray-900/80 backdrop-blur-md border border-gray-600/30 shadow-2xl">
         <DialogHeader className="flex flex-row items-center justify-between border-b border-gray-600/30">
-          <DialogTitle className="text-2xl font-bold text-white bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+          <DialogTitle className="text-2xl font-bold text-gray-200">
             Vehicle Details
           </DialogTitle>
           <Button
@@ -182,7 +182,7 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
                     );
                   }
                 }}
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 shadow-lg"
+                className="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600 hover:border-gray-500 transition-colors"
               >
                 <MapPin className="w-4 h-4 mr-2" />
                 View on Map
@@ -193,14 +193,14 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
           {/* Vehicle Details */}
           <div className="space-y-4">
             <div className="bg-gray-900/40 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
-              <h3 className="text-3xl font-bold text-white mb-3 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              <h3 className="text-3xl font-bold text-gray-100 mb-3">
                 {vehicle.year} {vehicle.make} {vehicle.model}
               </h3>
               <div className="flex items-center gap-3">
-                <Badge className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-300 border border-blue-400/30 px-3 py-1">
+                <Badge className="bg-gray-700/50 text-gray-300 border border-gray-600 px-3 py-1">
                   {vehicle.color}
                 </Badge>
-                <Badge className="bg-gradient-to-r from-green-500/20 to-green-600/20 text-green-300 border border-green-400/30 px-3 py-1">
+                <Badge className="bg-gray-700/50 text-gray-300 border border-gray-600 px-3 py-1">
                   {vehicle.plate}
                 </Badge>
               </div>
@@ -247,13 +247,13 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50">
                       <div className={`w-4 h-4 rounded-full ${
-                        vehicle.reachable === 'Reachable' ? 'bg-green-400' : 'bg-red-400'
+                        vehicle.reachable === 'Reachable' ? 'bg-green-600' : 'bg-red-600'
                       }`}></div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-400 uppercase tracking-wide">Reachable</div>
                       <div className={`text-sm font-semibold ${
-                        vehicle.reachable === 'Reachable' ? 'text-green-400' : 'text-red-400'
+                        vehicle.reachable === 'Reachable' ? 'text-green-600' : 'text-red-600'
                       }`}>
                         {vehicle.reachable === 'Reachable' ? '✓ Reachable' : '✗ Not reachable'}
                       </div>
@@ -267,13 +267,13 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50">
                       <div className={`w-4 h-4 rounded-full ${
-                        vehicle.rusted === 'Not rusted' ? 'bg-green-400' : 'bg-orange-400'
+                        vehicle.rusted === 'Not rusted' ? 'bg-green-600' : 'bg-orange-600'
                       }`}></div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-400 uppercase tracking-wide">Condition</div>
                       <div className={`text-sm font-semibold ${
-                        vehicle.rusted === 'Not rusted' ? 'text-green-400' : 'text-orange-400'
+                        vehicle.rusted === 'Not rusted' ? 'text-green-600' : 'text-orange-600'
                       }`}>
                         {vehicle.rusted === 'Not rusted' ? '✓ Good condition' : '⚠ Rusted'}
                       </div>
@@ -286,11 +286,11 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
                 <div className="bg-gray-900/40 backdrop-blur-sm rounded-lg p-3 border border-gray-600/30 shadow-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50">
-                      <div className="w-4 h-4 rounded-full bg-blue-400"></div>
+                      <div className="w-4 h-4 rounded-full bg-blue-600"></div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-400 uppercase tracking-wide">Location Type</div>
-                      <div className="text-sm font-semibold text-blue-400">
+                      <div className="text-sm font-semibold text-blue-600">
                         {vehicle.locationType}
                       </div>
                     </div>
@@ -302,11 +302,11 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
                 <div className="bg-gray-900/40 backdrop-blur-sm rounded-lg p-3 border border-gray-600/30 shadow-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50">
-                      <div className="w-4 h-4 rounded-full bg-purple-400"></div>
+                      <div className="w-4 h-4 rounded-full bg-purple-600"></div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-400 uppercase tracking-wide">Parked</div>
-                      <div className="text-sm font-semibold text-purple-400">
+                      <div className="text-sm font-semibold text-purple-600">
                         {vehicle.parked}
                       </div>
                     </div>
@@ -318,7 +318,7 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
                 <div className="bg-gray-900/40 backdrop-blur-sm rounded-lg p-3 border border-gray-600/30 shadow-lg">
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700/50 mt-1">
-                      <div className="w-4 h-4 rounded-full bg-yellow-400"></div>
+                      <div className="w-4 h-4 rounded-full bg-yellow-600"></div>
                     </div>
                     <div className="flex-1">
                       <div className="text-xs text-gray-400 uppercase tracking-wide mb-3">Notes</div>
@@ -326,7 +326,7 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
                         {vehicle.notes.map((note, index) => (
                           <span 
                             key={index}
-                            className="text-xs px-3 py-1 rounded-full bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-300 border border-yellow-400/30"
+                            className="text-xs px-3 py-1 rounded-full bg-gray-700/50 text-gray-300 border border-gray-600"
                           >
                             {note}
                           </span>
