@@ -81,12 +81,9 @@ const TowRouteGroupCard: React.FC<TowRouteGroupCardProps> = ({
                     {car.year} {car.make} {car.model}
                   </div>
                   <div className="text-xs text-vizla-text-muted">
-                    {car.client} • {car.tag}
+                    {car.street}, {car.zip}
                   </div>
                 </div>
-              </div>
-              <div className="text-xs text-vizla-text-muted">
-                {car.city}, {car.zip}
               </div>
             </div>
           ))}

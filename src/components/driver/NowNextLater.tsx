@@ -186,13 +186,10 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                     <div className="flex-1">
                       <div className="text-white font-medium text-sm">
-                        {vehicle.client}:
+                        {vehicle.address}:
                       </div>
                       <div className="text-gray-400 text-xs">
                         {vehicle.year} {vehicle.make} {vehicle.model}
-                      </div>
-                      <div className="text-gray-500 text-xs truncate">
-                        {vehicle.address}
                       </div>
                     </div>
                   </div>
