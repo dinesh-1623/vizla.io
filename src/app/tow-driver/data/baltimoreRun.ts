@@ -108,6 +108,34 @@ function generateTowCard(id: string, client: string, fullAddress: string): TowCa
   const color = COLORS[parseInt(id) % COLORS.length];
   const imgIndex = (parseInt(id) % 16) + 1; // 1-16
   
+  // Generate spotter information
+  const reachableOptions: ('Reachable' | 'Not reachable')[] = ['Reachable', 'Not reachable'];
+  const rustedOptions: ('Rusted' | 'Not rusted')[] = ['Rusted', 'Not rusted'];
+  const locationTypeOptions = [
+    'Apartment Secured', 'Apartment Unsecured', 'Parking Lot Secured', 
+    'Parking Lot Unsecured', 'POE', 'Retail', 'Single Family Home', 
+    'Single Family Home Gated', 'Townhouse'
+  ];
+  const parkedOptions = ['Pulled in', 'Backed in', 'Parallel'];
+  const sampleNotes = [
+    'Keys in glove box', 'Alarm activated', 'Flat tire', 'Blocked by other vehicles',
+    'Easy access', 'Gate code required', 'Call before pickup', 'High security area'
+  ];
+  
+  // Generate random spotter data
+  const reachable = reachableOptions[parseInt(id) % reachableOptions.length];
+  const rusted = rustedOptions[parseInt(id) % rustedOptions.length];
+  const locationType = locationTypeOptions[parseInt(id) % locationTypeOptions.length];
+  const parked = parkedOptions[parseInt(id) % parkedOptions.length];
+  
+  // Generate 0-3 random notes
+  const numNotes = parseInt(id) % 4; // 0-3 notes
+  const notes = [];
+  for (let i = 0; i < numNotes; i++) {
+    const noteIndex = (parseInt(id) + i) % sampleNotes.length;
+    notes.push(sampleNotes[noteIndex]);
+  }
+  
   return {
     id,
     day: 'Friday',
@@ -122,7 +150,13 @@ function generateTowCard(id: string, client: string, fullAddress: string): TowCa
     city,
     zip,
     fullAddress,
-    img: `/images/cars/vehicle-${imgIndex}.jpg`
+    img: `/images/cars/vehicle-${imgIndex}.jpg`,
+    // Spotter information
+    reachable,
+    rusted,
+    locationType,
+    parked,
+    notes: notes.length > 0 ? notes : undefined
   };
 }
 
