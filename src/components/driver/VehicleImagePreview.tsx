@@ -46,10 +46,12 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
   onClose
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
+  const [imageError, setImageError] = React.useState(false);
 
   React.useEffect(() => {
     if (vehicle && isOpen) {
       setCurrentImageIndex(0);
+      setImageError(false); // Reset image error when vehicle changes
     }
   }, [vehicle, isOpen]);
 
@@ -62,7 +64,6 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
     : [];
 
   const currentImage = images[currentImageIndex];
-  const [imageError, setImageError] = React.useState(false);
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % images.length);
