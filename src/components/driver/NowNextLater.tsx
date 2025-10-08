@@ -10,7 +10,8 @@ import {
   Navigation, 
   Eye,
   ChevronRight,
-  Zap
+  Zap,
+  CheckCircle
 } from 'lucide-react';
 
 interface RouteGroup {
@@ -104,69 +105,78 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
 
     return (
       <GlassCard className="p-4 border border-white/10">
-        <div 
-          className="flex items-center justify-between mb-3 cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors"
-          onClick={() => toggleGroupExpansion(group.id)}
-        >
+        {/* Route Group Header - Always Visible */}
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             {getTypeIcon()}
             <h4 className="font-semibold text-white">{group.title}</h4>
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="w-4 h-4 text-gray-400" />
+          </div>
+        </div>
+
+        {/* Route Duration Details - Always Visible */}
+        <div className="space-y-3 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Home className="w-4 h-4 text-blue-400" />
+              <span className="text-sm text-gray-300">Time to Tow & Lot:</span>
+            </div>
+            <span className="text-white font-medium">{formatTime(group.lotDuration)}</span>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-orange-400" />
+              <span className="text-sm text-gray-300">Time to Tow & Stash:</span>
+            </div>
+            <span className="text-white font-medium">{formatTime(group.stashDuration)}</span>
+          </div>
+          
+          {group.timeSaved > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-300">Stash saves:</span>
+              <span className="text-green-400 font-medium">{formatTime(group.timeSaved)}</span>
+            </div>
+          )}
+          
+          <div className="flex items-center justify-between border-t border-white/10 pt-2">
+            <span className="text-sm font-medium text-white">Total Time:</span>
+            <span className="text-white font-bold">{formatTime(group.stashDuration)}</span>
+          </div>
+        </div>
+
+        {/* Start Route Button - Always Visible */}
+        <Button
+          onClick={() => onStartRoute(group)}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 mb-3"
+        >
+          <Navigation className="w-4 h-4 mr-2" />
+          Start Route
+        </Button>
+
+        {/* Vehicle List Dropdown - Collapsible */}
+        <div className="mb-3">
+          <div 
+            className="flex items-center justify-between cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors"
+            onClick={() => toggleGroupExpansion(group.id)}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-white">
+                {group.vehicles.length} Vehicles
+              </span>
+            </div>
             <ChevronRight 
               className={`w-4 h-4 text-gray-400 transition-transform ${
                 isExpanded ? 'rotate-90' : ''
               }`} 
             />
           </div>
-        </div>
-
-        {/* Collapsible Content */}
-        {isExpanded && (
-          <>
-            {/* Route Duration Details - Matching Driver Progress Style */}
-            <div className="space-y-3 mb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Home className="w-4 h-4 text-blue-400" />
-                  <span className="text-sm text-gray-300">Time to Tow & Lot:</span>
-                </div>
-                <span className="text-white font-medium">{formatTime(group.lotDuration)}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Package className="w-4 h-4 text-orange-400" />
-                  <span className="text-sm text-gray-300">Time to Tow & Stash:</span>
-                </div>
-                <span className="text-white font-medium">{formatTime(group.stashDuration)}</span>
-              </div>
-              
-              {group.timeSaved > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-300">Stash saves:</span>
-                  <span className="text-green-400 font-medium">{formatTime(group.timeSaved)}</span>
-                </div>
-              )}
-              
-              <div className="flex items-center justify-between border-t border-white/10 pt-2">
-                <span className="text-sm font-medium text-white">Total Time:</span>
-                <span className="text-white font-bold">{formatTime(group.stashDuration)}</span>
-              </div>
-            </div>
-
-            {/* Start Route Button */}
-            <Button
-              onClick={() => onStartRoute(group)}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 mb-3"
-            >
-              <Navigation className="w-4 h-4 mr-2" />
-              Start Route
-            </Button>
-
-            {/* Vehicle List - Matching Driver Progress Style */}
-            <div className="space-y-2">
+          
+          {/* Collapsible Vehicle List */}
+          {isExpanded && (
+            <div className="mt-3 space-y-2">
               {group.vehicles.map((vehicle, index) => (
                 <div 
                   key={vehicle.id}
@@ -198,8 +208,17 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
                 </div>
               ))}
             </div>
-          </>
-        )}
+          )}
+        </div>
+
+        {/* Mark Batch Done Button - Always Visible */}
+        <Button
+          onClick={() => onMarkBatchDone(group)}
+          className="w-full bg-green-600 hover:bg-green-700 text-white border-0"
+        >
+          <CheckCircle className="w-4 h-4 mr-2" />
+          Mark Batch Done
+        </Button>
       </GlassCard>
     );
   };
