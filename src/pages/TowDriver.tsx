@@ -372,32 +372,98 @@ const TowDriver: React.FC = () => {
   const group1TimeUsed = useMemo(() => {
     if (!computeGroup1Optimization) return 0;
     
+    // Calculate actual time used based on completed vehicles in Group 1
+    const group1CompletedCars = group1Points.filter(point => completedVehicles.has(point.id)).length;
+    const group1TotalCars = group1Points.length;
+    
+    if (group1TotalCars === 0) return 0;
+    
+    // Calculate proportional time based on completed vehicles
+    const completionRatio = group1CompletedCars / group1TotalCars;
+    
+    let plannedTimeHours = 0;
     switch (group1Mode) {
       case 'lot':
-        return computeGroup1Optimization.returnTotals.totalMin / 60; // Convert to hours
+        plannedTimeHours = computeGroup1Optimization.returnTotals.totalMin / 60;
+        break;
       case 'stash':
-        return computeGroup1Optimization.stashTotals.totalMin / 60;
+        plannedTimeHours = computeGroup1Optimization.stashTotals.totalMin / 60;
+        break;
       case 'optimized':
-        return computeGroup1Optimization.optimizedTotals.totalMin / 60;
+        plannedTimeHours = computeGroup1Optimization.optimizedTotals.totalMin / 60;
+        break;
       default:
         return 0;
     }
-  }, [computeGroup1Optimization, group1Mode]);
+    
+    return plannedTimeHours * completionRatio;
+  }, [computeGroup1Optimization, group1Mode, group1Points, completedVehicles]);
 
   const group2TimeUsed = useMemo(() => {
     if (!computeGroup2Optimization) return 0;
     
+    // Calculate actual time used based on completed vehicles in Group 2
+    const group2CompletedCars = group2Points.filter(point => completedVehicles.has(point.id)).length;
+    const group2TotalCars = group2Points.length;
+    
+    if (group2TotalCars === 0) return 0;
+    
+    // Calculate proportional time based on completed vehicles
+    const completionRatio = group2CompletedCars / group2TotalCars;
+    
+    let plannedTimeHours = 0;
     switch (group2Mode) {
       case 'lot':
-        return computeGroup2Optimization.returnTotals.totalMin / 60; // Convert to hours
+        plannedTimeHours = computeGroup2Optimization.returnTotals.totalMin / 60;
+        break;
       case 'stash':
-        return computeGroup2Optimization.stashTotals.totalMin / 60;
+        plannedTimeHours = computeGroup2Optimization.stashTotals.totalMin / 60;
+        break;
       case 'optimized':
-        return computeGroup2Optimization.optimizedTotals.totalMin / 60;
+        plannedTimeHours = computeGroup2Optimization.optimizedTotals.totalMin / 60;
+        break;
       default:
         return 0;
     }
-  }, [computeGroup2Optimization, group2Mode]);
+    
+    return plannedTimeHours * completionRatio;
+  }, [computeGroup2Optimization, group2Mode, group2Points, completedVehicles]);
+
+  // Calculate total planned time across both groups for progress tracker
+  const totalPlannedTime = useMemo(() => {
+    let group1PlannedTime = 0;
+    let group2PlannedTime = 0;
+    
+    if (computeGroup1Optimization) {
+      switch (group1Mode) {
+        case 'lot':
+          group1PlannedTime = computeGroup1Optimization.returnTotals.totalMin / 60;
+          break;
+        case 'stash':
+          group1PlannedTime = computeGroup1Optimization.stashTotals.totalMin / 60;
+          break;
+        case 'optimized':
+          group1PlannedTime = computeGroup1Optimization.optimizedTotals.totalMin / 60;
+          break;
+      }
+    }
+    
+    if (computeGroup2Optimization) {
+      switch (group2Mode) {
+        case 'lot':
+          group2PlannedTime = computeGroup2Optimization.returnTotals.totalMin / 60;
+          break;
+        case 'stash':
+          group2PlannedTime = computeGroup2Optimization.stashTotals.totalMin / 60;
+          break;
+        case 'optimized':
+          group2PlannedTime = computeGroup2Optimization.optimizedTotals.totalMin / 60;
+          break;
+      }
+    }
+    
+    return group1PlannedTime + group2PlannedTime;
+  }, [computeGroup1Optimization, computeGroup2Optimization, group1Mode, group2Mode]);
 
   // Calculate total time used across both groups for progress tracker
   const totalTimeUsed = useMemo(() => {
@@ -997,10 +1063,10 @@ const TowDriver: React.FC = () => {
         {activeTowCards.length > 0 && (
           <GlassCard className="mb-6">
             <ProgressTracker
-              totalTimeHours={totalTimeUsed}
+              totalTimeHours={totalPlannedTime}
               shiftLengthHours={12} // Default 12-hour shift
               completedCars={completedVehicles.size}
-              totalCars={allTowCards.length}
+              totalCars={activeTowCards.length}
               group1TimeHours={group1TimeUsed}
               group2TimeHours={group2TimeUsed}
             />
