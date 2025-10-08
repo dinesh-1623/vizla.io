@@ -74,15 +74,7 @@ export function convertSpotterToTowCard(submission: SpotterSubmission): TowCard 
     images: submission.photoUrls || [],
     lat: lat,
     lng: lng,
-    isDefaultCoords: isUsingDefaultCoords,
-    // Include all spotter information
-    createdBy: submission.createdBy,
-    createdAtISO: submission.createdAtISO,
-    reachable: submission.reachable,
-    rusted: submission.rusted,
-    locationType: submission.locationType,
-    parked: submission.parked,
-    notes: submission.notes
+    isDefaultCoords: isUsingDefaultCoords
   };
 }
 

@@ -30,12 +30,6 @@ interface RouteGroup {
     lng?: number;
     img?: string;
     images?: string[];
-    // Spotter information fields
-    reachable?: 'Reachable' | 'Not reachable';
-    rusted?: 'Rusted' | 'Not rusted';
-    locationType?: 'Apartment Secured' | 'Apartment Unsecured' | 'Parking Lot Secured' | 'Parking Lot Unsecured' | 'POE' | 'Retail' | 'Single Family Home' | 'Single Family Home Gated' | 'Townhouse';
-    parked?: 'Pulled in' | 'Backed in' | 'Parallel';
-    notes?: string[];
   }>;
   lotDuration: number; // minutes to lot
   stashDuration: number; // minutes to stash
@@ -199,45 +193,6 @@ export const NowNextLater: React.FC<NowNextLaterProps> = ({
                       <div className="text-gray-400 text-xs">
                         {vehicle.year} {vehicle.make} {vehicle.model}
                       </div>
-                      
-                      {/* Spotter Information */}
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {vehicle.reachable && (
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            vehicle.reachable === 'Reachable' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                          }`}>
-                            {vehicle.reachable === 'Reachable' ? '✓ Reachable' : '✗ Not reachable'}
-                          </span>
-                        )}
-                        {vehicle.rusted && (
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            vehicle.rusted === 'Not rusted' ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-400'
-                          }`}>
-                            {vehicle.rusted === 'Not rusted' ? '✓ Good condition' : '⚠ Rusted'}
-                          </span>
-                        )}
-                        {vehicle.locationType && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">
-                            {vehicle.locationType}
-                          </span>
-                        )}
-                        {vehicle.parked && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">
-                            {vehicle.parked}
-                          </span>
-                        )}
-                      </div>
-                      
-                      {/* Notes */}
-                      {vehicle.notes && vehicle.notes.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {vehicle.notes.map((note, noteIndex) => (
-                            <span key={noteIndex} className="text-xs px-2 py-0.5 rounded-full bg-vizla-brand-primary/20 text-vizla-brand-primary">
-                              {note}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                   

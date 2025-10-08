@@ -19,13 +19,11 @@ export type TowCard = {
   lng?: number;
   isDefaultCoords?: boolean; // true if using default Baltimore coordinates
   // Spotter information fields
-  createdBy?: string; // spotter name
-  createdAtISO?: string; // spotter submission date
   reachable?: 'Reachable' | 'Not reachable';
   rusted?: 'Rusted' | 'Not rusted';
   locationType?: 'Apartment Secured' | 'Apartment Unsecured' | 'Parking Lot Secured' | 'Parking Lot Unsecured' | 'POE' | 'Retail' | 'Single Family Home' | 'Single Family Home Gated' | 'Townhouse';
   parked?: 'Pulled in' | 'Backed in' | 'Parallel';
-  notes?: string[]; // spotter notes
+  notes?: string[];
 };
 
 export const LOT_ADDRESS = "4221 Curtis Ave, Baltimore, MD 21226";

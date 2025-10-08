@@ -26,6 +26,12 @@ interface Vehicle {
   images?: string[];
   lat?: number;
   lng?: number;
+  // Spotter information fields
+  reachable?: 'Reachable' | 'Not reachable';
+  rusted?: 'Rusted' | 'Not rusted';
+  locationType?: 'Apartment Secured' | 'Apartment Unsecured' | 'Parking Lot Secured' | 'Parking Lot Unsecured' | 'POE' | 'Retail' | 'Single Family Home' | 'Single Family Home Gated' | 'Townhouse';
+  parked?: 'Pulled in' | 'Backed in' | 'Parallel';
+  notes?: string[];
 }
 
 interface VehicleImagePreviewProps {
@@ -210,6 +216,92 @@ export const VehicleImagePreview: React.FC<VehicleImagePreviewProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Spotter Information */}
+              {vehicle.reachable && (
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 flex items-center justify-center">
+                    <div className={`w-3 h-3 rounded-full ${
+                      vehicle.reachable === 'Reachable' ? 'bg-green-400' : 'bg-red-400'
+                    }`}></div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-400">Reachable</div>
+                    <div className={`text-sm font-medium ${
+                      vehicle.reachable === 'Reachable' ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {vehicle.reachable === 'Reachable' ? '✓ Reachable' : '✗ Not reachable'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {vehicle.rusted && (
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 flex items-center justify-center">
+                    <div className={`w-3 h-3 rounded-full ${
+                      vehicle.rusted === 'Not rusted' ? 'bg-green-400' : 'bg-orange-400'
+                    }`}></div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-400">Condition</div>
+                    <div className={`text-sm font-medium ${
+                      vehicle.rusted === 'Not rusted' ? 'text-green-400' : 'text-orange-400'
+                    }`}>
+                      {vehicle.rusted === 'Not rusted' ? '✓ Good condition' : '⚠ Rusted'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {vehicle.locationType && (
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 flex items-center justify-center">
+                    <div className="w-3 h-3 rounded-full bg-blue-400"></div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-400">Location Type</div>
+                    <div className="text-sm font-medium text-blue-400">
+                      {vehicle.locationType}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {vehicle.parked && (
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 flex items-center justify-center">
+                    <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-400">Parked</div>
+                    <div className="text-sm font-medium text-purple-400">
+                      {vehicle.parked}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {vehicle.notes && vehicle.notes.length > 0 && (
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 flex items-center justify-center mt-1">
+                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm text-gray-400 mb-2">Notes</div>
+                    <div className="flex flex-wrap gap-2">
+                      {vehicle.notes.map((note, index) => (
+                        <span 
+                          key={index}
+                          className="text-xs px-2 py-1 rounded-full bg-yellow-400/20 text-yellow-400 border border-yellow-400/30"
+                        >
+                          {note}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}
