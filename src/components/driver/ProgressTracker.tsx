@@ -49,20 +49,24 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
     };
   }, [group1TimeHours, group2TimeHours, shiftLengthHours]);
 
-  // Calculate current position based on completed cars
+  // Calculate current position based on completed cars and time used
   const currentProgress = useMemo(() => {
-    if (completedCars === 0) return 0;
-    if (completedCars <= totalCars / 2) {
-      // In group 1
-      const group1Progress = (completedCars / (totalCars / 2)) * groupMarkers.group1;
-      return group1Progress;
-    } else {
-      // In group 2
-      const group2Start = groupMarkers.group1;
-      const group2Progress = ((completedCars - totalCars / 2) / (totalCars / 2)) * (groupMarkers.group2 - groupMarkers.group1);
-      return group2Start + group2Progress;
-    }
-  }, [completedCars, totalCars, groupMarkers]);
+    // Use shift utilization as the primary progress indicator
+    // This shows actual time progress vs shift length
+    const progress = Math.min(shiftUtilization, 100);
+    
+    // Debug logging
+    console.log('ProgressTracker Debug:', {
+      totalTimeHours,
+      shiftLengthHours,
+      shiftUtilization,
+      currentProgress: progress,
+      group1TimeHours,
+      group2TimeHours
+    });
+    
+    return progress;
+  }, [shiftUtilization, totalTimeHours, shiftLengthHours, group1TimeHours, group2TimeHours]);
 
   // Determine performance state
   const performanceState = useMemo<PerformanceState>(() => {
@@ -141,6 +145,10 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
           <span className={`font-medium ${performanceState.color}`}>
             {performanceState.label}
           </span>
+          {' '}|{' '}
+          <span className="text-vizla-text-primary font-medium">
+            {Math.round(shiftUtilization)}% complete
+          </span>
         </p>
         
         {/* Group Time Breakdown */}
@@ -176,7 +184,7 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
           {/* Animated fill bar */}
           <div
             className={`h-full ${performanceState.bgColor} transition-all duration-300 ease-out relative overflow-hidden`}
-            style={{ width: `${Math.min(currentProgress, 100)}%` }}
+            style={{ width: `${Math.max(Math.min(currentProgress, 100), 2)}%` }}
           >
             {/* Shimmer effect */}
             <div 
