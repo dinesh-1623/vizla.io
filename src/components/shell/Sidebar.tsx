@@ -119,40 +119,42 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
         </div>
 
         {/* Navigation */}
-        <nav aria-label="Primary" className="flex-1">
-          {NAV_SECTIONS.map((section, sectionIndex) => (
-            <div key={section.title}>
-              {sectionIndex > 0 && (
-                <div className="my-2 border-t border-white/10" />
-              )}
-              <h2 className="text-xs font-medium text-vizla-text-muted px-1 mt-3 mb-1 uppercase tracking-wider">
-                {section.title}
-              </h2>
-              <div className="space-y-1">
-                {section.items.map((item) => (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className={`
-                      flex items-center justify-between rounded-xl px-3 py-2 transition-colors
-                      hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus
-                      ${isActive(item.href) 
-                        ? 'bg-vizla-glassElev text-vizla-text-primary ring-1 ring-vizla-glassBorder' 
-                        : 'text-vizla-text-secondary'
-                      }
-                    `}
-                  >
-                    <span className="text-sm font-medium">{item.label}</span>
-                    {item.badge !== undefined && item.badge > 0 && (
-                      <span className="min-w-[1.25rem] h-5 inline-flex items-center justify-center rounded-full bg-vizla-brand-primary/20 text-vizla-brand-primary text-[11px] px-1.5">
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                ))}
+        <nav aria-label="Primary" className="flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/30">
+          <div className="space-y-4">
+            {NAV_SECTIONS.map((section, sectionIndex) => (
+              <div key={section.title}>
+                {sectionIndex > 0 && (
+                  <div className="my-2 border-t border-white/10" />
+                )}
+                <h2 className="text-xs font-medium text-vizla-text-muted px-1 mt-3 mb-1 uppercase tracking-wider">
+                  {section.title}
+                </h2>
+                <div className="space-y-1">
+                  {section.items.map((item) => (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      className={`
+                        flex items-center justify-between rounded-xl px-3 py-2 transition-colors
+                        hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus
+                        ${isActive(item.href) 
+                          ? 'bg-vizla-glassElev text-vizla-text-primary ring-1 ring-vizla-glassBorder' 
+                          : 'text-vizla-text-secondary'
+                        }
+                      `}
+                    >
+                      <span className="text-sm font-medium">{item.label}</span>
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span className="min-w-[1.25rem] h-5 inline-flex items-center justify-center rounded-full bg-vizla-brand-primary/20 text-vizla-brand-primary text-[11px] px-1.5">
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </nav>
       </div>
     </aside>
