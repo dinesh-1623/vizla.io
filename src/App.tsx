@@ -21,6 +21,7 @@ import SpotterSubmissions from "./pages/spotters/Submissions";
 import TowTrucks from "./pages/TowTrucks";
 import Users from "./pages/admin/Users";
 import Shifts from "./pages/admin/Shifts";
+import ShiftManagement from "./pages/admin/ShiftManagement";
 import ClientPreferences from "./pages/admin/ClientPreferences";
 import ZoneCapacity from "./pages/manager/ZoneCapacity";
 import Scheduling from "./pages/admin/Scheduling";
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/admin/fleet" element={<Fleet />} />
             <Route path="/admin/users" element={<Users />} />
             <Route path="/admin/shifts" element={<Shifts />} />
+            <Route path="/admin/shift-management" element={<ShiftManagement />} />
             <Route path="/manager/zone-capacity" element={<ZoneCapacity />} />
             <Route path="/admin/clients" element={<ClientPreferences />} />
             <Route path="/admin/scheduling" element={<Scheduling />} />
