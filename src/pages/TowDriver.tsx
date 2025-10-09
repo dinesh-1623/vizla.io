@@ -44,8 +44,9 @@ import { runPerformanceTest } from '@/lib/assignment/performanceTest';
 import { NowNextLater } from '@/components/driver/NowNextLater';
 import { VehicleImagePreview } from '@/components/driver/VehicleImagePreview';
 import { ShiftUtilizationMeter } from '@/components/driver/ShiftUtilizationMeter';
+import { EnhancedShiftProgress } from '@/components/driver/EnhancedShiftProgress';
 import { GroupStatusPill } from '@/components/driver/GroupStatusPill';
-import { calculateShiftUtilization, calculateGroupUtilization, formatTimeDisplay, type ShiftStatus } from '@/lib/shiftUtilization';
+import { calculateShiftUtilization, calculateEnhancedShiftMetrics, calculateGroupUtilization, formatTimeDisplay, type ShiftStatus } from '@/lib/shiftUtilization';
 import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users, Zap } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { FilterChips } from '@/components/ui/FilterChips';
@@ -81,6 +82,7 @@ const TowDriver: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [carsPerRunGroup, setCarsPerRunGroup] = useState(10); // Default 10 cars per group
+  const [shiftLength, setShiftLength] = useState(12); // Adjustable shift length (1-12 hours)
   
   const [weekRange, setWeekRange] = useState('');
   const [client, setClient] = useState('');
@@ -432,12 +434,29 @@ const TowDriver: React.FC = () => {
     return group1TimeUsed + group2TimeUsed;
   }, [group1TimeUsed, group2TimeUsed]);
 
-  // Shift Utilization Calculations
-  const shiftLength = 12; // 12-hour shift
-  
+  // Enhanced Shift Utilization Calculations
   const shiftUtilization = useMemo(() => {
     return calculateShiftUtilization(totalTimeUsed, shiftLength);
   }, [totalTimeUsed, shiftLength]);
+
+  // Calculate completed vehicles count
+  const vehiclesCompleted = useMemo(() => {
+    return completedVehicles.size;
+  }, [completedVehicles]);
+
+  const totalVehicles = useMemo(() => {
+    return activeTowCards.length;
+  }, [activeTowCards.length]);
+
+  // Enhanced shift metrics with veteran-level analysis
+  const enhancedShiftMetrics = useMemo(() => {
+    return calculateEnhancedShiftMetrics(
+      totalTimeUsed,
+      vehiclesCompleted,
+      totalVehicles,
+      shiftLength
+    );
+  }, [totalTimeUsed, vehiclesCompleted, totalVehicles, shiftLength]);
 
   const group1Utilization = useMemo(() => {
     return calculateGroupUtilization('group1', group1TimeUsed, group1Points.length, shiftLength);
@@ -864,12 +883,18 @@ const TowDriver: React.FC = () => {
         </div>
       </header>
 
-      {/* Shift Utilization Meter */}
+      {/* Enhanced Shift Progress */}
       <div className="mb-6">
-        <ShiftUtilizationMeter
-          totalTimeUsed={shiftUtilization.totalTimeUsed}
-          shiftLength={shiftUtilization.shiftLength}
+        <EnhancedShiftProgress
+          totalTimeUsed={enhancedShiftMetrics.totalTimeUsed}
+          shiftLength={enhancedShiftMetrics.shiftLength}
           status={shiftUtilization.status}
+          onShiftLengthChange={setShiftLength}
+          vehiclesCompleted={enhancedShiftMetrics.vehiclesCompleted}
+          totalVehicles={enhancedShiftMetrics.totalVehicles}
+          averageTimePerVehicle={enhancedShiftMetrics.averageTimePerVehicle}
+          efficiencyRating={enhancedShiftMetrics.efficiencyRating}
+          estimatedCompletion={enhancedShiftMetrics.projectedCompletion - enhancedShiftMetrics.totalTimeUsed}
         />
       </div>
 
