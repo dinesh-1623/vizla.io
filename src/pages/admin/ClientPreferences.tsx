@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
@@ -9,14 +9,19 @@ import {
   AlertCircle,
   ArrowLeft,
   Keyboard,
-  FileText
+  FileText,
+  User,
+  Flag,
+  DollarSign,
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -28,6 +33,8 @@ import { ClientCharts } from '@/components/clientPrefs/ClientCharts';
 import { PresentationMode } from '@/components/clientPrefs/PresentationMode';
 import { ClientPrefsFormData, ClientPriority, getPriorityWeight } from '@/types/clientPrefs';
 import { downloadCSV, generateCSVTemplate } from '@/utils/csv/clientPrefsCsv';
+import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
 
 const ClientPreferences: React.FC = () => {
   const navigate = useNavigate();
@@ -310,31 +317,37 @@ const ClientPreferences: React.FC = () => {
     );
   }
 
+  // Statistics
+  const stats = useMemo(() => {
+    const total = filteredClients.length;
+    const highPriority = filteredClients.filter(c => c.priority === 'High').length;
+    const mediumPriority = filteredClients.filter(c => c.priority === 'Medium').length;
+    const lowPriority = filteredClients.filter(c => c.priority === 'Low').length;
+    const avgFee = filteredClients.length > 0
+      ? Math.round(filteredClients.reduce((sum, c) => sum + c.clientRepoFeeUSD, 0) / filteredClients.length)
+      : 0;
+    const flatbedApproved = filteredClients.filter(c => c.flatbedPreApproved).length;
+
+    return { total, highPriority, mediumPriority, lowPriority, avgFee, flatbedApproved };
+  }, [filteredClients]);
+
   return (
-    <AppShell>
-      <div className="p-6 space-y-6">
+    <AppShell title="Client Preferences">
+      <div className="space-y-6 p-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/')}
-              className="flex items-center gap-2 bg-gray-800/50 text-gray-300 border-gray-600 hover:bg-gray-700/50"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Dashboard
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-white">Client Preferences</h1>
-              <p className="text-gray-400 mt-1">
-                Manage client priority, fees, and requirements
-              </p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-vizla-text-primary mb-2">
+              Client Preferences Management
+            </h1>
+            <p className="text-vizla-text-secondary">
+              Manage client priority, fees, and operational requirements
+            </p>
           </div>
           
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-2">
-            <div className="flex bg-gray-800/50 rounded-lg p-1">
+          <div className="flex items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex bg-vizla-glassElev/30 rounded-lg p-1 border border-vizla-glassBorder">
               {[
                 { key: 'list', label: 'List', icon: '📋' },
                 { key: 'analytics', label: 'Analytics', icon: '📊' },
@@ -344,27 +357,25 @@ const ClientPreferences: React.FC = () => {
                 <button
                   key={mode.key}
                   onClick={() => setViewMode(mode.key as any)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={cn(
+                    "px-3 py-2 rounded-md text-sm font-medium transition-colors",
                     viewMode === mode.key
-                      ? 'bg-blue-500/20 text-blue-400'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-                  }`}
+                      ? 'bg-vizla-brand-primary/20 text-vizla-brand-primary'
+                      : 'text-vizla-text-secondary hover:text-vizla-text-primary hover:bg-vizla-glassElev/50'
+                  )}
                 >
                   <span className="mr-2">{mode.icon}</span>
                   {mode.label}
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3">
+            
             <Button
               onClick={handleExportCSV}
               variant="outline"
-              className="flex items-center gap-2 bg-gray-800/50 text-gray-300 border-gray-600 hover:bg-gray-700/50"
+              className="bg-vizla-glassElev/50 border-vizla-glassBorder"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-4 h-4 mr-2" />
               Export CSV
             </Button>
             
@@ -372,19 +383,19 @@ const ClientPreferences: React.FC = () => {
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
-                  className="flex items-center gap-2 bg-gray-800/50 text-gray-300 border-gray-600 hover:bg-gray-700/50"
+                  className="bg-vizla-glassElev/50 border-vizla-glassBorder"
                 >
-                  <Upload className="w-4 h-4" />
+                  <Upload className="w-4 h-4 mr-2" />
                   Import CSV
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-gray-800 text-white max-w-2xl">
+              <DialogContent className="bg-vizla-glass border-vizla-glassBorder max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Import Client Preferences</DialogTitle>
+                  <DialogTitle className="text-vizla-text-primary">Import Client Preferences</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Upload CSV File</label>
+                    <Label className="text-vizla-text-secondary">Upload CSV File</Label>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -395,7 +406,7 @@ const ClientPreferences: React.FC = () => {
                     <Button
                       onClick={() => fileInputRef.current?.click()}
                       variant="outline"
-                      className="w-full"
+                      className="w-full mt-2 border-vizla-glassBorder"
                     >
                       <FileText className="w-4 h-4 mr-2" />
                       Choose File
@@ -403,12 +414,12 @@ const ClientPreferences: React.FC = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium mb-2">Or paste CSV content</label>
+                    <Label className="text-vizla-text-secondary">Or paste CSV content</Label>
                     <Textarea
                       value={importCSV}
                       onChange={(e) => setImportCSV(e.target.value)}
                       placeholder="Paste CSV content here..."
-                      className="bg-gray-700 border-gray-600 text-white"
+                      className="bg-vizla-glassElev/30 border-vizla-glassBorder mt-2"
                       rows={8}
                     />
                   </div>
@@ -435,37 +446,37 @@ const ClientPreferences: React.FC = () => {
 
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
               <DialogTrigger asChild>
-                <Button className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600">
-                  <Plus className="w-4 h-4" />
+                <Button className="bg-vizla-brand-primary hover:bg-vizla-brand-primary/90">
+                  <Plus className="w-4 h-4 mr-2" />
                   Add Client
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-gray-800 text-white max-w-md">
+              <DialogContent className="bg-vizla-glass border-vizla-glassBorder max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Add New Client</DialogTitle>
+                  <DialogTitle className="text-vizla-text-primary">Add New Client</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Client Name</label>
+                    <Label className="text-vizla-text-secondary">Client Name *</Label>
                     <Input
                       value={newClient.name}
                       onChange={(e) => setNewClient(prev => ({ ...prev, name: e.target.value }))}
-                      className="bg-gray-700 border-gray-600 text-white"
+                      className="bg-vizla-glassElev/30 border-vizla-glassBorder mt-1"
                       placeholder="Enter client name"
                     />
                     {newClientErrors.name && (
-                      <p className="text-red-400 text-sm mt-1">{newClientErrors.name}</p>
+                      <p className="text-vizla-danger text-sm mt-1">{newClientErrors.name}</p>
                     )}
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2">Priority</label>
+                      <Label className="text-vizla-text-secondary">Priority *</Label>
                       <Select
                         value={newClient.priority}
                         onValueChange={(value) => setNewClient(prev => ({ ...prev, priority: value as ClientPriority }))}
                       >
-                        <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                        <SelectTrigger className="bg-vizla-glassElev/30 border-vizla-glassBorder mt-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -477,29 +488,29 @@ const ClientPreferences: React.FC = () => {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium mb-2">Repo Fee ($)</label>
+                      <Label className="text-vizla-text-secondary">Repo Fee ($) *</Label>
                       <Input
                         type="number"
                         value={newClient.clientRepoFeeUSD}
                         onChange={(e) => setNewClient(prev => ({ ...prev, clientRepoFeeUSD: parseFloat(e.target.value) || 0 }))}
-                        className="bg-gray-700 border-gray-600 text-white"
+                        className="bg-vizla-glassElev/30 border-vizla-glassBorder mt-1"
                         min="0"
                         max="1000"
                         step="5"
                       />
                       {newClientErrors.clientRepoFeeUSD && (
-                        <p className="text-red-400 text-sm mt-1">{newClientErrors.clientRepoFeeUSD}</p>
+                        <p className="text-vizla-danger text-sm mt-1">{newClientErrors.clientRepoFeeUSD}</p>
                       )}
                     </div>
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium mb-2">Keys Required</label>
+                    <Label className="text-vizla-text-secondary">Keys Required</Label>
                     <Select
                       value={newClient.keysRequired}
                       onValueChange={(value) => setNewClient(prev => ({ ...prev, keysRequired: value as any }))}
                     >
-                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                      <SelectTrigger className="bg-vizla-glassElev/30 border-vizla-glassBorder mt-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -515,58 +526,107 @@ const ClientPreferences: React.FC = () => {
                       checked={newClient.flatbedPreApproved}
                       onCheckedChange={(checked) => setNewClient(prev => ({ ...prev, flatbedPreApproved: checked }))}
                     />
-                    <label className="text-sm font-medium">Flatbed Pre Approved</label>
+                    <Label className="text-vizla-text-secondary">Flatbed Pre Approved</Label>
                   </div>
                   
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleCreateClient}
-                      className="flex-1"
-                    >
-                      Create Client
-                    </Button>
+                  <DialogFooter>
                     <Button
                       onClick={() => setShowAddDialog(false)}
                       variant="outline"
-                      className="flex-1"
+                      className="border-vizla-glassBorder"
                     >
                       Cancel
                     </Button>
-                  </div>
+                    <Button
+                      onClick={handleCreateClient}
+                      className="bg-vizla-brand-primary hover:bg-vizla-brand-primary/90"
+                    >
+                      Create Client
+                    </Button>
+                  </DialogFooter>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
         </div>
 
+        {/* Statistics Cards - McKinsey Style */}
+        {viewMode === 'list' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+            <GlassCard className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-vizla-text-secondary">Total Clients</span>
+                <User className="w-4 h-4 text-vizla-text-muted" />
+              </div>
+              <div className="text-3xl font-bold text-vizla-text-primary">{stats.total}</div>
+            </GlassCard>
+            <GlassCard className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-vizla-text-secondary">High Priority</span>
+                <Flag className="w-4 h-4 text-vizla-danger" />
+              </div>
+              <div className="text-3xl font-bold text-vizla-danger">{stats.highPriority}</div>
+            </GlassCard>
+            <GlassCard className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-vizla-text-secondary">Medium Priority</span>
+                <Flag className="w-4 h-4 text-vizla-warning" />
+              </div>
+              <div className="text-3xl font-bold text-vizla-warning">{stats.mediumPriority}</div>
+            </GlassCard>
+            <GlassCard className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-vizla-text-secondary">Low Priority</span>
+                <Flag className="w-4 h-4 text-vizla-text-secondary" />
+              </div>
+              <div className="text-3xl font-bold text-vizla-text-secondary">{stats.lowPriority}</div>
+            </GlassCard>
+            <GlassCard className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-vizla-text-secondary">Avg Repo Fee</span>
+                <DollarSign className="w-4 h-4 text-vizla-text-muted" />
+              </div>
+              <div className="text-3xl font-bold text-vizla-text-primary">${stats.avgFee}</div>
+            </GlassCard>
+            <GlassCard className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-vizla-text-secondary">Flatbed Approved</span>
+                <CheckCircle2 className="w-4 h-4 text-vizla-success" />
+              </div>
+              <div className="text-3xl font-bold text-vizla-success">{stats.flatbedApproved}</div>
+            </GlassCard>
+          </div>
+        )}
+
         {/* Filters */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-vizla-text-muted" />
                 <Input
                   value={filters.search}
                   onChange={(e) => handleSearch(e.target.value)}
                   placeholder="Search clients..."
-                  className="pl-10 bg-vizla-glass border-vizla-glassBorder"
+                  className="pl-10 bg-vizla-glassElev/30 border-vizla-glassBorder"
                 />
               </div>
             </div>
             
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-400">Priority:</span>
+              <Filter className="w-4 h-4 text-vizla-text-muted" />
+              <span className="text-sm text-vizla-text-secondary">Priority:</span>
               <div className="flex gap-1">
                 {(['All', 'High', 'Medium', 'Low'] as const).map((priority) => (
                   <Badge
                     key={priority}
                     variant="outline"
-                    className={`cursor-pointer transition-colors ${
+                    className={cn(
+                      "cursor-pointer transition-colors",
                       filters.priority === priority
-                        ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                        : 'bg-gray-500/20 text-gray-400 border-gray-500/30 hover:bg-gray-500/30'
-                    }`}
+                        ? 'bg-vizla-brand-primary/20 text-vizla-brand-primary border-vizla-brand-primary/30'
+                        : 'bg-vizla-glassElev/50 text-vizla-text-secondary border-vizla-glassBorder hover:bg-vizla-glassElev'
+                    )}
                     onClick={() => handlePriorityFilter(priority as any)}
                   >
                     {priority}
@@ -579,7 +639,7 @@ const ClientPreferences: React.FC = () => {
               onClick={clearFilters}
               variant="outline"
               size="sm"
-              className="bg-gray-500/20 text-gray-400 border-gray-500/30 hover:bg-gray-500/30"
+              className="border-vizla-glassBorder"
             >
               Clear
             </Button>
@@ -588,7 +648,7 @@ const ClientPreferences: React.FC = () => {
 
         {/* Keyboard Shortcuts Info */}
         <GlassCard className="p-4">
-          <div className="flex items-center gap-2 text-sm text-gray-400">
+          <div className="flex items-center gap-2 text-sm text-vizla-text-secondary">
             <Keyboard className="w-4 h-4" />
             <span>Keyboard shortcuts: ↑/↓ to navigate, E to edit, Cmd/Ctrl+C to duplicate</span>
           </div>
@@ -596,8 +656,8 @@ const ClientPreferences: React.FC = () => {
 
         {/* Content */}
         {isLoading ? (
-          <GlassCard className="p-8 text-center">
-            <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <GlassCard className="p-12 text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-vizla-brand-primary mx-auto mb-4" />
             <p className="text-vizla-text-secondary">Loading client preferences...</p>
           </GlassCard>
         ) : viewMode === 'presentation' ? (
@@ -610,22 +670,21 @@ const ClientPreferences: React.FC = () => {
         ) : viewMode === 'charts' ? (
           <ClientCharts clients={filteredClients} />
         ) : filteredClients.length === 0 ? (
-          <GlassCard className="p-8 text-center">
-            <div className="text-gray-400 mb-4">
-              <Filter className="w-12 h-12 mx-auto mb-2" />
-              <h3 className="text-lg font-semibold mb-2">No clients found</h3>
-              <p className="text-sm">
-                {filters.search || filters.priority !== 'All' 
-                  ? 'Try adjusting your search or filter criteria.'
-                  : 'Get started by adding your first client preference.'
-                }
-              </p>
-            </div>
+          <GlassCard className="p-12 text-center">
+            <Filter className="w-12 h-12 text-vizla-text-muted mx-auto mb-4 opacity-50" />
+            <h3 className="text-lg font-semibold text-vizla-text-primary mb-2">No clients found</h3>
+            <p className="text-vizla-text-secondary mb-4">
+              {filters.search || filters.priority !== 'All' 
+                ? 'Try adjusting your search or filter criteria.'
+                : 'Get started by adding your first client preference.'
+              }
+            </p>
             {!filters.search && filters.priority === 'All' && (
               <Button
                 onClick={() => setShowAddDialog(true)}
-                className="bg-blue-500 hover:bg-blue-600"
+                className="bg-vizla-brand-primary hover:bg-vizla-brand-primary/90"
               >
+                <Plus className="w-4 h-4 mr-2" />
                 Add First Client
               </Button>
             )}
@@ -652,16 +711,16 @@ const ClientPreferences: React.FC = () => {
         {/* Stats - Only show in list mode */}
         {viewMode === 'list' && (
           <GlassCard className="p-4">
-            <div className="flex items-center justify-between text-sm text-gray-400">
+            <div className="flex items-center justify-between text-sm text-vizla-text-secondary">
               <span>
                 {filteredClients.length} of {clients.length} clients
                 {filters.search && ` matching "${filters.search}"`}
                 {filters.priority !== 'All' && ` with ${filters.priority} priority`}
               </span>
               <div className="flex items-center gap-4">
-                <span>High Priority: {clients.filter(c => c.priority === 'High').length}</span>
-                <span>Medium Priority: {clients.filter(c => c.priority === 'Medium').length}</span>
-                <span>Low Priority: {clients.filter(c => c.priority === 'Low').length}</span>
+                <span>High: {clients.filter(c => c.priority === 'High').length}</span>
+                <span>Medium: {clients.filter(c => c.priority === 'Medium').length}</span>
+                <span>Low: {clients.filter(c => c.priority === 'Low').length}</span>
               </div>
             </div>
           </GlassCard>

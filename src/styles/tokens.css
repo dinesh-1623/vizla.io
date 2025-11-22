@@ -1,6 +1,7 @@
 /* Vizla Color System Tokens */
 
-:root {
+/* Dark Theme (Default) */
+:root[data-theme="dark"] {
   /* Canvas & Surfaces */
   --vizla-canvas: #0a0e14;
   --vizla-elev1: rgba(255, 255, 255, 0.03);
@@ -59,6 +60,68 @@
   /* Text Colors for Heatmap Steps */
   --vizla-text-light: #E6EDF5; /* steps 1-4 */
   --vizla-text-dark: #0B111A;  /* steps 5-7 */
+}
+
+/* Light Theme */
+:root[data-theme="light"] {
+  /* Canvas & Surfaces */
+  --vizla-canvas: #ffffff;
+  --vizla-elev1: #f8fafc;
+  --vizla-elev2: #eef2f7;
+  --vizla-glass: rgba(0, 0, 0, 0.03);
+  --vizla-glassElev: rgba(0, 0, 0, 0.06);
+  --vizla-glassBorder: rgba(0, 0, 0, 0.08);
+  
+  /* Text Colors */
+  --vizla-text-primary: #0f172a;   /* slate-900 */
+  --vizla-text-secondary: #334155; /* slate-700 */
+  --vizla-text-muted: #64748b;     /* slate-500 */
+  
+  /* Brand Colors */
+  --vizla-brand-primary: #0f62fe;   /* IBM blue style */
+  --vizla-brand-secondary: #06b6d4; /* cyan */
+  --vizla-accent-mist: #06b6d4;
+  
+  /* Semantic Colors */
+  --vizla-success: #16a34a;
+  --vizla-danger: #dc2626;
+  --vizla-warning: #d97706;
+  --vizla-info: #6366f1;
+  
+  /* Interactive States */
+  --vizla-ring-focus: #0f62fe;
+  --vizla-border-subtle: rgba(15, 23, 42, 0.08);
+  
+  /* Heatmap Palettes - Light Theme Variants */
+  --vizla-lagoon-1: #f0f9ff;
+  --vizla-lagoon-2: #e0f2fe;
+  --vizla-lagoon-3: #bae6fd;
+  --vizla-lagoon-4: #7dd3fc;
+  --vizla-lagoon-5: #38bdf8;
+  --vizla-lagoon-6: #0ea5e9;
+  --vizla-lagoon-7: #0284c7;
+  
+  /* Heatmap Palettes - Indigo Light */
+  --vizla-indigo-1: #f8fafc;
+  --vizla-indigo-2: #f1f5f9;
+  --vizla-indigo-3: #e2e8f0;
+  --vizla-indigo-4: #cbd5e1;
+  --vizla-indigo-5: #94a3b8;
+  --vizla-indigo-6: #64748b;
+  --vizla-indigo-7: #475569;
+  
+  /* Heatmap Palettes - Neutral Light */
+  --vizla-neutral-1: #fafafa;
+  --vizla-neutral-2: #f4f4f5;
+  --vizla-neutral-3: #e4e4e7;
+  --vizla-neutral-4: #d4d4d8;
+  --vizla-neutral-5: #a1a1aa;
+  --vizla-neutral-6: #71717a;
+  --vizla-neutral-7: #52525b;
+  
+  /* Text Colors for Heatmap Steps */
+  --vizla-text-light: #0B111A;  /* steps 1-4 */
+  --vizla-text-dark: #E6EDF5;   /* steps 5-7 */
 }
 
 /* Dark theme application */

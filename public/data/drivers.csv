@@ -1,0 +1,11 @@
+id,name,email,phone,market,zone,shift_type,shift_start,shift_end,shift_goal,max_capacity,status,location_lat,location_lng
+drv-001,Sarah Rodriguez,sarah.rodriguez@premiumrecovery.com,(214) 585-2684,Baltimore,South,Night,20:00,08:00,23,11,offline,39.322401,-76.51559
+drv-002,William Lee,william.lee@premiumrecovery.com,(404) 503-3938,Dallas,North,Night,20:00,08:00,21,9,active,32.892591,-96.944328
+drv-003,Sarah Johnson,sarah.johnson@premiumrecovery.com,(404) 544-6000,Baltimore,East,Day,08:00,20:00,18,8,active,39.255709,-76.651493
+drv-004,Emily Rodriguez,emily.rodriguez@premiumrecovery.com,(404) 586-9785,Baltimore,South,Night,20:00,08:00,15,8,on_break,39.229631,-76.588076
+drv-005,Maria Thomas,maria.thomas@premiumrecovery.com,(404) 544-6139,Phoenix,Metro,Night,20:00,08:00,24,12,active,33.614827,-112.133472
+drv-006,John Anderson,john.anderson@premiumrecovery.com,(214) 546-8066,Baltimore,East,Day,08:00,20:00,25,10,active,39.306044,-76.683829
+drv-007,Michael Rodriguez,michael.rodriguez@premiumrecovery.com,(404) 541-7592,Phoenix,West Glendale,Night,20:00,08:00,23,9,active,33.532725,-112.067299
+drv-008,Olivia Brown,olivia.brown@premiumrecovery.com,(404) 570-1006,Dallas,East,Night,20:00,08:00,19,9,active,32.836596,-96.763947
+drv-009,Sophia Rodriguez,sophia.rodriguez@premiumrecovery.com,(214) 565-8752,Atlanta,Buckhead,Day,08:00,20:00,25,8,active,33.815963,-84.345185
+drv-010,James Brown,james.brown@premiumrecovery.com,(214) 525-3414,Baltimore,North,Day,08:00,20:00,15,9,offline,39.296142,-76.548617

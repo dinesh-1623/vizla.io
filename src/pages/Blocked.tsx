@@ -25,6 +25,13 @@ import {
   Phone,
   Mail
 } from 'lucide-react';
+import { ExtractedMetadataCard } from '@/components/vehicles/ExtractedMetadataCard';
+import { NoteParsingButton } from '@/components/vehicles/NoteParsingButton';
+import type { ExtractedMetadata, ExtractionStatus } from '@/lib/types/extractedMetadata';
+import { supabase } from '@/lib/supabase/browser';
+import { useVehicles } from '@/hooks/useVehicles';
+import { transformToBlockedVehicle } from '@/lib/data/transformers';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Types for physically blocked vehicles
 interface BlockedVehicle {
@@ -57,126 +64,6 @@ interface BlockedVehicle {
   alternativeActions: string[];
 }
 
-// Mock data for physically blocked vehicles
-const MOCK_BLOCKED_VEHICLES: BlockedVehicle[] = [
-  {
-    id: 'blocked-001',
-    year: 2020,
-    make: 'Toyota',
-    model: 'Camry',
-    color: 'Silver',
-    plate: 'ABC-123',
-    vin: '1HGBH41JXMN109186',
-    client: 'First National Bank',
-    address: '1234 Main St',
-    city: 'Baltimore',
-    zip: '21201',
-    zone: 'Downtown',
-    market: 'Baltimore',
-    spottedDate: '2024-01-15',
-    spottedBy: 'John Smith',
-    blockedReason: 'behind_vehicle',
-    blockedNotes: 'Vehicle is parked behind a white Honda Civic. Cannot access with tow truck.',
-    estimatedResolution: '2024-01-20',
-    status: 'active',
-    priority: 'medium',
-    contactPerson: 'Sarah Johnson',
-    contactPhone: '(410) 555-0123',
-    contactEmail: 'sarah.johnson@fnb.com',
-    images: ['/placeholder.svg'],
-    spotterNotes: 'Target vehicle is silver Toyota Camry, parked in driveway behind white Honda Civic. Need to coordinate with Honda owner to move vehicle.',
-    accessInstructions: 'Contact Honda owner at (410) 555-9999 to arrange vehicle movement. Honda plate: XYZ-456',
-    alternativeActions: ['Contact Honda owner', 'Schedule return visit', 'Coordinate with property owner']
-  },
-  {
-    id: 'blocked-002',
-    year: 2019,
-    make: 'Honda',
-    model: 'Civic',
-    color: 'Blue',
-    plate: 'XYZ-789',
-    vin: '2HGBH41JXMN109187',
-    client: 'Metro Credit Union',
-    address: '5678 Oak Ave',
-    city: 'Baltimore',
-    zip: '21202',
-    zone: 'Residential',
-    market: 'Baltimore',
-    spottedDate: '2024-01-10',
-    spottedBy: 'Mike Davis',
-    blockedReason: 'behind_fence',
-    blockedNotes: 'Vehicle is behind a locked gate/fence. No access from street.',
-    estimatedResolution: '2024-01-25',
-    status: 'under_review',
-    priority: 'high',
-    contactPerson: 'Robert Wilson',
-    contactPhone: '(410) 555-0456',
-    contactEmail: 'r.wilson@metrocu.com',
-    images: ['/placeholder.svg'],
-    spotterNotes: 'Blue Honda Civic is visible behind 6-foot chain link fence. Gate is locked with padlock. Property appears vacant.',
-    accessInstructions: 'Need property owner contact or legal access permission. Check with city records for property owner.',
-    alternativeActions: ['Contact property owner', 'Obtain legal access', 'Coordinate with law enforcement']
-  },
-  {
-    id: 'blocked-003',
-    year: 2021,
-    make: 'Ford',
-    model: 'Focus',
-    color: 'Red',
-    plate: 'DEF-456',
-    vin: '3HGBH41JXMN109188',
-    client: 'Capital Auto Finance',
-    address: '9012 Pine St',
-    city: 'Baltimore',
-    zip: '21203',
-    zone: 'Industrial',
-    market: 'Baltimore',
-    spottedDate: '2024-01-05',
-    spottedBy: 'Lisa Brown',
-    blockedReason: 'in_garage',
-    blockedNotes: 'Vehicle is inside a locked garage. Cannot access without keys or garage door opener.',
-    estimatedResolution: '2024-01-30',
-    status: 'active',
-    priority: 'medium',
-    contactPerson: 'Jennifer Lee',
-    contactPhone: '(410) 555-0789',
-    contactEmail: 'j.lee@capitalauto.com',
-    images: ['/placeholder.svg'],
-    spotterNotes: 'Red Ford Focus is inside attached garage. Garage door is closed and locked. No visible access points.',
-    accessInstructions: 'Need garage door opener or keys from property owner. Check if garage has side door access.',
-    alternativeActions: ['Contact property owner for keys', 'Check for side door access', 'Schedule return with proper access']
-  },
-  {
-    id: 'blocked-004',
-    year: 2018,
-    make: 'Chevrolet',
-    model: 'Malibu',
-    color: 'Black',
-    plate: 'GHI-789',
-    vin: '4HGBH41JXMN109189',
-    client: 'Regional Bank',
-    address: '3456 Elm St',
-    city: 'Baltimore',
-    zip: '21204',
-    zone: 'Commercial',
-    market: 'Baltimore',
-    spottedDate: '2024-01-12',
-    spottedBy: 'Tom Wilson',
-    blockedReason: 'blocked_by_client',
-    blockedNotes: 'Client has requested hold on this vehicle. Do not tow until further notice.',
-    estimatedResolution: '2024-02-15',
-    status: 'active',
-    priority: 'low',
-    contactPerson: 'Maria Rodriguez',
-    contactPhone: '(410) 555-0321',
-    contactEmail: 'm.rodriguez@regionalbank.com',
-    images: ['/placeholder.svg'],
-    spotterNotes: 'Black Chevrolet Malibu is accessible but client has placed hold on towing. Vehicle is in good condition.',
-    accessInstructions: 'Contact client for removal of hold. Vehicle is ready for towing once hold is lifted.',
-    alternativeActions: ['Contact client to remove hold', 'Schedule follow-up', 'Monitor for hold removal']
-  }
-];
-
 const Blocked: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -184,10 +71,25 @@ const Blocked: React.FC = () => {
   const [selectedReason, setSelectedReason] = useState<string>('all');
   const [selectedVehicle, setSelectedVehicle] = useState<BlockedVehicle | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  
+  // AI metadata extraction state
+  const [extractedMetadata, setExtractedMetadata] = useState<ExtractedMetadata | null>(null);
+  const [extractionStatus, setExtractionStatus] = useState<ExtractionStatus | null>(null);
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
+  const [metadataError, setMetadataError] = useState<string | null>(null);
+
+  // Load vehicles from unified data source
+  const { data: vehicles, isLoading, error, refetch } = useVehicles({ status: 'Blocked' });
+
+  // Transform vehicles to BlockedVehicle format
+  const blockedVehicles = useMemo(() => {
+    if (!vehicles) return [];
+    return vehicles.map(transformToBlockedVehicle);
+  }, [vehicles]);
 
   // Filter vehicles based on search and filters
   const filteredVehicles = useMemo(() => {
-    return MOCK_BLOCKED_VEHICLES.filter(vehicle => {
+    return blockedVehicles.filter(vehicle => {
       const matchesSearch = 
         vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) ||
         vehicle.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -201,18 +103,18 @@ const Blocked: React.FC = () => {
       
       return matchesSearch && matchesStatus && matchesPriority && matchesReason;
     });
-  }, [searchTerm, selectedStatus, selectedPriority, selectedReason]);
+  }, [searchTerm, selectedStatus, selectedPriority, selectedReason, blockedVehicles]);
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const total = MOCK_BLOCKED_VEHICLES.length;
-    const active = MOCK_BLOCKED_VEHICLES.filter(v => v.status === 'active').length;
-    const underReview = MOCK_BLOCKED_VEHICLES.filter(v => v.status === 'under_review').length;
-    const resolved = MOCK_BLOCKED_VEHICLES.filter(v => v.status === 'resolved').length;
-    const urgent = MOCK_BLOCKED_VEHICLES.filter(v => v.priority === 'urgent').length;
+    const total = blockedVehicles.length;
+    const active = blockedVehicles.filter(v => v.status === 'active').length;
+    const underReview = blockedVehicles.filter(v => v.status === 'under_review').length;
+    const resolved = blockedVehicles.filter(v => v.status === 'resolved').length;
+    const urgent = blockedVehicles.filter(v => v.priority === 'urgent').length;
     
     return { total, active, underReview, resolved, urgent };
-  }, []);
+  }, [blockedVehicles]);
 
   // Get status color
   const getStatusColor = (status: string) => {
@@ -275,6 +177,62 @@ const Blocked: React.FC = () => {
     setShowDetailModal(true);
   };
 
+  // Fetch extracted metadata when modal opens
+  useEffect(() => {
+    if (!selectedVehicle || !showDetailModal) {
+      // Clear metadata when modal closes
+      if (!showDetailModal) {
+        setExtractedMetadata(null);
+        setExtractionStatus(null);
+        setMetadataError(null);
+        setIsLoadingMetadata(false);
+      }
+      return;
+    }
+
+    const fetchMetadata = async () => {
+      setIsLoadingMetadata(true);
+      setMetadataError(null);
+
+      try {
+        // Fetch metadata from vehicle_extracted_metadata table
+        const { data: metadata, error: metadataError } = await supabase
+          .from('vehicle_extracted_metadata')
+          .select('*')
+          .eq('vehicle_id', selectedVehicle.id)
+          .single();
+
+        if (metadataError && metadataError.code !== 'PGRST116') {
+          // PGRST116 = not found, which is okay
+          console.error('Error fetching metadata:', metadataError);
+          setMetadataError(metadataError.message);
+        } else if (metadata) {
+          setExtractedMetadata(metadata as ExtractedMetadata);
+        }
+
+        // Fetch extraction status from located_vehicles table
+        const { data: vehicle, error: vehicleError } = await supabase
+          .from('located_vehicles')
+          .select('metadata_extraction_status, metadata_extracted_at')
+          .eq('id', selectedVehicle.id)
+          .single();
+
+        if (vehicleError && vehicleError.code !== 'PGRST116') {
+          console.error('Error fetching vehicle status:', vehicleError);
+        } else if (vehicle) {
+          setExtractionStatus(vehicle.metadata_extraction_status as ExtractionStatus | null);
+        }
+      } catch (error) {
+        console.error('Error fetching metadata:', error);
+        setMetadataError(error instanceof Error ? error.message : 'Failed to fetch metadata');
+      } finally {
+        setIsLoadingMetadata(false);
+      }
+    };
+
+    fetchMetadata();
+  }, [selectedVehicle?.id, showDetailModal]);
+
   // Handle export
   const handleExport = () => {
     const csvContent = [
@@ -301,6 +259,39 @@ const Blocked: React.FC = () => {
     link.click();
     URL.revokeObjectURL(url);
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <AppShell title="Blocked Vehicles">
+        <div className="space-y-6">
+          <Skeleton className="h-12 w-full" />
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+            {[1, 2, 3, 4, 5].map(i => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <AppShell title="Blocked Vehicles">
+        <div className="space-y-6">
+          <GlassCard>
+            <div className="text-center py-8">
+              <p className="text-red-400 mb-4">Error loading vehicles: {error instanceof Error ? error.message : 'Unknown error'}</p>
+              <Button onClick={() => refetch()}>Try Again</Button>
+            </div>
+          </GlassCard>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell title="Blocked Vehicles">
@@ -693,14 +684,66 @@ const Blocked: React.FC = () => {
 
                 {/* Spotter Notes */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-vizla-text-primary border-b border-vizla-glassBorder pb-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-vizla-text-primary border-b border-vizla-glassBorder pb-2 flex-1">
                     Spotter Notes
                   </h3>
+                  </div>
                   <div className="bg-vizla-glassElev p-4 rounded-lg">
                     <p className="text-vizla-text-primary leading-relaxed">
-                      {selectedVehicle.spotterNotes}
+                      {selectedVehicle.spotterNotes || 'No notes available.'}
                     </p>
                   </div>
+                  
+                  {/* AI Metadata Extraction Button */}
+                  {selectedVehicle.spotterNotes && (
+                    <div className="flex justify-end pt-2">
+                      <NoteParsingButton
+                        vehicleId={selectedVehicle.id}
+                        currentStatus={extractionStatus}
+                        notesOverride={selectedVehicle.spotterNotes}
+                        onExtractionComplete={(metadata) => {
+                          // Convert the metadata to ExtractedMetadata format
+                          const extracted: ExtractedMetadata = {
+                            id: extractedMetadata?.id || '',
+                            vehicle_id: selectedVehicle.id,
+                            parking_type: metadata.parking_type,
+                            gate_code: metadata.gate_code,
+                            damage_description: metadata.damage_description,
+                            special_instructions: metadata.special_instructions,
+                            estimated_fees: metadata.estimated_fees,
+                            accessibility_score: metadata.accessibility_score,
+                            confidence_score: extractedMetadata?.confidence_score || 0.85,
+                            extracted_at: new Date().toISOString(),
+                            extracted_by: 'ai',
+                            last_updated_at: new Date().toISOString(),
+                            raw_notes_snapshot: selectedVehicle.spotterNotes,
+                            model_version: extractedMetadata?.model_version || null,
+                          };
+                          setExtractedMetadata(extracted);
+                          setExtractionStatus('completed');
+                          setMetadataError(null);
+                        }}
+                        onExtractionError={(error) => {
+                          setExtractionStatus('failed');
+                          setMetadataError(error);
+                        }}
+                        variant="outline"
+                        size="sm"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* AI-Extracted Metadata Card */}
+                <div className="space-y-4">
+                  <ExtractedMetadataCard
+                    metadata={extractedMetadata}
+                    status={extractionStatus}
+                    lastExtractedAt={extractedMetadata?.extracted_at || null}
+                    isLoading={isLoadingMetadata}
+                    error={metadataError}
+                  />
                 </div>
 
                 {/* Access Instructions */}

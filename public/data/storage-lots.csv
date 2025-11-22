@@ -1,0 +1,13 @@
+name,type,address,lat,lng,market,is_active
+Central Storage,lot,3953 Transport Blvd Baltimore,39.202778,-76.52304,Baltimore,true
+Main Storage Lot,lot,6968 Storage Blvd Baltimore,39.287393,-76.643562,Baltimore,true
+South Yard,lot,4451 Transport Blvd Baltimore,39.204867,-76.574445,Baltimore,true
+Central Storage,lot,7608 Storage Blvd Dallas,32.949583,-96.651288,Dallas,true
+East Lot,stash,2270 Logistics Blvd Dallas,32.917833,-96.689841,Dallas,true
+North Stash,stash,9000 Logistics Blvd Dallas,32.845153,-96.654213,Dallas,true
+Main Storage Lot,stash,1797 Commerce Blvd Phoenix,33.392563,-111.888601,Phoenix,true
+North Stash,stash,4716 Storage Blvd Phoenix,33.37372,-112.079992,Phoenix,true
+West Lot,stash,4214 Industrial Blvd Phoenix,33.332304,-112.051748,Phoenix,true
+Main Storage Lot,stash,2243 Logistics Blvd Atlanta,33.690395,-84.389541,Atlanta,true
+Main Storage Lot,lot,1332 Commerce Blvd Atlanta,33.786398,-84.291351,Atlanta,true
+North Stash,stash,2188 Industrial Blvd Atlanta,33.727065,-84.275255,Atlanta,true

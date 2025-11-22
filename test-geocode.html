@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Geocoding</title>
+</head>
+<body>
+    <h1>Test Geocoding for: 720 S College Mall Rd, Bloomington, IN 47401</h1>
+    <button onclick="testGeocode()">Test Geocoding</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testGeocode() {
+            const address = "720 S College Mall Rd, Bloomington, IN 47401";
+            const apiKey = prompt("Enter your Google Maps API key:");
+            
+            if (!apiKey) {
+                document.getElementById('result').innerHTML = "No API key provided";
+                return;
+            }
+            
+            try {
+                const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
+                console.log('Calling:', url);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                console.log('Response:', data);
+                
+                if (data.status === 'OK' && data.results && data.results.length > 0) {
+                    const location = data.results[0].geometry.location;
+                    document.getElementById('result').innerHTML = `
+                        <h2>✅ Success!</h2>
+                        <p><strong>Address:</strong> ${data.results[0].formatted_address}</p>
+                        <p><strong>Latitude:</strong> ${location.lat}</p>
+                        <p><strong>Longitude:</strong> ${location.lng}</p>
+                        <p><a href="https://www.google.com/maps?q=${location.lat},${location.lng}" target="_blank">View on Google Maps</a></p>
+                    `;
+                } else {
+                    document.getElementById('result').innerHTML = `
+                        <h2>❌ Error</h2>
+                        <p><strong>Status:</strong> ${data.status}</p>
+                        <p><strong>Error:</strong> ${data.error_message || 'Unknown error'}</p>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <h2>❌ Exception</h2>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

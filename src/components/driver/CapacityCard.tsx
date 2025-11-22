@@ -15,31 +15,22 @@ import {
 
 interface CapacityCardProps {
   inputs: CapacityInputs;
-  onModeChange: (mode: 'lot' | 'stash' | 'optimized') => void;
+  onModeChange?: (mode: 'lot') => void; // Optional, kept for compatibility but not used
 }
 
-export const CapacityCard: React.FC<CapacityCardProps> = ({ inputs, onModeChange }) => {
+export const CapacityCard: React.FC<CapacityCardProps> = ({ inputs }) => {
   const [showMiniMap, setShowMiniMap] = React.useState(false);
 
-  // Calculate totals for current mode
-  const currentTotals = React.useMemo(() => getTotals(inputs), [inputs]);
+  // Force mode to 'lot' - we only support Return-to-Lot
+  const lotInputs = React.useMemo(() => ({ ...inputs, mode: 'lot' as const }), [inputs]);
 
-  // Calculate totals for Return-to-Lot for comparison
-  const lotTotals = React.useMemo(() => {
-    if (inputs.mode === 'lot') return currentTotals;
-    return getTotals({ ...inputs, mode: 'lot' });
-  }, [inputs, currentTotals]);
+  // Calculate totals for Return-to-Lot only
+  const currentTotals = React.useMemo(() => getTotals(lotInputs), [lotInputs]);
 
-  // Calculate time saved vs Return-to-Lot
-  const timeSavedVsLot = React.useMemo(() => {
-    if (inputs.mode === 'lot') return undefined;
-    return calculateTimeSavedVsLot(currentTotals, lotTotals);
-  }, [inputs.mode, currentTotals, lotTotals]);
-
-  // Generate path points for mini map
+  // Generate path points for mini map (always use lot mode)
   const pathPoints = React.useMemo(() => {
-    return generatePathPoints(inputs);
-  }, [inputs]);
+    return generatePathPoints(lotInputs);
+  }, [lotInputs]);
 
   // Format time display helper
   const formatTime = (minutes: number): string => {
@@ -77,11 +68,16 @@ export const CapacityCard: React.FC<CapacityCardProps> = ({ inputs, onModeChange
     <>
       <GlassCard className="backdrop-blur-md ring-1 ring-vizla-glassBorder">
         <div className="space-y-6">
-          {/* Header with mode selector */}
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-vizla-text-primary">
-              Route Capacity Analysis
-            </h3>
+            <div>
+              <h3 className="text-lg font-semibold text-vizla-text-primary">
+                Route Capacity Analysis
+              </h3>
+              <p className="text-sm text-vizla-text-muted mt-1">
+                Return-to-Lot Mode
+              </p>
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -93,27 +89,6 @@ export const CapacityCard: React.FC<CapacityCardProps> = ({ inputs, onModeChange
                 Map Preview
               </Button>
             </div>
-          </div>
-
-          {/* Mode Selector */}
-          <div className="flex bg-vizla-glass rounded-lg p-1 ring-1 ring-vizla-glassBorder">
-            {[
-              { key: 'lot', label: 'Return-to-Lot' },
-              { key: 'stash', label: 'Return-to-Stash' },
-              { key: 'optimized', label: 'Optimized (per stop)' }
-            ].map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => onModeChange(key as 'lot' | 'stash' | 'optimized')}
-                className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus ${
-                  inputs.mode === key
-                    ? 'bg-vizla-brand-primary text-white'
-                    : 'text-vizla-text-secondary hover:text-vizla-text-primary hover:bg-vizla-glassElev'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
           </div>
 
           {/* Estimate Mode Badge */}
@@ -170,29 +145,21 @@ export const CapacityCard: React.FC<CapacityCardProps> = ({ inputs, onModeChange
               </div>
             </div>
 
-            {/* Time Saved (only for Stash/Optimized) */}
+            {/* Vehicles Count */}
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <ExternalLink className="w-5 h-5 text-vizla-text-muted" />
-                <span className="text-sm font-medium text-vizla-text-secondary">Time Saved</span>
+                <Users className="w-5 h-5 text-vizla-text-muted" />
+                <span className="text-sm font-medium text-vizla-text-secondary">Vehicles</span>
               </div>
-              <div className="text-2xl font-bold text-green-400">
-                {timeSavedVsLot !== undefined ? formatTime(timeSavedVsLot) : '—'}
+              <div className="text-2xl font-bold text-vizla-text-primary">
+                {inputs.pickups.length}
               </div>
               <div className="text-xs text-vizla-text-muted mt-1">
-                vs Return-to-Lot
+                Total pickups
               </div>
             </div>
           </div>
 
-          {/* Optimized Decisions (only for Optimized mode) */}
-          {inputs.mode === 'optimized' && currentTotals.decisions && (
-            <div className="pt-4 border-t border-vizla-glassBorder">
-              <div className="text-sm text-vizla-text-muted mb-3">
-                Per-stop decisions: {currentTotals.decisions.filter(d => d.to === 'lot').length} to lot, {currentTotals.decisions.filter(d => d.to === 'stash').length} to stash
-              </div>
-            </div>
-          )}
 
           {/* Segment Buttons */}
           {currentTotals.segments.length > 0 && (
@@ -218,7 +185,7 @@ export const CapacityCard: React.FC<CapacityCardProps> = ({ inputs, onModeChange
       {/* Mini Map Modal */}
       {showMiniMap && (
         <RouteMiniMap
-          mode={inputs.mode}
+          mode="lot"
           lot={inputs.lot}
           stash={inputs.stash}
           pickups={inputs.pickups}

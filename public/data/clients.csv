@@ -1,0 +1,21 @@
+id,name,code,contact_email,contact_phone,address,priority,repo_fee_usd,flatbed_preapproved,keys_required,notes,is_active
+client-001,Capital One,CAPI,repo@capitalone.com,(410) 503-5506,4112 Market St Dallas 33434,Medium,122,true,Required,,true
+client-002,Wells Fargo,WELL,repo@wellsfargo.com,(410) 571-4257,9028 Industrial St Dallas 78878,Medium,120,false,Required,Standard processing,true
+client-003,Chase Bank,CHAS,repo@chasebank.com,(214) 527-6514,1774 Main St Atlanta 32676,Medium,131,false,Not Required,Standard processing,true
+client-004,Bank of America,BANK,repo@bankofamerica.com,(404) 510-5803,6025 Pratt St Dallas 29116,High,142,false,Not Required,VIP client,true
+client-005,US Bank,USBA,repo@usbank.com,(404) 535-8428,6077 Market St Phoenix 66566,High,143,false,Preferred,,true
+client-006,Ally Financial,ALLY,repo@allyfinancial.com,(214) 568-5010,2777 Industrial St Atlanta 55382,Low,120,false,Required,Expedited processing,true
+client-007,Santander Consumer,SANT,repo@santanderconsumer.com,(410) 529-1525,5268 Industrial St Phoenix 28675,High,145,true,Preferred,Standard processing,true
+client-008,TD Auto Finance,TDAU,repo@tdautofinance.com,(214) 531-9830,4404 Oak St Atlanta 96484,Medium,127,false,Required,Standard processing,true
+client-009,PNC Bank,PNCB,repo@pncbank.com,(410) 514-3504,2721 Pine St Atlanta 98172,High,147,true,Preferred,Expedited processing,false
+client-010,Fifth Third Bank,FIFT,repo@fifththirdbank.com,(410) 587-2876,8897 Pine St Phoenix 64587,High,148,true,Required,Expedited processing,false
+client-011,Regions Bank,REGI,repo@regionsbank.com,(214) 564-2743,4989 Pine St Dallas 40032,Medium,125,true,Preferred,Requires weekly report,false
+client-012,BB&T Auto,BBTA,repo@bb&tauto.com,(602) 562-1319,1932 Commerce St Phoenix 51385,High,137,true,Preferred,,false
+client-013,SunTrust Auto,SUNT,repo@suntrustauto.com,(214) 516-8787,9107 Market St Phoenix 89163,Low,116,false,Not Required,VIP client,true
+client-014,Citizens Bank,CITI,repo@citizensbank.com,(404) 585-7118,7277 Pratt St Atlanta 35860,High,137,true,Preferred,VIP client,true
+client-015,Navy Federal CU,NAVY,repo@navyfederalcu.com,(410) 509-1964,3850 Main St Baltimore 63309,High,142,true,Preferred,Requires weekly report,true
+client-016,American Credit Acceptance,AMER,repo@americancreditacceptance.com,(404) 531-8749,6769 Market St Baltimore 32704,Medium,131,true,Preferred,,true
+client-017,Toyota Financial,TOYO,repo@toyotafinancial.com,(410) 507-7596,5659 Pine St Baltimore 52591,High,149,true,Required,Standard processing,true
+client-018,Ford Motor Credit,FORD,repo@fordmotorcredit.com,(410) 556-2604,928 Oak St Baltimore 32224,Low,113,true,Preferred,VIP client,true
+client-019,GM Financial,GMFI,repo@gmfinancial.com,(410) 521-7209,135 Industrial St Phoenix 79638,High,150,true,Required,,true
+client-020,Hyundai Capital,HYUN,repo@hyundaicapital.com,(410) 595-6138,1036 Main St Atlanta 85909,Low,118,true,Not Required,,true

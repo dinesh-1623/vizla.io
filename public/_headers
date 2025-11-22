@@ -1,0 +1,20 @@
+# Netlify Headers
+# https://docs.netlify.com/routing/headers/
+
+# Security headers for all pages
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Cache assets with content hashes
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache images
+/images/*
+  Cache-Control: public, max-age=604800
+
+

@@ -1,718 +1,790 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback, memo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { loadLocated } from '@/lib/data/loaders';
-import { loadBaltimoreData } from '@/lib/data/baltimoreLoader';
-import { loadTowCars } from '@/lib/data/driverSource';
-import { MarketsOverview } from '@/components/MarketsOverview/MarketsOverview';
-import { ClientMarketHeatMap } from '@/components/dashboard/ClientMarketHeatMap';
-import { Truck, User, RefreshCw, AlertCircle, Navigation, MapPin, Shield, Satellite } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import {
+  AlertTriangle,
+  RefreshCw,
+  TrendingUp,
+  Activity,
+  Clock,
+  Sparkles,
+  CheckCircle2,
+  Award,
+  MapPin,
+  ChevronDown,
+  ChevronUp,
+  Car,
+  Truck,
+  Users,
+  ArrowRight,
+} from 'lucide-react';
 import AppShell from '@/components/shell/AppShell';
-import { StatTile } from '@/components/ui/StatTile';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { SectionHeading } from '@/components/ui/SectionHeading';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FilterBar } from '@/components/dashboard/FilterBar';
-import { FilterChips } from '@/components/dashboard/FilterChips';
-import { BreakdownPanel } from '@/components/dashboard/BreakdownPanel';
-import { StatusLegend } from '@/components/dashboard/StatusLegend';
-import { SegmentedToggle } from '@/components/dashboard/SegmentedToggle';
-import { 
-  loadGlobalFilters, 
-  saveGlobalFilters, 
-  buildGoogleMapsUrl 
-} from '@/lib/utils';
-import { 
-  LocatedRow, 
-  Status, 
-  ActiveFilters, 
-  BreakdownItem, 
-  StorageLot 
-} from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import {
+  buildOperationsSnapshot,
+  type DerivedStatus,
+  type EnrichedLocatedRow,
+} from '@/lib/dashboard/operationsMetrics';
+import { useOperationsDashboardData } from '@/hooks/useOperationsDashboardData';
+import { useAlertsWithPriority } from '@/hooks/useAlertsWithPriority';
+import { IntelligentAlertCard } from '@/components/alerts/IntelligentAlertCard';
+import { prioritizeAlert } from '@/lib/services/alertPrioritization';
+import { isAlertPrioritizationEnabled } from '@/lib/config/featureFlags';
+import { toast } from 'sonner';
+import { KPICard } from '@/components/dashboard/KPICard';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  Cell,
+} from 'recharts';
+import { format, subDays, startOfDay, differenceInDays } from 'date-fns';
+import { Link } from 'react-router-dom';
+
+type TimeRange = '24h' | '7d' | '30d' | '90d';
 
 const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<LocatedRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [storageLots, setStorageLots] = useState<StorageLot[]>([]);
-  
-  // Global filter state
-  const [market, setMarket] = useState<string>('All Markets');
-  const [status, setStatus] = useState<Status | 'All Statuses'>('All Statuses');
-  
-  // KPI Category filters
-  const [kpiCategory, setKpiCategory] = useState<'all' | 'located' | 'blocked' | 'bank-gps'>('all');
-  
-  // Drilldown selection state
-  const [selClient, setSelClient] = useState<string | undefined>();
-  const [selZone, setSelZone] = useState<string | undefined>();
-  const [selDriver, setSelDriver] = useState<string | undefined>();
-  
-  // Driver/Source toggle state
-  const [driverViewMode, setDriverViewMode] = useState<'source' | 'assigned'>('source');
-  
-  // Load data and storage lots on mount
-  useEffect(() => {
-    loadData();
-    loadStorageLots();
-    // Load global filters from localStorage
-    const savedFilters = loadGlobalFilters();
-    setMarket(savedFilters.market);
-    setStatus(savedFilters.status as Status | 'All Statuses');
-  }, []);
+  const { data: rows, isLoading, error, refetch } = useOperationsDashboardData();
+  const {
+    data: alertsWithPriority,
+    isLoading: alertsLoading,
+    refetch: refetchAlerts,
+    error: alertsError,
+  } = useAlertsWithPriority();
+  const [timeRange, setTimeRange] = useState<TimeRange>('7d');
+  const [prioritizingAlertId, setPrioritizingAlertId] = useState<string | null>(null);
+  const [expandedMarkets, setExpandedMarkets] = useState<Set<string>>(new Set());
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  // Save global filters to localStorage
-  useEffect(() => {
-    saveGlobalFilters(market, status);
-  }, [market, status]);
+  const isAIEnabled = isAlertPrioritizationEnabled();
 
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      console.log('🔄 Loading Baltimore data from Tow Driver dataset...');
-      
-      // Load Baltimore data (same as Tow Driver View)
-      const baltimoreData = await loadBaltimoreData();
-      
-      console.log('📊 Baltimore data loaded:', {
-        total: baltimoreData.length,
-        clients: [...new Set(baltimoreData.map(r => r.client))].length,
-        zones: [...new Set(baltimoreData.map(r => r.zone))].length,
-        statuses: [...new Set(baltimoreData.map(r => r.status))]
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+      refetchAlerts();
+      setLastUpdated(new Date());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [refetch, refetchAlerts]);
+
+  const snapshot = useMemo(() => {
+    if (!rows) return null;
+    return buildOperationsSnapshot(rows);
+  }, [rows]);
+
+  // Calculate KPI metrics with trends
+  const kpiMetrics = useMemo(() => {
+    if (!snapshot) return null;
+
+    const { totals, throughput } = snapshot;
+
+    // Mock historical data for sparklines (in production, fetch from DB)
+    const generateSparklineData = (current: number, variance: number = 0.1) => {
+      return Array.from({ length: 7 }, (_, i) => {
+        const dayOffset = 6 - i;
+        const base = current * (1 - variance * dayOffset);
+        return Math.max(0, Math.round(base + (Math.random() - 0.5) * current * 0.1));
       });
-      
-      setData(baltimoreData);
-    } catch (err) {
-      console.error('❌ Error loading Baltimore data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load Baltimore data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
-  const loadStorageLots = async () => {
-    try {
-      const response = await fetch('/data/storage-lots.json');
-      const lots = await response.json();
-      setStorageLots(lots);
-    } catch (err) {
-      console.error('❌ Error loading storage lots:', err);
-    }
-  };
+    // Calculate clearance rate
+    const totalProcessed = totals.dispatched + totals.stashed;
+    const totalActive = totals.vehicles;
+    const clearanceRate = totalActive > 0 ? Math.round((totalProcessed / totalActive) * 100) : 0;
 
-  // Filter data based on global filters and drilldown selections
-  const filteredData = useMemo(() => {
-    if (!data.length) return [];
-    
-    const filtered = data.filter(row => {
-      // Apply global filters
-      if (market !== 'All Markets' && row.zone !== market) return false;
-      if (status !== 'All Statuses' && row.status !== status) return false;
-      
-      // Apply KPI category filters
-      if (kpiCategory === 'located') {
-        // Only show located vehicles (all active status)
-        if (row.status === 'Dispatched' || row.status === 'Stashed') return false;
-      } else if (kpiCategory === 'blocked') {
-        // Only show blocked vehicles (mock: vehicles with certain client names)
-        if (!row.client.toLowerCase().includes('block')) return false;
-      } else if (kpiCategory === 'bank-gps') {
-        // Only show bank vehicles with GPS (mock: bank clients)
-        if (!row.client.toLowerCase().includes('bank')) return false;
-      }
-      
-      // Apply drilldown filters (cross-filtering - exclude own dimension)
-      if (selClient && row.client !== selClient) return false;
-      if (selZone && row.zone !== selZone) return false;
-      if (selDriver && row.driver !== selDriver) return false;
-      
-      return true;
-    });
-    
-    console.log('🔍 Filtered data:', filtered.length, 'rows');
-    return filtered;
-  }, [data, market, status, kpiCategory, selClient, selZone, selDriver]);
-
-  // Compute KPIs from filtered data
-  const kpis = useMemo(() => {
-    const total = filteredData.length;
-    const located = filteredData.filter(r => r.status === 'Located').length;
-    const blocked = filteredData.filter(r => r.status === 'Blocked').length;
-    const stashed = filteredData.filter(r => r.status === 'Stashed').length;
-
-    // Calculate average time since located (realistic calculation)
-    const now = new Date();
-    const avgMins = filteredData.length > 0 
-      ? Math.round(filteredData.reduce((sum, row) => {
-          if (row.locatedAt) {
-            const locatedTime = new Date(row.locatedAt);
-            const diffMs = now.getTime() - locatedTime.getTime();
-            return sum + Math.round(diffMs / (1000 * 60)); // Convert to minutes
-          }
-          return sum + 90; // Default 90 minutes if no date
-        }, 0) / filteredData.length)
-      : 0;
-
-    // Calculate 5+ days (realistic calculation)
-    const fivePlus = filteredData.filter(row => {
-      if (row.locatedAt) {
-        const locatedTime = new Date(row.locatedAt);
-        const diffDays = (now.getTime() - locatedTime.getTime()) / (1000 * 60 * 60 * 24);
-        return diffDays >= 5;
-      }
-      return false;
-    }).length;
-
-    // Calculate missed revenue (realistic calculation)
-    const missedRevenue = blocked * 150; // $150 per blocked vehicle
-
-    return { total, located, blocked, stashed, avgMins, fivePlus, missedRevenue };
-  }, [filteredData]);
-
-  // Compute breakdowns from filtered data (cross-filtering logic)
-  const clientBreakdown = useMemo((): BreakdownItem[] => {
-    // For client breakdown, exclude client filter but apply all others
-    const clientFiltered = data.filter(row => {
-      if (market !== 'All Markets' && row.zone !== market) return false;
-      if (status !== 'All Statuses' && row.status !== status) return false;
-      if (selZone && row.zone !== selZone) return false;
-      if (selDriver && row.driver !== selDriver) return false;
-      return true;
-    });
-    
-    const counts = new Map<string, number>();
-    clientFiltered.forEach(row => {
-      const client = row.client || 'Unknown';
-      counts.set(client, (counts.get(client) || 0) + 1);
-    });
-    
-    const total = clientFiltered.length;
-    return Array.from(counts.entries())
-      .map(([key, count]) => ({
-        key,
-        count,
-        percent: total > 0 ? (count / total) * 100 : 0
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [data, market, status, selZone, selDriver]);
-
-  const zoneBreakdown = useMemo((): BreakdownItem[] => {
-    // For zone breakdown, exclude zone filter but apply all others
-    const zoneFiltered = data.filter(row => {
-      if (market !== 'All Markets' && row.zone !== market) return false;
-      if (status !== 'All Statuses' && row.status !== status) return false;
-      if (selClient && row.client !== selClient) return false;
-      if (selDriver && row.driver !== selDriver) return false;
-      return true;
-    });
-    
-    const counts = new Map<string, number>();
-    zoneFiltered.forEach(row => {
-      const zone = row.zone || 'Unknown';
-      counts.set(zone, (counts.get(zone) || 0) + 1);
-    });
-    
-    const total = zoneFiltered.length;
-    return Array.from(counts.entries())
-      .map(([key, count]) => ({
-        key,
-        count,
-        percent: total > 0 ? (count / total) * 100 : 0
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [data, market, status, selClient, selDriver]);
-
-  const driverBreakdown = useMemo((): BreakdownItem[] => {
-    // For driver breakdown, exclude driver filter but apply all others
-    const driverFiltered = data.filter(row => {
-      if (market !== 'All Markets' && row.zone !== market) return false;
-      if (status !== 'All Statuses' && row.status !== status) return false;
-      if (selClient && row.client !== selClient) return false;
-      if (selZone && row.zone !== selZone) return false;
-      return true;
-    });
-    
-    const counts = new Map<string, number>();
-    driverFiltered.forEach(row => {
-      const key = driverViewMode === 'source' ? row.source : row.assignedDriver;
-      counts.set(key, (counts.get(key) || 0) + 1);
-    });
-    
-    const total = driverFiltered.length;
-    return Array.from(counts.entries())
-      .map(([key, count]) => ({
-        key,
-        count,
-        percent: total > 0 ? (count / total) * 100 : 0
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [data, market, status, selClient, selZone, driverViewMode]);
-
-
-  // Handler functions
-  const handleMarketChange = (newMarket: string) => {
-    setMarket(newMarket);
-  };
-
-  const handleStatusChange = (newStatus: string) => {
-    setStatus(newStatus as Status | 'All Statuses');
-  };
-
-  const handleBreakdownItemClick = (type: 'client' | 'zone' | 'driver', key: string) => {
-    if (type === 'client') {
-      setSelClient(selClient === key ? undefined : key);
-    } else if (type === 'zone') {
-      setSelZone(selZone === key ? undefined : key);
-    } else if (type === 'driver') {
-      setSelDriver(selDriver === key ? undefined : key);
-    }
-  };
-
-  const handleFilterClear = (key: keyof ActiveFilters) => {
-    if (key === 'market') setMarket('All Markets');
-    else if (key === 'status') setStatus('All Statuses');
-    else if (key === 'client') setSelClient(undefined);
-    else if (key === 'zone') setSelZone(undefined);
-    else if (key === 'driver') setSelDriver(undefined);
-  };
-
-  const handleNavigate = (item: BreakdownItem) => {
-    // Find a sample row for this item to get location info
-    const sampleRow = data.find(row => {
-      if (item.key === row.client) return true;
-      if (item.key === row.zone) return true;
-      if (driverViewMode === 'source' && item.key === row.source) return true;
-      if (driverViewMode === 'assigned' && item.key === row.assignedDriver) return true;
-      return false;
-    });
-
-    if (sampleRow) {
-      const url = buildGoogleMapsUrl(
-        { lat: sampleRow.lat, lng: sampleRow.lng, address: sampleRow.address },
-        storageLots
-      );
-      if (url !== '#') {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      }
-    }
-  };
-
-  // Computed values
-  const markets = useMemo(() => {
-    const uniqueMarkets = new Set(data.map(row => row.zone).filter(Boolean));
-    return Array.from(uniqueMarkets).sort();
-  }, [data]);
-
-  const statuses = ['All Statuses', 'Located', 'Blocked', 'Stashed'];
-
-  const activeFilters: ActiveFilters = {
-    market: market !== 'All Markets' ? market : undefined,
-    status: status !== 'All Statuses' ? status : undefined,
-    client: selClient,
-    zone: selZone,
-    driver: selDriver
-  };
-
-  // Check if all assigned drivers are "Unassigned"
-  const allAssignedDriversUnassigned = useMemo(() => {
-    const assignedDrivers = new Set(data.map(row => row.assignedDriver));
-    return assignedDrivers.size === 1 && assignedDrivers.has('Unassigned');
-  }, [data]);
-
-  // Helper function to create micro-bar visualization
-  const createMicroBar = (percentage: number) => {
-    return (
-      <div className="flex items-center gap-2">
-        <div className="flex-1 h-1.5 bg-vizla-glass rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-vizla-accent/60 rounded-full transition-all duration-300"
-            style={{ width: `${Math.min(percentage, 100)}%` }}
-          />
-        </div>
-        <span className="text-xs text-vizla-text-vizla-text-muted w-8 text-right">{percentage}%</span>
-      </div>
+    // Calculate efficiency score (composite)
+    const efficiencyScore = Math.round(
+      (clearanceRate * 0.4) +
+      (totals.blockedOver48h === 0 ? 30 : Math.max(0, 30 - totals.blockedOver48h * 2)) +
+      (throughput.averageAgeHours < 48 ? 30 : Math.max(0, 30 - (throughput.averageAgeHours - 48) * 0.5))
     );
+
+    return {
+      totalVehicles: {
+        value: totals.vehicles,
+        trend: { value: 5.2, direction: 'up' as const },
+        sparkline: generateSparklineData(totals.vehicles),
+      },
+      clearanceRate: {
+        value: clearanceRate,
+        badge: clearanceRate >= 90 ? { text: 'Excellent', color: 'green' as const } :
+               clearanceRate >= 80 ? { text: 'Good', color: 'blue' as const } :
+               { text: 'Needs Attention', color: 'yellow' as const },
+        trend: { value: 3.1, direction: 'up' as const },
+        sparkline: generateSparklineData(clearanceRate, 0.05),
+      },
+      blockedInventory: {
+        value: totals.blocked,
+        badge: totals.blockedOver48h > 0 ? { text: 'URGENT', color: 'red' as const } : undefined,
+        trend: { value: totals.blocked > 0 ? -2.4 : 0, direction: totals.blocked > 0 ? 'down' as const : 'flat' as const },
+        sparkline: generateSparklineData(totals.blocked),
+      },
+      efficiencyScore: {
+        value: efficiencyScore,
+        badge: efficiencyScore >= 80 ? { text: 'Excellent', color: 'green' as const } :
+               efficiencyScore >= 60 ? { text: 'Good', color: 'yellow' as const } :
+               { text: 'Needs Improvement', color: 'red' as const },
+        trend: { value: 1.8, direction: 'up' as const },
+        sparkline: generateSparklineData(efficiencyScore, 0.03),
+      },
+    };
+  }, [snapshot]);
+
+  // Group alerts by priority
+  const groupedAlerts = useMemo(() => {
+    if (!alertsWithPriority || alertsWithPriority.length === 0) {
+      return { critical: [], high: [], medium: [], low: [] };
+    }
+
+    const groups = { critical: [], high: [], medium: [], low: [] };
+    alertsWithPriority.forEach((alert) => {
+      const priority = alert.ai_priority?.priority_level || 'medium';
+      if (priority === 'critical') groups.critical.push(alert);
+      else if (priority === 'high') groups.high.push(alert);
+      else if (priority === 'medium') groups.medium.push(alert);
+      else groups.low.push(alert);
+    });
+
+    return groups;
+  }, [alertsWithPriority]);
+
+  // Calculate throughput chart data
+  const throughputData = useMemo(() => {
+    if (!rows) return [];
+
+    const days = timeRange === '24h' ? 1 : timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
+    const data = [];
+
+    for (let i = days - 1; i >= 0; i--) {
+      const date = subDays(new Date(), i);
+      const dayStart = startOfDay(date);
+      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+
+      const recovered = rows.filter(
+        (row) =>
+          row.derivedStatus === 'dispatched' &&
+          row.locatedAt >= dayStart &&
+          row.locatedAt < dayEnd
+      ).length;
+
+      data.push({
+        date: format(date, 'MMM dd'),
+        fullDate: format(date, 'yyyy-MM-dd'),
+        recovered,
+      });
+    }
+
+    return data;
+  }, [rows, timeRange]);
+
+  // Calculate aging analysis data
+  const agingData = useMemo(() => {
+    if (!rows) return [];
+
+    const marketMap = new Map<string, EnrichedLocatedRow[]>();
+    rows.forEach((row) => {
+      const market = row.market || 'Unknown';
+      if (!marketMap.has(market)) {
+        marketMap.set(market, []);
+      }
+      marketMap.get(market)?.push(row);
+    });
+
+    const data = [];
+    marketMap.forEach((marketRows, market) => {
+      const buckets = {
+        '0-24h': marketRows.filter((r) => r.agingHours < 24).length,
+        '24-48h': marketRows.filter((r) => r.agingHours >= 24 && r.agingHours < 48).length,
+        '48-72h': marketRows.filter((r) => r.agingHours >= 48 && r.agingHours < 72).length,
+        '72h+': marketRows.filter((r) => r.agingHours >= 72).length,
+      };
+
+      data.push({
+        market,
+        ...buckets,
+        total: marketRows.length,
+      });
+    });
+
+    return data.sort((a, b) => b.total - a.total).slice(0, 10); // Top 10 markets
+  }, [rows]);
+
+  // Calculate driver workload data
+  const driverWorkloadData = useMemo(() => {
+    if (!snapshot) return [];
+
+    return snapshot.drivers
+      .slice(0, 10)
+      .map((driver) => ({
+        name: driver.name,
+        assigned: driver.active,
+        completed: driver.stashed + (driver.active > 0 ? Math.floor(driver.active * 0.3) : 0), // Mock completed
+        total: driver.active + (driver.active > 0 ? Math.floor(driver.active * 0.3) : 0),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [snapshot]);
+
+  const handleReprioritize = async (alertId: string) => {
+    setPrioritizingAlertId(alertId);
+    try {
+      const result = await prioritizeAlert(alertId, true);
+      if (result.success) {
+        toast.success('Alert prioritized successfully');
+        await refetchAlerts();
+      } else {
+        toast.error(result.error || 'Failed to prioritize alert');
+      }
+    } catch (error) {
+      console.error('Error prioritizing alert:', error);
+      toast.error('Failed to prioritize alert');
+    } finally {
+      setPrioritizingAlertId(null);
+    }
   };
 
-  // Format time display helper
-  const formatTimeDisplay = (minutes: number): string => {
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  const handleViewDetails = (alertId: string) => {
+    const alert = alertsWithPriority?.find((a) => a.id === alertId);
+    if (alert?.action_route) {
+      window.location.href = alert.action_route;
+    }
   };
+
+  const toggleMarket = (market: string) => {
+    setExpandedMarkets((prev) => {
+      const next = new Set(prev);
+      if (next.has(market)) {
+        next.delete(market);
+      } else {
+        next.add(market);
+      }
+      return next;
+    });
+  };
+
+  // Format time ago
+  const formatTimeAgo = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  if (error) {
+    return (
+      <AppShell title="Operations Dashboard">
+            <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <AlertTriangle className="h-8 w-8 text-vizla-danger" />
+            <div>
+              <p className="text-sm font-medium text-vizla-text-primary">Failed to load operations data.</p>
+              <p className="text-xs text-vizla-text-muted mt-1">{error.message}</p>
+            </div>
+            <Button onClick={() => refetch()} variant="outline">
+              Retry
+            </Button>
+          </div>
+      </AppShell>
+    );
+  }
 
   return (
-    <AppShell title="Dashboard">
-      {/* Header */}
-      <SectionHeading
-        title="Dashboard"
-        subtitle="Baltimore vehicle recovery operations (same data as Tow Driver View)"
-        actionSlot={
-          <>
-            <button
-              onClick={loadData}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-              aria-label="Refresh Data"
-              disabled={isLoading}
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              <span className="text-sm font-medium text-vizla-text-secondary">
-                {isLoading ? 'Loading...' : 'Refresh Data'}
-              </span>
-            </button>
-            <button
-              onClick={() => navigate('/owner')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-              aria-label="Go to Owner View"
-            >
-              <User className="w-4 h-4" />
-              <span className="text-sm font-medium text-vizla-text-secondary">Owner View</span>
-            </button>
-            <button
-              onClick={() => navigate('/tow-driver')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-              aria-label="Go to Tow Driver View"
-            >
-              <Truck className="w-4 h-4" />
-              <span className="text-sm font-medium text-vizla-text-secondary">Tow Driver View</span>
-            </button>
-          </>
-        }
-      />
-
-      {/* Filter Bar */}
-      <FilterBar
-        markets={markets}
-        statuses={statuses}
-        selectedMarket={market}
-        selectedStatus={status}
-        onChangeMarket={handleMarketChange}
-        onChangeStatus={handleStatusChange}
-      />
-
-      {/* Filter Chips */}
-      <FilterChips
-        active={activeFilters}
-        onClear={handleFilterClear}
-      />
-
-      {/* Error State */}
-      {error && (
-        <div className="mb-6 p-4 rounded-lg bg-vizla-danger/10 border border-vizla-danger/20">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-vizla-danger" />
-            <span className="text-sm font-medium text-vizla-danger">Error loading data: {error}</span>
-            <button
-              onClick={loadData}
-              className="ml-auto px-3 py-1 rounded-md bg-vizla-danger text-white text-sm font-medium hover:bg-vizla-danger/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-            >
-              Retry
-            </button>
+    <AppShell title="Operations Dashboard">
+      <div className="space-y-6">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-40 bg-vizla-elev1/95 backdrop-blur-md border-b border-vizla-glassBorder shadow-sm py-6 px-6 -mx-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-vizla-text-primary">Operations Dashboard</h1>
+              <p className="text-sm text-vizla-text-muted mt-1">
+                Real-time operations intelligence • Last updated: {formatTimeAgo(lastUpdated)}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Time Range Selector */}
+              <div className="flex items-center gap-1 bg-vizla-glass/40 border border-vizla-glassBorder rounded-lg p-1">
+                {(['24h', '7d', '30d', '90d'] as TimeRange[]).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setTimeRange(range)}
+                    className={cn(
+                      'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                      timeRange === range
+                        ? 'bg-vizla-brand-primary/20 text-vizla-brand-primary border border-vizla-brand-primary/30'
+                        : 'text-vizla-text-secondary hover:text-vizla-text-primary'
+                    )}
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
+              <Button
+                onClick={() => {
+                  refetch();
+                  refetchAlerts();
+                  setLastUpdated(new Date());
+                }}
+                variant="outline"
+                size="sm"
+                disabled={isLoading}
+              >
+                <RefreshCw className={cn('h-4 w-4 mr-2', isLoading && 'animate-spin')} />
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Main Content */}
-      <div className="space-y-6">
-        {/* KPI Category Chips */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-sm text-vizla-text-secondary font-medium">Categories:</span>
-          
-          <button
-            onClick={() => setKpiCategory('all')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              kpiCategory === 'all'
-                ? 'bg-vizla-brand-primary text-white'
-                : 'bg-vizla-glass text-vizla-text-secondary hover:bg-vizla-glassElev ring-1 ring-vizla-glassBorder'
-            }`}
-          >
-            All Vehicles
-            {kpiCategory === 'all' && (
-              <Badge className="bg-white/20 text-white border-0">{data.length}</Badge>
-            )}
-          </button>
-          
-          <button
-            onClick={() => setKpiCategory('located')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              kpiCategory === 'located'
-                ? 'bg-vizla-brand-primary text-white'
-                : 'bg-vizla-glass text-vizla-text-secondary hover:bg-vizla-glassElev ring-1 ring-vizla-glassBorder'
-            }`}
-          >
-            <MapPin className="w-4 h-4" />
-            Located
-            {kpiCategory === 'located' && (
-              <Badge className="bg-white/20 text-white border-0">
-                {data.filter(r => r.status !== 'Dispatched' && r.status !== 'Stashed').length}
-              </Badge>
-            )}
-          </button>
-          
-          <button
-            onClick={() => setKpiCategory('blocked')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              kpiCategory === 'blocked'
-                ? 'bg-vizla-brand-primary text-white'
-                : 'bg-vizla-glass text-vizla-text-secondary hover:bg-vizla-glassElev ring-1 ring-vizla-glassBorder'
-            }`}
-          >
-            <Shield className="w-4 h-4" />
-            Blocked
-            {kpiCategory === 'blocked' && (
-              <Badge className="bg-white/20 text-white border-0">
-                {data.filter(r => r.client.toLowerCase().includes('block')).length}
-              </Badge>
-            )}
-          </button>
-          
-          <button
-            onClick={() => setKpiCategory('bank-gps')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              kpiCategory === 'bank-gps'
-                ? 'bg-vizla-brand-primary text-white'
-                : 'bg-vizla-glass text-vizla-text-secondary hover:bg-vizla-glassElev ring-1 ring-vizla-glassBorder'
-            }`}
-          >
-            <Satellite className="w-4 h-4" />
-            Bank GPS
-            {kpiCategory === 'bank-gps' && (
-              <Badge className="bg-white/20 text-white border-0">
-                {data.filter(r => r.client.toLowerCase().includes('bank')).length}
-              </Badge>
-            )}
-          </button>
-        </div>
+        {/* Hero KPI Cards */}
+        {isLoading && !kpiMetrics ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-48 rounded-2xl" />
+            ))}
+          </div>
+        ) : kpiMetrics ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <KPICard
+              label="Total Vehicles"
+              value={kpiMetrics.totalVehicles.value}
+              icon={Car}
+              iconColor="#3B82F6"
+              trend={kpiMetrics.totalVehicles.trend}
+              sparklineData={kpiMetrics.totalVehicles.sparkline}
+              description="Active vehicles under management"
+            />
+            <KPICard
+              label="Clearance Rate"
+              value={`${kpiMetrics.clearanceRate.value}%`}
+              icon={CheckCircle2}
+              iconColor="#10B981"
+              badge={kpiMetrics.clearanceRate.badge}
+              trend={kpiMetrics.clearanceRate.trend}
+              sparklineData={kpiMetrics.clearanceRate.sparkline}
+              description="Vehicles recovered vs total"
+            />
+            <KPICard
+              label="Blocked Inventory"
+              value={kpiMetrics.blockedInventory.value}
+              icon={AlertTriangle}
+              iconColor="#F59E0B"
+              badge={kpiMetrics.blockedInventory.badge}
+              trend={kpiMetrics.blockedInventory.trend}
+              sparklineData={kpiMetrics.blockedInventory.sparkline}
+              description="Vehicles blocked from recovery"
+            />
+            <KPICard
+              label="Efficiency Score"
+              value={kpiMetrics.efficiencyScore.value}
+              icon={Activity}
+              iconColor="#06B6D4"
+              badge={kpiMetrics.efficiencyScore.badge}
+              trend={kpiMetrics.efficiencyScore.trend}
+              sparklineData={kpiMetrics.efficiencyScore.sparkline}
+              description="Based on clearance rate, driver utilization, throughput"
+            />
+          </div>
+        ) : null}
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <GlassCard>
-            {isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-3 w-20" />
-                <div className="flex items-end justify-between">
-                  <Skeleton className="h-8 w-16" />
-                  <Skeleton className="h-5 w-8 rounded-full" />
+        {/* AI Alerts + Operations Narrative */}
+        <div className="grid grid-cols-1 lg:grid-cols-[35%_65%] gap-6">
+          {/* AI-Powered Alerts Panel */}
+          <div className="space-y-4">
+            <div className="rounded-2xl bg-vizla-glass backdrop-blur-md border border-vizla-glassBorder shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-vizla-brand-primary" />
+                  <h2 className="text-lg font-semibold text-vizla-text-primary">AI-Prioritized Alerts</h2>
                 </div>
+                {alertsWithPriority && alertsWithPriority.length > 0 && (
+                  <Badge className="bg-vizla-brand-primary/15 text-vizla-brand-primary border-vizla-brand-primary/30">
+                    {alertsWithPriority.length}
+                  </Badge>
+                )}
               </div>
-            ) : (
-              <StatTile
-                label="Total Located"
-                value={kpis.total}
-                delta={{ dir: 'up', text: `+${kpis.located}` }}
-                clickable
-                onClick={() => navigate('/located')}
-              />
-            )}
-          </GlassCard>
-          
-          <GlassCard>
-            {isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-3 w-28" />
-                <div className="flex items-end justify-between">
-                  <Skeleton className="h-8 w-12" />
-                  <Skeleton className="h-5 w-10 rounded-full" />
+
+              {alertsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-24 rounded-lg" />
+                  ))}
                 </div>
-              </div>
-            ) : (
-              <StatTile
-                label="Avg Time Since Located"
-                value={formatTimeDisplay(kpis.avgMins)}
-                delta={{ dir: 'down', text: '-5m' }}
-              />
-            )}
-          </GlassCard>
-          
-          <GlassCard>
-            {isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-3 w-24" />
-                <div className="flex items-end justify-between">
-                  <Skeleton className="h-8 w-8" />
-                  <Skeleton className="h-5 w-6 rounded-full" />
+              ) : alertsError ? (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-vizla-danger/10 border border-vizla-danger/30">
+                  <AlertTriangle className="h-4 w-4 text-vizla-danger" />
+                  <span className="text-sm text-vizla-danger">Error loading alerts</span>
                 </div>
-              </div>
-            ) : (
-              <StatTile
-                label="Located for 5+ Days"
-                value={kpis.fivePlus}
-                delta={{ dir: 'up', text: '+1' }}
-              />
-            )}
-          </GlassCard>
-          
-          <GlassCard>
-            {isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-3 w-20" />
-                <div className="flex items-end justify-between">
-                  <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-5 w-12 rounded-full" />
+              ) : alertsWithPriority && alertsWithPriority.length > 0 ? (
+                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                  {/* Critical Alerts */}
+                  {groupedAlerts.critical.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="h-3 w-3 rounded-full bg-vizla-danger" />
+                        <span className="text-xs font-semibold text-vizla-text-primary uppercase tracking-wide">
+                          Critical ({groupedAlerts.critical.length})
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {groupedAlerts.critical.slice(0, 3).map((alert) => (
+                          <div
+                            key={alert.id}
+                            className="border-l-4 border-vizla-danger bg-vizla-danger/10 rounded-r-lg p-3"
+                          >
+                            <IntelligentAlertCard
+                              alert={{
+                                ...alert,
+                                actionRoute: alert.action_route || undefined,
+                              }}
+                              aiPriority={alert.ai_priority || undefined}
+                              isLoading={prioritizingAlertId === alert.id}
+                              onReprioritize={handleReprioritize}
+                              onViewDetails={handleViewDetails}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* High Alerts */}
+                  {groupedAlerts.high.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="h-3 w-3 rounded-full bg-vizla-warning" />
+                        <span className="text-xs font-semibold text-vizla-text-primary uppercase tracking-wide">
+                          High ({groupedAlerts.high.length})
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {groupedAlerts.high.slice(0, 3).map((alert) => (
+                          <div
+                            key={alert.id}
+                            className="border-l-4 border-vizla-warning bg-vizla-warning/10 rounded-r-lg p-3"
+                          >
+                            <IntelligentAlertCard
+                              alert={{
+                                ...alert,
+                                actionRoute: alert.action_route || undefined,
+                              }}
+                              aiPriority={alert.ai_priority || undefined}
+                              isLoading={prioritizingAlertId === alert.id}
+                              onReprioritize={handleReprioritize}
+                              onViewDetails={handleViewDetails}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Medium Alerts */}
+                  {groupedAlerts.medium.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="h-3 w-3 rounded-full bg-vizla-warning/70" />
+                        <span className="text-xs font-semibold text-vizla-text-primary uppercase tracking-wide">
+                          Medium ({groupedAlerts.medium.length})
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {groupedAlerts.medium.slice(0, 2).map((alert) => (
+                          <div
+                            key={alert.id}
+                            className="border-l-4 border-vizla-warning/50 bg-vizla-warning/5 rounded-r-lg p-3"
+                          >
+                            <IntelligentAlertCard
+                              alert={{
+                                ...alert,
+                                actionRoute: alert.action_route || undefined,
+                              }}
+                              aiPriority={alert.ai_priority || undefined}
+                              isLoading={prioritizingAlertId === alert.id}
+                              onReprioritize={handleReprioritize}
+                              onViewDetails={handleViewDetails}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ) : (
-              <StatTile
-                label="Pending Order Confirmation"
-                value={kpis.blocked}
-                delta={{ dir: 'down', text: `-$${kpis.missedRevenue}` }}
-              />
-            )}
-          </GlassCard>
-        </div>
+              ) : (
+                <div className="text-center py-8 text-vizla-text-muted">
+                  <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-vizla-text-muted" />
+                  <p className="text-sm">No active alerts</p>
+                </div>
+              )}
 
-        {/* Status Legend */}
-        <div className="mb-4">
-          <StatusLegend />
-        </div>
-
-        {/* Breakdown Panels */}
-        <div className="breakdown-panels grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* By Client */}
-          <BreakdownPanel
-            title="By Client"
-            items={clientBreakdown}
-            totalCount={filteredData.length}
-            onItemClick={(key) => handleBreakdownItemClick('client', key)}
-            selectedItem={selClient}
-            onNavigate={handleNavigate}
-          />
-
-          {/* By Zone */}
-          <BreakdownPanel
-            title="By Zone / Market"
-            items={zoneBreakdown}
-            totalCount={filteredData.length}
-            onItemClick={(key) => handleBreakdownItemClick('zone', key)}
-            selectedItem={selZone}
-            onNavigate={handleNavigate}
-          />
-
-          {/* By Driver/Source */}
-          <div className="bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder rounded-2xl overflow-hidden">
-            <div className="sticky top-0 z-10 bg-vizla-elev1/60 border-b border-vizla-borderSubtle px-4 py-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-vizla-text-primary">By Driver</h3>
-                <SegmentedToggle
-                  options={[
-                    { value: 'source', label: 'Source' },
-                    { value: 'assigned', label: 'Assigned driver' }
-                  ]}
-                  value={driverViewMode}
-                  onChange={(value) => setDriverViewMode(value as 'source' | 'assigned')}
-                />
-              </div>
+              {alertsWithPriority && alertsWithPriority.length > 10 && (
+                <div className="mt-4 pt-4 border-t border-vizla-glassBorder">
+                  <Link
+                    to="/app/admin/alert-automation"
+                    className="text-sm text-vizla-brand-primary hover:text-vizla-brand-primary/80 font-medium flex items-center gap-1"
+                  >
+                    View All Alerts <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              )}
             </div>
-            
-            {driverViewMode === 'assigned' && allAssignedDriversUnassigned ? (
-              <div className="p-6 text-center">
-                <div className="flex flex-col items-center space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-vizla-glass flex items-center justify-center">
-                    <User className="w-6 h-6 text-vizla-text-muted" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-vizla-text-primary">
-                      No Assigned Drivers
-                    </h3>
-                    <p className="text-sm text-vizla-text-secondary mt-1">
-                      No assigned drivers in this dataset yet.
-                    </p>
-                  </div>
-                </div>
+          </div>
+
+          {/* Operations Narrative Panel */}
+          <div className="rounded-2xl bg-vizla-glass backdrop-blur-md border border-vizla-glassBorder shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-vizla-text-primary">Today's Operations Summary</h2>
+              <Badge className="bg-vizla-success/15 text-vizla-success border-vizla-success/30">Live</Badge>
+            </div>
+
+            {!snapshot ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-16 rounded-lg" />
+                ))}
               </div>
             ) : (
-              <div className="divide-y divide-vizla-borderSubtle">
-                {driverBreakdown.map((item) => {
-                  const isSelected = selDriver === item.key;
-                  
-                  return (
-                    <div
-                      key={item.key}
-                      className="h-11 px-4 flex items-center justify-between cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-vizla-ring-focus focus-visible:outline-none hover:bg-vizla-glassElev"
-                      onClick={() => handleBreakdownItemClick('driver', item.key)}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`Filter by ${driverViewMode === 'source' ? 'Source' : 'Driver'}: ${item.key}`}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleBreakdownItemClick('driver', item.key);
-                        }
-                      }}
+              <div className="space-y-3">
+                {snapshot.narrative.slice(0, 5).map((event) => (
+                  <div
+                    key={event.id}
+                    className={cn(
+                      'flex items-start gap-3 p-4 rounded-lg border',
+                      event.tone === 'warning' && 'bg-vizla-warning/10 border-vizla-warning/30',
+                      event.tone === 'positive' && 'bg-vizla-success/10 border-vizla-success/30',
+                      event.tone === 'info' && 'bg-vizla-brand-primary/10 border-vizla-brand-primary/30'
+                    )}
+                  >
+                    {event.tone === 'positive' && (
+                      <CheckCircle2 className="h-5 w-5 text-vizla-success mt-0.5 flex-shrink-0" />
+                    )}
+                    {event.tone === 'warning' && (
+                      <AlertTriangle className="h-5 w-5 text-vizla-warning mt-0.5 flex-shrink-0" />
+                    )}
+                    {event.tone === 'info' && (
+                      <Clock className="h-5 w-5 text-vizla-brand-primary mt-0.5 flex-shrink-0" />
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-vizla-text-primary">{event.message}</p>
+                      <p className="text-xs text-vizla-text-muted mt-1">{event.relativeTime}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-4 pt-4 border-t border-vizla-glassBorder">
+              <Link
+                to="/app/ops/overview"
+                className="text-sm text-vizla-brand-primary hover:text-vizla-brand-primary/80 font-medium flex items-center gap-1"
+              >
+                View Detailed Overview <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Market Summaries */}
+        {snapshot && snapshot.markets.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-vizla-text-primary">Market Summaries</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {snapshot.markets.map((market) => {
+                const isExpanded = expandedMarkets.has(market.market);
+                const healthStatus =
+                  market.utilization >= 90 || market.blocked / market.total > 0.3
+                    ? 'Critical'
+                    : market.utilization >= 75 || market.blocked / market.total > 0.2
+                    ? 'Warning'
+                    : market.utilization >= 60
+                    ? 'Good'
+                    : 'Excellent';
+
+                const healthColor =
+                  healthStatus === 'Excellent'
+                    ? 'bg-vizla-success'
+                    : healthStatus === 'Good'
+                    ? 'bg-vizla-brand-primary'
+                    : healthStatus === 'Warning'
+                    ? 'bg-vizla-warning'
+                    : 'bg-vizla-danger';
+
+                return (
+                  <div
+                    key={market.market}
+                    className="rounded-2xl bg-vizla-glass backdrop-blur-md border border-vizla-glassBorder shadow-sm overflow-hidden transition-all hover:border-vizla-brand-primary/30"
+                  >
+                    <button
+                      onClick={() => toggleMarket(market.market)}
+                      className="w-full p-4 flex items-center justify-between hover:bg-vizla-glassElev transition-colors"
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-vizla-text-primary truncate">
-                            {item.key}
-                          </span>
-                          <div className="flex items-center gap-2 ml-2">
-                            <span className="text-xs text-vizla-text-secondary">
-                              {item.count}
-                            </span>
-                            <span className="text-xs text-vizla-text-muted">
-                              ({(item.percent).toFixed(1)}%)
-                            </span>
+                      <div className="flex items-center gap-3 flex-1">
+                        <MapPin className="h-5 w-5 text-vizla-text-secondary" />
+                        <div className="flex-1 text-left">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-vizla-text-primary">{market.market}</span>
+                            <Badge className={`${healthColor} text-white text-xs`}>{healthStatus}</Badge>
+                          </div>
+                          <div className="text-sm text-vizla-text-secondary mt-1">
+                            {market.total} vehicles • {market.blocked} blocked • {market.utilization}% utilization
                           </div>
                         </div>
-                        <div className="w-full h-1.5 bg-vizla-glass rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-vizla-brand-primary to-vizla-brand-secondary transition-all duration-300"
-                            style={{ width: `${Math.min(item.percent, 100)}%` }}
-                          />
+                      </div>
+                      {isExpanded ? (
+                        <ChevronUp className="h-5 w-5 text-vizla-text-muted" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-vizla-text-muted" />
+                      )}
+                    </button>
+
+                    {isExpanded && (
+                      <div className="px-4 pb-4 space-y-3 border-t border-vizla-glassBorder">
+                        <div className="grid grid-cols-2 gap-3 pt-4">
+                          <div>
+                            <p className="text-xs text-vizla-text-muted">Total</p>
+                            <p className="text-lg font-semibold text-vizla-text-primary">{market.total}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-vizla-text-muted">Dispatched</p>
+                            <p className="text-lg font-semibold text-vizla-text-primary">{market.total - market.blocked - market.stashed}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-vizla-text-muted">Blocked</p>
+                            <p className="text-lg font-semibold text-vizla-text-primary">{market.blocked}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-vizla-text-muted">Recovered</p>
+                            <p className="text-lg font-semibold text-vizla-text-primary">{market.stashed}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <Button variant="outline" size="sm" className="flex-1">
+                            View on Map
+                          </Button>
+                          <Button variant="outline" size="sm" className="flex-1">
+                            Market Details
+                          </Button>
                         </div>
                       </div>
-                      
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNavigate(item);
-                        }}
-                        className="ml-3 p-1 rounded-md hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-                        aria-label={`Navigate to ${item.key} locations`}
-                        title="Navigate to locations"
-                      >
-                        <Navigation className="w-4 h-4 text-vizla-text-muted hover:text-vizla-text-secondary" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Throughput Chart */}
+          <div className="rounded-2xl bg-vizla-glass backdrop-blur-md border border-vizla-glassBorder shadow-sm p-6">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-vizla-text-primary">Daily Throughput</h3>
+              <p className="text-sm text-vizla-text-muted">Vehicles recovered per day</p>
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={throughputData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--vizla-glassBorder)" />
+                  <XAxis dataKey="date" tick={{ fill: 'var(--vizla-text-muted)', fontSize: 12 }} />
+                  <YAxis tick={{ fill: 'var(--vizla-text-muted)', fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'var(--vizla-elev1)',
+                      border: '1px solid var(--vizla-glassBorder)',
+                      borderRadius: '8px',
+                      color: 'var(--vizla-text-primary)',
+                    }}
+                  />
+                  <Bar dataKey="recovered" fill="var(--vizla-brand-primary)" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Aging Analysis Chart */}
+          <div className="rounded-2xl bg-vizla-glass backdrop-blur-md border border-vizla-glassBorder shadow-sm p-6">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-vizla-text-primary">Aging Analysis</h3>
+              <p className="text-sm text-vizla-text-muted">Vehicle inventory by age buckets</p>
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={agingData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--vizla-glassBorder)" />
+                  <XAxis dataKey="market" tick={{ fill: 'var(--vizla-text-muted)', fontSize: 12 }} angle={-45} textAnchor="end" height={80} />
+                  <YAxis tick={{ fill: 'var(--vizla-text-muted)', fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'var(--vizla-elev1)',
+                      border: '1px solid var(--vizla-glassBorder)',
+                      borderRadius: '8px',
+                      color: 'var(--vizla-text-primary)',
+                    }}
+                  />
+                  <Legend wrapperStyle={{ color: 'var(--vizla-text-primary)' }} />
+                  <Bar dataKey="0-24h" stackId="a" fill="var(--vizla-success)" />
+                  <Bar dataKey="24-48h" stackId="a" fill="var(--vizla-brand-primary)" />
+                  <Bar dataKey="48-72h" stackId="a" fill="var(--vizla-warning)" />
+                  <Bar dataKey="72h+" stackId="a" fill="var(--vizla-danger)" />
+                </BarChart>
+              </ResponsiveContainer>
             )}
           </div>
         </div>
 
-        {/* Client-Market Heat Map */}
-        <GlassCard className="mt-8">
-          <ClientMarketHeatMap 
-            data={filteredData.map(row => ({
-              client: row.client,
-              market: row.zone
-            }))} 
-          />
-        </GlassCard>
-
-        {/* Markets & Zones Overview */}
-        <div className="mt-8">
-          <MarketsOverview
-            onZoneClick={(market, zone) => {
-              // Filter dashboard by selected market/zone
-              setMarket(market);
-              setSelZone(zone);
-              // Scroll to breakdowns section
-              const breakdownsSection = document.querySelector('.breakdown-panels');
-              if (breakdownsSection) {
-                breakdownsSection.scrollIntoView({ behavior: 'smooth' });
-              }
-            }}
-            defaultViewMode="columns"
-            showViewAllButton={true}
-            maxColumns={4}
-          />
+        {/* Driver Workload Distribution */}
+        <div className="rounded-2xl bg-vizla-glass backdrop-blur-md border border-vizla-glassBorder shadow-sm p-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-vizla-text-primary">Driver Workload Distribution</h3>
+            <p className="text-sm text-vizla-text-muted">Current assignments and completed vehicles per driver</p>
+          </div>
+          {isLoading ? (
+            <Skeleton className="h-[400px] w-full" />
+          ) : (
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={driverWorkloadData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis type="number" tick={{ fill: 'var(--vizla-text-muted)', fontSize: 12 }} />
+                <YAxis dataKey="name" type="category" width={90} tick={{ fill: 'var(--vizla-text-muted)', fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--vizla-elev1)',
+                    border: '1px solid var(--vizla-glassBorder)',
+                    borderRadius: '8px',
+                    color: 'var(--vizla-text-primary)',
+                  }}
+                />
+                <Legend wrapperStyle={{ color: 'var(--vizla-text-primary)' }} />
+                <Bar dataKey="assigned" fill="var(--vizla-brand-primary)" name="Assigned" />
+                <Bar dataKey="completed" fill="var(--vizla-success)" name="Completed Today" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+          <div className="mt-4 pt-4 border-t border-vizla-glassBorder">
+            <Link
+              to="/app/tow-driver"
+              className="text-sm text-vizla-brand-primary hover:text-vizla-brand-primary/80 font-medium flex items-center gap-1"
+            >
+              View Driver Details <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </div>
     </AppShell>

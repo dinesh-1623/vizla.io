@@ -1,4 +1,6 @@
 import { haversineMiles } from '../geo';
+import { findNearestLot, findNearestLotsBatch } from '../services/nearestLotFinder';
+import { DEFAULT_LOT } from '../data/illinoisLots';
 
 export type GeocodedPoint = {
   lat: number;
@@ -57,6 +59,183 @@ function calculateTravelTime(from: GeocodedPoint, to: GeocodedPoint, cityMph: nu
 }
 
 /**
+ * Find nearest lot synchronously using Haversine distance
+ * (Fast fallback - for async Distance Matrix, use findNearestLot service)
+ */
+function findNearestLotSync(lat: number, lng: number): { lat: number; lng: number } {
+  const lots = [
+    { lat: 41.6667, lng: -87.6583 }, // Calumet Park
+    { lat: 41.9000, lng: -87.8500 }, // Melrose Park
+    { lat: 41.5250, lng: -88.0817 }  // Joliet
+  ];
+  
+  let nearestLot = lots[0];
+  let minDistance = Infinity;
+  
+  for (const lot of lots) {
+    const distance = haversineMiles({ lat, lng }, lot);
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestLot = lot;
+    }
+  }
+  
+  return nearestLot;
+}
+
+/**
+ * Build optimized route with nearest lot per vehicle
+ * Route pattern: Lot → Pickup1 → NearestLot1 → Pickup2 → NearestLot2 → ...
+ */
+function buildOptimizedRouteWithNearestLots(
+  startLot: GeocodedPoint,
+  pickups: GeocodedPoint[],
+  finishAtLot: boolean
+): string {
+  // Build waypoints: pickup1, nearestLot1, pickup2, nearestLot2, ...
+  const waypoints: string[] = [];
+  const originStr = `${startLot.lat},${startLot.lng}`;
+  
+  for (let i = 0; i < pickups.length; i++) {
+    const pickup = pickups[i];
+    const pickupStr = `${pickup.lat},${pickup.lng}`;
+    
+    // Always add pickup location (even if same as origin - it's a valid stop)
+    waypoints.push(pickupStr);
+    
+    // Find nearest lot using Haversine (fast, synchronous)
+    const nearestLot = findNearestLotSync(pickup.lat, pickup.lng);
+    const nearestLotStr = `${nearestLot.lat},${nearestLot.lng}`;
+    
+    // Always add nearest lot after pickup (even if same as origin - driver needs to drop vehicle)
+    waypoints.push(nearestLotStr);
+  }
+  
+  // Final destination is the last nearest lot (or start lot if finishAtLot)
+  const lastNearestLot = pickups.length > 0 
+    ? findNearestLotSync(pickups[pickups.length - 1].lat, pickups[pickups.length - 1].lng)
+    : { lat: startLot.lat, lng: startLot.lng };
+  
+  const finalDestination = finishAtLot ? startLot : lastNearestLot;
+  const destStr = `${finalDestination.lat},${finalDestination.lng}`;
+  
+  // Remove ONLY consecutive duplicate waypoints (keep waypoints even if they match origin/dest)
+  const uniqueWaypoints: string[] = [];
+  let lastWaypoint = originStr;
+  
+  for (const wp of waypoints) {
+    // Only skip if it's the SAME as the previous waypoint (consecutive duplicate)
+    // But keep it if it's different from the last one, even if it matches origin/dest
+    if (wp !== lastWaypoint) {
+      uniqueWaypoints.push(wp);
+      lastWaypoint = wp;
+    }
+  }
+  
+  // Initialize finalDest with default value
+  let finalDest = destStr;
+  
+  // If we have no waypoints and origin = destination, we need at least one different stop
+  if (uniqueWaypoints.length === 0 && originStr === destStr) {
+    // Use the first pickup as a waypoint, or a different lot
+    if (pickups.length > 0) {
+      const firstPickup = pickups[0];
+      uniqueWaypoints.push(`${firstPickup.lat},${firstPickup.lng}`);
+      // Update destination to be the nearest lot for that pickup
+      const nearestLot = findNearestLotSync(firstPickup.lat, firstPickup.lng);
+      finalDest = `${nearestLot.lat},${nearestLot.lng}`;
+    } else {
+      // Fallback: use a different lot
+      const lots = [
+        { lat: 41.6667, lng: -87.6583 }, // Calumet Park
+        { lat: 41.9000, lng: -87.8500 }, // Melrose Park
+        { lat: 41.5250, lng: -88.0817 }  // Joliet
+      ];
+      const originLot = lots.find(l => `${l.lat},${l.lng}` === originStr) || lots[0];
+      const differentLot = lots.find(l => `${l.lat},${l.lng}` !== originStr) || lots[1];
+      uniqueWaypoints.push(`${differentLot.lat},${differentLot.lng}`);
+      finalDest = `${differentLot.lat},${differentLot.lng}`;
+    }
+  }
+  
+  // Google Maps supports up to 10 locations total (origin + dest + 8 waypoints)
+  const maxWaypoints = Math.min(uniqueWaypoints.length, 8);
+  const waypointStrs = uniqueWaypoints.slice(0, maxWaypoints);
+  
+  // Build URL with waypoints properly formatted
+  let url: string;
+  if (waypointStrs.length === 0) {
+    // If no waypoints, check if origin and destination are different
+    if (originStr === finalDest) {
+      // Can't route from same location to same location - use last pickup as destination
+      if (pickups.length > 0) {
+        const lastPickup = pickups[pickups.length - 1];
+        finalDest = `${lastPickup.lat},${lastPickup.lng}`;
+      } else {
+        // Fallback: use a different lot
+        const lots = [
+          { lat: 41.6667, lng: -87.6583 }, // Calumet Park
+          { lat: 41.9000, lng: -87.8500 }, // Melrose Park
+          { lat: 41.5250, lng: -88.0817 }  // Joliet
+        ];
+        // Use a different lot than origin
+        const originLot = lots.find(l => `${l.lat},${l.lng}` === originStr) || lots[0];
+        const differentLot = lots.find(l => l !== originLot) || lots[1];
+        finalDest = `${differentLot.lat},${differentLot.lng}`;
+      }
+    }
+    url = `https://www.google.com/maps/dir/${originStr}/${finalDest}`;
+  } else {
+    // Format: /origin/waypoint1/waypoint2/.../destination
+    url = `https://www.google.com/maps/dir/${originStr}/${waypointStrs.join('/')}/${finalDest}`;
+  }
+  
+  // Identify which lots are being used
+  const lotsUsed = new Set<string>();
+  const waypointDetails = waypointStrs.map((wp, i) => {
+    const isPickup = i % 2 === 0;
+    const pickupIndex = Math.floor(i / 2);
+    if (isPickup) {
+      return `Pickup ${pickupIndex + 1}: ${wp}`;
+    } else {
+      // Identify which Illinois lot this is
+      const [lat, lng] = wp.split(',').map(Number);
+      const lotNames = [
+        { name: 'Calumet Park', lat: 41.6667, lng: -87.6583 },
+        { name: 'Melrose Park', lat: 41.9000, lng: -87.8500 },
+        { name: 'Joliet', lat: 41.5250, lng: -88.0817 }
+      ];
+      const nearest = lotNames.reduce((closest, lot) => {
+        const dist = Math.abs(lat - lot.lat) + Math.abs(lng - lot.lng);
+        const closestDist = Math.abs(lat - closest.lat) + Math.abs(lng - closest.lng);
+        return dist < closestDist ? lot : closest;
+      }, lotNames[0]);
+      lotsUsed.add(nearest.name);
+      return `Nearest Lot ${pickupIndex + 1} (${nearest.name}): ${wp}`;
+    }
+  });
+  
+  console.log('🔍 Built optimized route with nearest lots:', {
+    origin: `${startLot.lat},${startLot.lng} (${startLot.address})`,
+    waypoints: waypointDetails,
+    destination: `${finalDestination.lat},${finalDestination.lng}`,
+    totalStops: waypointStrs.length + 2,
+    lotsUsed: Array.from(lotsUsed),
+    uniqueLots: lotsUsed.size,
+    url
+  });
+  
+  if (lotsUsed.size === 1) {
+    console.warn('⚠️ Only one Illinois lot is being used. This might mean:');
+    console.warn('   1. All vehicles are close to the same lot (expected if vehicles are nearby)');
+    console.warn('   2. Vehicles need to be re-geocoded with Illinois addresses');
+    console.warn('   3. Check vehicle coordinates - they might still be Baltimore coordinates');
+  }
+  
+  return url;
+}
+
+/**
  * Build Google Maps URL for a route segment
  */
 function buildGoogleMapsUrl(
@@ -86,18 +265,18 @@ function buildGoogleMapsUrl(
     const hasCorruptedLng = wp.lng > 180 || wp.lng < -180 || (wp.lng > 100 && wp.lng < 1000);
     
     if (hasCorruptedLat || hasCorruptedLng) {
-      console.warn('🚨 Replacing corrupted waypoint with default Baltimore coordinates:', {
+      console.warn('🚨 Replacing corrupted waypoint with default Illinois coordinates:', {
         id: wp.id,
         address: wp.address,
         originalLat: wp.lat,
         originalLng: wp.lng
       });
       
-      // Instead of filtering out, replace with valid Baltimore coordinates
+      // Instead of filtering out, replace with valid Illinois coordinates (Calumet Park)
       return {
         ...wp,
-        lat: 39.2904 + (Math.random() - 0.5) * 0.1, // Baltimore center with small random offset
-        lng: -76.6122 + (Math.random() - 0.5) * 0.1
+        lat: 41.6667 + (Math.random() - 0.5) * 0.1, // Calumet Park, IL with small random offset
+        lng: -87.6583 + (Math.random() - 0.5) * 0.1
       };
     }
     
@@ -248,7 +427,7 @@ function calculateOptimized(inputs: CapacityInputs): Totals {
     };
   }
 
-  // For each pickup, decide whether to go to lot or stash based on distance
+  // For each pickup, go to the nearest lot (AI-powered optimization)
   for (let i = 0; i < pickups.length; i++) {
     const pickup = pickups[i];
     
@@ -256,37 +435,35 @@ function calculateOptimized(inputs: CapacityInputs): Totals {
     driveMinutes += calculateTravelTime(currentPos, pickup, service.cityMph);
     serviceMinutes += service.hookupMin;
     
-    // Decide whether to go to lot or stash
-    const distToLot = calculateTravelTime(pickup, lot, service.cityMph);
-    const distToStash = calculateTravelTime(pickup, stash, service.cityMph);
+    // Find nearest lot for this pickup location
+    const nearestLot = findNearestLotSync(pickup.lat, pickup.lng);
+    const nearestLotPoint: GeocodedPoint = {
+      lat: nearestLot.lat,
+      lng: nearestLot.lng,
+      address: `Nearest Lot ${i + 1}`,
+      id: `nearest-lot-${i}`
+    };
     
-    if (distToLot <= distToStash) {
-      driveMinutes += distToLot;
-      serviceMinutes += service.dropLotMin;
-      currentPos = lot;
-      decisions.push({ to: 'lot', index: i });
-    } else {
-      driveMinutes += distToStash;
-      serviceMinutes += service.dropStashMin;
-      currentPos = stash;
-      decisions.push({ to: 'stash', index: i });
-    }
+    // Drive to nearest lot
+    const distToNearestLot = calculateTravelTime(pickup, nearestLotPoint, service.cityMph);
+    driveMinutes += distToNearestLot;
+    serviceMinutes += service.dropLotMin;
+    currentPos = nearestLotPoint;
+    decisions.push({ to: 'lot', index: i }); // Always going to lot (nearest one)
   }
 
-  // If finish at lot and we ended at stash, add final trip
-  if (finishStashAtLot && currentPos === stash) {
-    driveMinutes += calculateTravelTime(stash, lot, service.cityMph);
-  }
+  // We always finish at a lot (the last nearest lot), so no additional trip needed
 
   const totalMinutes = driveMinutes + serviceMinutes;
   
   // Build segments based on decisions
+  // For optimized route, we'll build it with nearest lots per vehicle
   const segments: { label: string; url: string }[] = [];
   if (pickups.length > 0) {
-    const destination = finishStashAtLot ? lot : stash;
+    // Build route with nearest lots - will be populated asynchronously
     segments.push({
       label: 'Optimized Route - All Pickups',
-      url: buildGoogleMapsUrl(lot, destination, pickups, 'Optimized Route')
+      url: buildOptimizedRouteWithNearestLots(lot, pickups, finishStashAtLot)
     });
   }
 

@@ -4,14 +4,17 @@ export interface LocatedRow {
   id: string;
   client: string;
   zone: string;           // "market"
+  market?: string;
   driver: string;         // may be empty string (deprecated, use source/assignedDriver)
   source: string;         // CSV["DRIVER"] - values like GPS, Rotors, Imp, Fuel, "-"
   assignedDriver: string; // First non-empty of SPOTTER, DRIVER NAME, ASSIGNED TO (title-cased)
   status: Status;         // if missing in CSV, default 'Located'
   lat?: number; 
   lng?: number;
+  lon?: number;
   address?: string;
   locatedAt?: string;
+  notes?: string;
 }
 
 export interface StorageLot {

@@ -10,15 +10,14 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TOW_CARDS, LOT_ADDRESS, STASH_ADDRESS, type TowCard } from '@/app/tow-driver/data/baltimoreRun';
+import { DEFAULT_LOT, ILLINOIS_LOTS } from '@/lib/data/illinoisLots';
 import { getCombinedTowCards, clearAllSpotterSubmissions } from '@/lib/integration/spotterToDriver';
 import { haversineMiles, type LatLng } from '@/lib/geo';
-import { totalReturnToLot, totalStash, totalHybridPerStop, minutesFromMiles, type ServiceTimes, type Point, type TravelFn, type HybridStep } from '@/lib/routing';
+import { totalReturnToLot, minutesFromMiles, type ServiceTimes, type Point, type TravelFn } from '@/lib/routing';
 import { clusterIntoTwoGroups, clusterIntoGroupsOfTen } from '@/lib/cluster';
-import { buildRoundTripLot, buildStashChain, buildHybridChainWithCoords } from '@/lib/mapsUrl';
+import { buildRoundTripLot } from '@/lib/mapsUrl';
 import { 
   computeReturnToLot, 
-  computeReturnToStash, 
-  computeOptimizedPerStop,
   type RouteTotals,
   type ServiceTimes as RouteServiceTimes,
   type Point as RoutePoint
@@ -34,7 +33,6 @@ import { useAssumptions } from '@/hooks/useAssumptions';
 import { Filters } from '@/components/driver/Filters';
 import { CapacityCard } from '@/components/driver/CapacityCard';
 import { ProgressTracker } from '@/components/driver/ProgressTracker';
-import { RouteCapacityAnalysis } from '@/components/driver/RouteCapacityAnalysis';
 import { RunGroupPlanning } from '@/components/driver/RunGroupPlanning';
 import { AssignmentSummary } from '@/components/assignment/AssignmentSummary';
 import { AssignmentDetails } from '@/components/assignment/AssignmentDetails';
@@ -47,7 +45,12 @@ import { ShiftUtilizationMeter } from '@/components/driver/ShiftUtilizationMeter
 import { EnhancedShiftProgress } from '@/components/driver/EnhancedShiftProgress';
 import { GroupStatusPill } from '@/components/driver/GroupStatusPill';
 import { calculateShiftUtilization, calculateEnhancedShiftMetrics, calculateGroupUtilization, formatTimeDisplay, type ShiftStatus } from '@/lib/shiftUtilization';
-import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users, Zap } from 'lucide-react';
+import { X, ArrowLeft, Settings, RefreshCw, AlertCircle, Navigation, ExternalLink, Clock, Users, Zap, Sparkles } from 'lucide-react';
+import { optimizeDriverRoutes, type RouteOptimizationResult } from '@/lib/services/driverRouteOptimization';
+import { toast } from 'sonner';
+import { AIOptimizationPanel } from '@/components/driver/AIOptimizationPanel';
+import { AIRouteCard } from '@/components/driver/AIRouteCard';
+import type { RouteBatch, BatchVehicle } from '@/lib/batching';
 import AppShell from '@/components/shell/AppShell';
 import { FilterChips } from '@/components/ui/FilterChips';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -92,19 +95,10 @@ const TowDriver: React.FC = () => {
   const [assignedDriver, setAssignedDriver] = useState('');
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [showTop, setShowTop] = useState(false);
-  const [routeMode, setRouteMode] = useState<'return' | 'stash'>('stash');
   const [isAssumptionsOpen, setIsAssumptionsOpen] = useState(false);
-  const [finishAtLot, setFinishAtLot] = useState(true);
-  const [planMode, setPlanMode] = useState<'lot' | 'stash' | 'hybrid'>('hybrid');
   const [optimizationResults, setOptimizationResults] = useState<{
     returnTotals: RouteTotals;
-    stashTotals: RouteTotals;
-    optimizedTotals: RouteTotals;
-    savedMin: number;
-    savedPct: number;
     fitsReturn: boolean;
-    fitsStash: boolean;
-    fitsOptimized: boolean;
   } | null>(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
   
@@ -118,6 +112,11 @@ const TowDriver: React.FC = () => {
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
   
+  // AI Optimization State
+  const [isAIOptimizing, setIsAIOptimizing] = useState(false);
+  const [aiOptimizationResult, setAIOptimizationResult] = useState<RouteOptimizationResult | null>(null);
+  const [showAIOptimization, setShowAIOptimization] = useState(false);
+  
   // Assumptions management
   const { assumptions, updateAssumptions } = useAssumptions();
 
@@ -129,15 +128,15 @@ const TowDriver: React.FC = () => {
     cityMph: assumptions.averageMph || 22
   }), [assumptions]);
 
-  // Coordinates for lot and stash (Baltimore locations)
+  // Coordinates for lot and stash (Illinois locations - using default lot)
   const lotCoords: LatLng = useMemo(() => ({
-    lat: 39.238,  // 4221 Curtis Ave, Baltimore, MD 21226
-    lng: -76.589
+    lat: DEFAULT_LOT.lat,  // Calumet Park, IL
+    lng: DEFAULT_LOT.lng
   }), []);
 
   const stashCoords: LatLng = useMemo(() => ({
-    lat: 39.245,  // 751 W Patapsco Ave, Halethorpe, MD 21227
-    lng: -76.580
+    lat: DEFAULT_LOT.lat,  // Using same lot for stash
+    lng: DEFAULT_LOT.lng
   }), []);
 
   // Travel function with cache
@@ -255,37 +254,20 @@ const TowDriver: React.FC = () => {
     
     console.log('🔄 Computing Group 1 optimization for', group1Points.length, 'points');
     
-    // Compute all three scenarios for Group 1's 10 vehicles
+    // Compute Return-to-Lot only
     const returnTotals = computeReturnToLot(group1Points, lotCoords, serviceTimes);
-    const stashTotals = computeReturnToStash(group1Points, lotCoords, stashCoords, finishAtLot, serviceTimes);
-    const optimizedTotals = computeOptimizedPerStop(group1Points, lotCoords, stashCoords, finishAtLot, serviceTimes);
     
-    console.log('📊 Optimization results:', {
-      returnTotals,
-      stashTotals,
-      optimizedTotals
+    console.log('📊 Return-to-Lot results:', {
+      returnTotals
     });
     
-    // Calculate savings: optimized vs the better of return-to-lot or return-to-stash
-    const baselineMin = Math.min(returnTotals.totalMin, stashTotals.totalMin);
-    const savedMin = Math.max(0, baselineMin - optimizedTotals.totalMin);
-    const savedPct = baselineMin > 0 ? (savedMin / baselineMin) * 100 : 0;
-    
     const fitsReturn = returnTotals.totalMin <= 720; // 12 hours
-    const fitsStash = stashTotals.totalMin <= 720;
-    const fitsOptimized = optimizedTotals.totalMin <= 720;
 
     return {
       returnTotals,
-      stashTotals,
-      optimizedTotals,
-      savedMin,
-      savedPct,
-      fitsReturn,
-      fitsStash,
-      fitsOptimized
+      fitsReturn
     };
-  }, [group1Points, lotCoords, stashCoords, finishAtLot, serviceTimes]);
+  }, [group1Points, lotCoords, serviceTimes]);
 
   // Compute optimization results for Group 2
   const computeGroup2Optimization = useMemo(() => {
@@ -295,37 +277,20 @@ const TowDriver: React.FC = () => {
     
     console.log('🔄 Computing Group 2 optimization for', group2Points.length, 'points');
     
-    // Compute all three scenarios for Group 2's 10 vehicles
+    // Compute Return-to-Lot only
     const returnTotals = computeReturnToLot(group2Points, lotCoords, serviceTimes);
-    const stashTotals = computeReturnToStash(group2Points, lotCoords, stashCoords, finishAtLot, serviceTimes);
-    const optimizedTotals = computeOptimizedPerStop(group2Points, lotCoords, stashCoords, finishAtLot, serviceTimes);
     
-    console.log('📊 Group 2 optimization results:', {
-      returnTotals,
-      stashTotals,
-      optimizedTotals
+    console.log('📊 Group 2 Return-to-Lot results:', {
+      returnTotals
     });
     
-    // Calculate savings: optimized vs the better of return-to-lot or return-to-stash
-    const baselineMin = Math.min(returnTotals.totalMin, stashTotals.totalMin);
-    const savedMin = Math.max(0, baselineMin - optimizedTotals.totalMin);
-    const savedPct = baselineMin > 0 ? (savedMin / baselineMin) * 100 : 0;
-    
     const fitsReturn = returnTotals.totalMin <= 720; // 12 hours
-    const fitsStash = stashTotals.totalMin <= 720;
-    const fitsOptimized = optimizedTotals.totalMin <= 720;
 
     return {
       returnTotals,
-      stashTotals,
-      optimizedTotals,
-      savedMin,
-      savedPct,
-      fitsReturn,
-      fitsStash,
-      fitsOptimized
+      fitsReturn
     };
-  }, [group2Points, lotCoords, stashCoords, finishAtLot, serviceTimes]);
+  }, [group2Points, lotCoords, serviceTimes]);
 
   // Update optimization results when computation changes
   useEffect(() => {
@@ -344,17 +309,7 @@ const TowDriver: React.FC = () => {
 
   const buildSelectedPlanUrls = () => {
     if (!optimizationResults) return [];
-    
-    switch (planMode) {
-      case 'lot': 
-        return optimizationResults.returnTotals.segments;
-      case 'stash': 
-        return optimizationResults.stashTotals.segments;
-      case 'hybrid': 
-        return optimizationResults.optimizedTotals.segments;
-      default: 
-        return [];
-    }
+    return optimizationResults.returnTotals.segments;
   };
 
   // Get cars for Group 1 (excluding completed vehicles)
@@ -503,8 +458,8 @@ const TowDriver: React.FC = () => {
         encodeURIComponent(`${vehicle.street}, ${vehicle.city}, ${vehicle.zip}`)
       ).join('/');
       
-      const origin = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226');
-      const destination = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226');
+      const origin = encodeURIComponent(LOT_ADDRESS);
+      const destination = encodeURIComponent(LOT_ADDRESS);
       const routeUrl = `https://www.google.com/maps/dir/${origin}/${waypoints}/${destination}`;
 
       groups.push({
@@ -537,17 +492,6 @@ const TowDriver: React.FC = () => {
     if (driverParam) setAssignedDriver(driverParam);
   }, [searchParams]);
 
-  // Persist route mode in localStorage
-  useEffect(() => {
-    const savedRouteMode = localStorage.getItem('tow-driver-route-mode') as 'return' | 'stash';
-    if (savedRouteMode && ['return', 'stash'].includes(savedRouteMode)) {
-      setRouteMode(savedRouteMode);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('tow-driver-route-mode', routeMode);
-  }, [routeMode]);
 
   // Get cars for both groups
   const group1Cars = getGroup1Cars();
@@ -756,6 +700,120 @@ const TowDriver: React.FC = () => {
     setCurrentBatchIndex(prev => prev + 1);
   };
 
+  // Convert TowCard to BatchVehicle for AI optimization
+  const towCardToBatchVehicle = (card: TowCard): BatchVehicle => {
+    // Determine difficulty from vehicle age or extracted metadata
+    const year = typeof card.year === 'number' ? card.year : parseInt(String(card.year));
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - year;
+    
+    let difficulty: 'easy' | 'medium' | 'hard';
+    if (age <= 5) {
+      difficulty = 'easy';
+    } else if (age <= 10) {
+      difficulty = 'medium';
+    } else {
+      difficulty = 'hard';
+    }
+    
+    return {
+      id: card.id,
+      address: card.fullAddress,
+      lat: card.lat || 39.2904,
+      lng: card.lng || -76.6122,
+      client: card.client,
+      year: String(card.year),
+      make: card.make,
+      model: card.model,
+      difficulty
+    };
+  };
+
+  // Convert active TowCards to RouteBatches for AI optimization
+  const convertToRouteBatches = useMemo(() => {
+    const vehicles = activeTowCards.map(towCardToBatchVehicle);
+    const batches: RouteBatch[] = [];
+    const batchSize = carsPerRunGroup;
+    
+    for (let i = 0; i < vehicles.length; i += batchSize) {
+      const batchVehicles = vehicles.slice(i, i + batchSize);
+      
+      // Calculate times for both strategies
+      let lotTime = 0;
+      let stashTime = 0;
+      
+      for (const vehicle of batchVehicles) {
+        // Estimate travel time
+        const lotTravel = haversineMiles({ lat: vehicle.lat, lng: vehicle.lng }, lotCoords) / serviceTimes.cityMph * 60;
+        const stashTravel = haversineMiles({ lat: vehicle.lat, lng: vehicle.lng }, stashCoords) / serviceTimes.cityMph * 60;
+        
+        lotTime += lotTravel + serviceTimes.hookupMin + lotTravel + serviceTimes.dropLotMin;
+        stashTime += stashTravel + serviceTimes.hookupMin + stashTravel + serviceTimes.dropStashMin;
+      }
+      
+      batches.push({
+        id: `batch-${batches.length + 1}`,
+        vehicles: batchVehicles,
+        lotTime,
+        stashTime,
+        stashSavings: Math.max(0, lotTime - stashTime),
+        estimatedStartTime: new Date(),
+        estimatedEndTime: new Date(Date.now() + Math.min(lotTime, stashTime) * 60000)
+      });
+    }
+    
+    return batches;
+  }, [activeTowCards, carsPerRunGroup, lotCoords, stashCoords, serviceTimes]);
+
+  // AI Optimization handler
+  const handleAIOptimize = async () => {
+    if (activeTowCards.length === 0) {
+      toast.error('No active vehicles to optimize');
+      return;
+    }
+
+    setIsAIOptimizing(true);
+    setError(null);
+
+    try {
+      const vehicles = activeTowCards.map(towCardToBatchVehicle);
+      const batches = convertToRouteBatches;
+
+      const result = await optimizeDriverRoutes({
+        batches,
+        vehicles,
+        shiftLengthHours: shiftLength,
+        strategy: 'lot',
+        serviceTimes: {
+          hookupMin: serviceTimes.hookupMin,
+          dropLotMin: serviceTimes.dropLotMin,
+          dropStashMin: serviceTimes.dropStashMin,
+          cityMph: serviceTimes.cityMph
+        }
+      });
+
+      if (result.success) {
+        setAIOptimizationResult(result);
+        setShowAIOptimization(true);
+        toast.success(`AI optimization complete! ${result.efficiencyImprovement.toFixed(1)}% improvement, ${result.estimatedSavings.toFixed(0)} minutes saved`);
+      } else {
+        toast.error(result.error || 'AI optimization failed');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      toast.error(`Optimization error: ${errorMessage}`);
+    } finally {
+      setIsAIOptimizing(false);
+    }
+  };
+
+  // Get AI insights for a specific batch
+  const getAIInsights = (batchId: string) => {
+    if (!aiOptimizationResult) return null;
+    return aiOptimizationResult.optimizedRoutes.find(r => r.batchId === batchId);
+  };
+
   // Create route groups for Now/Next/Later
   const createRouteGroups = () => {
     if (activeTowCards.length === 0) return { nowGroup: null, nextGroup: null, laterGroups: [] };
@@ -852,6 +910,17 @@ const TowDriver: React.FC = () => {
           </div>
                  <div className="flex items-center gap-2">
                    <button
+                     onClick={handleAIOptimize}
+                     disabled={isAIOptimizing || activeTowCards.length === 0}
+                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/30 hover:bg-purple-500/30 focus-visible:ring-2 focus-visible:ring-purple-500/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                     aria-label="AI Optimize Routes"
+                   >
+                     <Sparkles className={`w-4 h-4 ${isAIOptimizing ? 'animate-pulse' : ''}`} />
+                     <span className="text-sm font-medium">
+                       {isAIOptimizing ? 'Optimizing...' : 'AI Optimize'}
+                     </span>
+                   </button>
+                   <button
                      onClick={() => {
                        clearAllSpotterSubmissions();
                        window.location.reload();
@@ -897,6 +966,20 @@ const TowDriver: React.FC = () => {
           estimatedCompletion={enhancedShiftMetrics.projectedCompletion - enhancedShiftMetrics.totalTimeUsed}
         />
       </div>
+
+      {/* AI Optimization Panel */}
+      {showAIOptimization && aiOptimizationResult && (
+        <div className="mb-6">
+          <AIOptimizationPanel
+            optimizationResult={aiOptimizationResult}
+            onDismiss={() => setShowAIOptimization(false)}
+            onApplyOptimization={() => {
+              toast.info('AI optimization suggestions will be applied to route planning');
+              setShowAIOptimization(false);
+            }}
+          />
+        </div>
+      )}
 
       {/* New Submission Notification */}
       {hasNewSubmission && (
@@ -1177,24 +1260,6 @@ const TowDriver: React.FC = () => {
             </div>
             
             {/* Route Capacity Analysis for Group 1 */}
-            {computeGroup1Optimization && (
-              <GlassCard className="mb-6">
-                <RouteCapacityAnalysis
-                  lotTotalMin={computeGroup1Optimization.returnTotals.totalMin}
-                      lotDriveMin={computeGroup1Optimization.returnTotals.travelMin}
-                  lotServiceMin={computeGroup1Optimization.returnTotals.serviceMin}
-                  stashTotalMin={computeGroup1Optimization.stashTotals.totalMin}
-                  stashDriveMin={computeGroup1Optimization.stashTotals.travelMin}
-                  stashServiceMin={computeGroup1Optimization.stashTotals.serviceMin}
-                  optimizedTotalMin={computeGroup1Optimization.optimizedTotals.totalMin}
-                  optimizedDriveMin={computeGroup1Optimization.optimizedTotals.travelMin}
-                  optimizedServiceMin={computeGroup1Optimization.optimizedTotals.serviceMin}
-                  shiftLengthHours={12}
-                  finishAtLot={finishAtLot}
-                  onToggleFinishAtLot={() => setFinishAtLot(!finishAtLot)}
-                />
-              </GlassCard>
-            )}
             
             <CapacityCard
               inputs={{
@@ -1217,7 +1282,7 @@ const TowDriver: React.FC = () => {
                   address: STASH_ADDRESS,
                   id: 'stash'
                 },
-                finishStashAtLot: finishAtLot,
+                finishStashAtLot: true,
                 service: {
                   hookupMin: serviceTimes.hookupMin,
                   dropLotMin: serviceTimes.dropLotMin,
@@ -1225,9 +1290,6 @@ const TowDriver: React.FC = () => {
                   cityMph: serviceTimes.cityMph
                 },
                 useLiveMatrix: !!import.meta.env.VITE_GOOGLE_MAPS_KEY
-              }}
-              onModeChange={(mode) => {
-                setGroup1Mode(mode);
               }}
             />
           </div>
@@ -1241,17 +1303,31 @@ const TowDriver: React.FC = () => {
               Optimized Routes ({routeGroups.length} groups)
             </h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {routeGroups.map((group, index) => (
-                <TowRouteGroupCard
-                  key={index}
-                  cars={group.cars}
-                  nearestLot={group.nearestLot}
-                  returnTime={group.returnTime}
-                  stashTime={group.stashTime}
-                  returnUrl={group.returnUrl}
-                  stashUrl={group.stashUrl}
-                />
-              ))}
+              {routeGroups.map((group, index) => {
+                const batchId = `batch-${index + 1}`;
+                const aiInsights = getAIInsights(batchId);
+                
+                return (
+                  <div key={index} className="relative">
+                    <TowRouteGroupCard
+                      cars={group.cars}
+                      nearestLot={group.nearestLot}
+                      returnTime={group.returnTime}
+                      stashTime={group.stashTime}
+                      returnUrl={group.returnUrl}
+                      stashUrl={group.stashUrl}
+                    />
+                    {aiInsights && (
+                      <div className="mt-2">
+                        <AIRouteCard
+                          batchId={batchId}
+                          optimizedRoute={aiInsights}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1262,7 +1338,7 @@ const TowDriver: React.FC = () => {
             <div className="mb-4">
               <h3 className="text-xl font-semibold text-vizla-text-primary">Group 1 Vehicles</h3>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {group1Cars.map((car) => (
                 <VehicleCard 
                   key={(car as any).__dupKey ?? car.vin} 
@@ -1290,25 +1366,6 @@ const TowDriver: React.FC = () => {
                   />
                 </div>
                 
-                {/* Route Capacity Analysis for Group 2 */}
-                {computeGroup2Optimization && (
-                  <GlassCard className="mb-6">
-                    <RouteCapacityAnalysis
-                      lotTotalMin={computeGroup2Optimization.returnTotals.totalMin}
-                      lotDriveMin={computeGroup2Optimization.returnTotals.travelMin}
-                      lotServiceMin={computeGroup2Optimization.returnTotals.serviceMin}
-                      stashTotalMin={computeGroup2Optimization.stashTotals.totalMin}
-                      stashDriveMin={computeGroup2Optimization.stashTotals.travelMin}
-                      stashServiceMin={computeGroup2Optimization.stashTotals.serviceMin}
-                      optimizedTotalMin={computeGroup2Optimization.optimizedTotals.totalMin}
-                      optimizedDriveMin={computeGroup2Optimization.optimizedTotals.travelMin}
-                      optimizedServiceMin={computeGroup2Optimization.optimizedTotals.serviceMin}
-                      shiftLengthHours={12}
-                      finishAtLot={finishAtLot}
-                      onToggleFinishAtLot={() => setFinishAtLot(!finishAtLot)}
-                    />
-                  </GlassCard>
-                )}
                 
                 <CapacityCard
                   inputs={{
@@ -1331,7 +1388,7 @@ const TowDriver: React.FC = () => {
                       address: STASH_ADDRESS,
                       id: 'stash'
                     },
-                    finishStashAtLot: finishAtLot,
+                    finishStashAtLot: true,
                     service: {
                       hookupMin: serviceTimes.hookupMin,
                       dropLotMin: serviceTimes.dropLotMin,
@@ -1340,9 +1397,6 @@ const TowDriver: React.FC = () => {
                     },
                     useLiveMatrix: !!import.meta.env.VITE_GOOGLE_MAPS_KEY
                   }}
-                  onModeChange={(mode) => {
-                    setGroup2Mode(mode);
-                  }}
                 />
               </div>
             )}
@@ -1350,7 +1404,7 @@ const TowDriver: React.FC = () => {
             <div className="mb-4">
               <h3 className="text-xl font-semibold text-vizla-text-primary">Group 2 Vehicles</h3>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {group2Cars.map((car) => (
                 <VehicleCard 
                   key={(car as any).__dupKey ?? car.vin} 
@@ -1378,7 +1432,7 @@ const TowDriver: React.FC = () => {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {assignmentResult.unassignedVehicles.map((vehicle: any) => {
                 // Find the corresponding TowCard for display
                 const towCard = activeTowCards.find(card => card.id === vehicle.id);
@@ -1392,8 +1446,8 @@ const TowDriver: React.FC = () => {
                       onMarkAsDone={handleMarkAsDone}
                     />
                     {/* Unassigned indicator */}
-                    <div className="absolute top-2 right-2">
-                      <Badge className="bg-amber-500/20 text-amber-400 border-0 text-xs">
+                    <div className="absolute top-1.5 right-1.5">
+                      <Badge className="bg-amber-500/20 text-amber-400 border-0 text-[10px] px-1.5 py-0.5">
                         Pending
                       </Badge>
                     </div>

@@ -26,8 +26,15 @@ export type TowCard = {
   notes?: string[];
 };
 
-export const LOT_ADDRESS = "4221 Curtis Ave, Baltimore, MD 21226";
-export const STASH_ADDRESS = "751 W Patapsco Ave, Halethorpe, MD 21227";
+// Illinois Storage Lots - Updated for Chicago area operations
+import { DEFAULT_LOT, ILLINOIS_LOTS } from '@/lib/data/illinoisLots';
+
+// Default lot (Calumet Park) - used as fallback
+export const LOT_ADDRESS = DEFAULT_LOT.address;
+export const STASH_ADDRESS = DEFAULT_LOT.address; // Using same lot for stash
+
+// Export Illinois lots for use throughout the application
+export { ILLINOIS_LOTS, DEFAULT_LOT };
 
 // Vehicle data for realistic generation
 const VEHICLE_MODELS = [

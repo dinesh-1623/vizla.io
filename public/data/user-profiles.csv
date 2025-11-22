@@ -1,0 +1,21 @@
+id,email,full_name,role,market
+usr-001,john.davis@premiumrecovery.com,John Davis,admin,
+usr-002,john.rodriguez@premiumrecovery.com,John Rodriguez,admin,
+usr-003,william.thomas@premiumrecovery.com,William Thomas,admin,
+usr-004,david.smith@premiumrecovery.com,David Smith,dispatcher,Baltimore
+usr-005,olivia.davis@premiumrecovery.com,Olivia Davis,dispatcher,Baltimore
+usr-006,ava.moore@premiumrecovery.com,Ava Moore,dispatcher,Dallas
+usr-007,sophia.rodriguez@premiumrecovery.com,Sophia Rodriguez,dispatcher,Phoenix
+usr-008,david.johnson@premiumrecovery.com,David Johnson,manager,Dallas
+usr-009,michael.johnson@premiumrecovery.com,Michael Johnson,manager,Dallas
+usr-010,ava.davis@premiumrecovery.com,Ava Davis,manager,Phoenix
+usr-011,sarah.rodriguez@premiumrecovery.com,Sarah Rodriguez,driver,Phoenix
+usr-012,william.lee@premiumrecovery.com,William Lee,driver,Dallas
+usr-013,sarah.rodriguez@premiumrecovery.com,Sarah Rodriguez,driver,Baltimore
+usr-014,william.lee@premiumrecovery.com,William Lee,driver,Atlanta
+usr-015,james.brown@premiumrecovery.com,James Brown,driver,Baltimore
+usr-016,william.lee@premiumrecovery.com,William Lee,driver,Dallas
+usr-017,maria.thomas@premiumrecovery.com,Maria Thomas,driver,Phoenix
+usr-018,sarah.johnson@premiumrecovery.com,Sarah Johnson,driver,Baltimore
+usr-019,maria.wilson@premiumrecovery.com,Maria Wilson,spotter,Phoenix
+usr-020,mia.johnson@premiumrecovery.com,Mia Johnson,spotter,Atlanta

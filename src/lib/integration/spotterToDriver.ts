@@ -10,11 +10,36 @@ export function convertSpotterToTowCard(submission: SpotterSubmission): TowCard 
     address: submission.address
   });
   
-  // Parse coordinates from address if available, otherwise use default Baltimore coordinates
+  // Check if address contains Baltimore references and warn
+  if (submission.address.toLowerCase().includes('baltimore') || 
+      submission.address.includes('21226') || 
+      submission.address.includes('21227') ||
+      submission.address.includes('21201')) {
+    console.warn('⚠️ Address contains Baltimore reference:', submission.address);
+  }
+  
+  // Parse the original address to extract street, city, state, zip
+  // Address format: "Street, City, State ZIP" or "Street, City, State"
+  const addressParts = submission.address.split(',').map(p => p.trim());
+  
+  // Extract street (everything before the last 2 parts)
+  const street = addressParts.slice(0, -2).join(', ') || addressParts[0] || submission.address;
+  
+  // Extract city (second to last part)
+  const city = addressParts.length >= 2 ? addressParts[addressParts.length - 2] : '';
+  
+  // Extract state and zip (last part) - format: "State ZIP" or just "State"
+  const lastPart = addressParts.length > 0 ? addressParts[addressParts.length - 1] : '';
+  const zipMatch = lastPart.match(/(\d{5})/);
+  const zip = zipMatch ? zipMatch[1] : '';
+  const state = lastPart.replace(/\d{5}/, '').trim();
+  
+  // Parse coordinates from address if available (coordinates are appended like ", 39.2904, -76.6122")
   // Look for coordinates that are clearly lat/lng (between -90 to 90 for lat, -180 to 180 for lng)
-  const coordMatch = submission.address.match(/(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/);
-  let lat = 39.2904; // Default Baltimore coordinates
-  let lng = -76.6122;
+  const coordMatch = submission.address.match(/(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)\s*$/);
+  let lat: number | undefined = undefined;
+  let lng: number | undefined = undefined;
+  let isUsingDefaultCoords = true;
   
   if (coordMatch) {
     const parsedLat = parseFloat(coordMatch[1]);
@@ -32,29 +57,30 @@ export function convertSpotterToTowCard(submission: SpotterSubmission): TowCard 
     if (parsedLat >= -90 && parsedLat <= 90 && parsedLng >= -180 && parsedLng <= 180) {
       lat = parsedLat;
       lng = parsedLng;
+      isUsingDefaultCoords = false;
       console.log('✅ Using parsed coordinates:', lat, lng);
     } else {
-      console.log('❌ Invalid coordinates, using defaults');
+      console.log('❌ Invalid coordinates, will need geocoding');
     }
   } else {
-    console.log('🔍 No coordinate match found, using defaults');
+    console.log('🔍 No coordinate match found, will need geocoding');
   }
 
-  // Create full address with coordinates
-  const fullAddress = coordMatch && (parseFloat(coordMatch[1]) >= -90 && parseFloat(coordMatch[1]) <= 90 && parseFloat(coordMatch[2]) >= -180 && parseFloat(coordMatch[2]) <= 180)
-    ? submission.address 
-    : `${submission.address}, ${lat}, ${lng}`;
+  // Keep fullAddress clean - don't append coordinates
+  // Coordinates are stored separately in lat/lng fields
+  const fullAddress = submission.address.replace(/,\s*-?\d{1,2}\.\d+,\s*-?\d{1,3}\.\d+\s*$/, '').trim();
     
-  console.log('🔍 Final coordinates and address:', {
+  console.log('🔍 Parsed address components:', {
+    original: submission.address,
+    street,
+    city,
+    state,
+    zip,
+    fullAddress,
     lat,
     lng,
-    fullAddress
+    isUsingDefaultCoords
   });
-
-  // Determine if we're using default coordinates
-  const isUsingDefaultCoords = !coordMatch || 
-    !(parseFloat(coordMatch[1]) >= -90 && parseFloat(coordMatch[1]) <= 90 && 
-      parseFloat(coordMatch[2]) >= -180 && parseFloat(coordMatch[2]) <= 180);
 
   return {
     id: `spotter-${submission.id}`,
@@ -66,14 +92,14 @@ export function convertSpotterToTowCard(submission: SpotterSubmission): TowCard 
     color: submission.color,
     plate: submission.plate,
     vin: submission.vin,
-    street: submission.address.split(',')[0] || submission.address,
-    city: 'Baltimore',
-    zip: '21201',
+    street: street,
+    city: city || 'Unknown',
+    zip: zip || '',
     fullAddress: fullAddress,
     img: submission.photoUrls?.[0] || '/placeholder.svg',
     images: submission.photoUrls || [],
-    lat: lat,
-    lng: lng,
+    lat: lat ?? 41.6667, // Default to Calumet Park, IL if no coordinates
+    lng: lng ?? -87.6583, // Default to Calumet Park, IL if no coordinates
     isDefaultCoords: isUsingDefaultCoords,
     // Map spotter information fields
     reachable: submission.reachable,

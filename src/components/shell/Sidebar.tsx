@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { X } from 'lucide-react';
-import { getCounts, getOrderConfirmationCount, getAssignmentVersion } from '@/lib/mockState';
+import { useVehicleCounts } from '@/hooks/useVehicleCounts';
+import { Logo } from '@/components/ui/Logo';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -23,73 +24,76 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const location = useLocation();
   const pathname = location.pathname;
 
-  // Memoize badge counts that depend on ASSIGNMENTS
-  // This ensures badges update automatically when ASSIGNMENTS is mutated via UI
-  const badgeCounts = useMemo(() => {
-    const counts = getCounts();
-    const orderConfirmationCount = getOrderConfirmationCount();
-    
-    return {
-      orderConfirmation: orderConfirmationCount,
-      toDispatch: counts.toDispatch,
-      dispatched: counts.dispatched,
-      stashed: counts.stashed,
-      blocked: 3 // Mock count for blocked vehicles
-    };
-  }, [getAssignmentVersion()]); // Re-compute when assignments are updated
+  // Get real vehicle counts from unified data source
+  const { data: counts } = useVehicleCounts();
+  
+  // Use counts from hook, fallback to 0 if loading
+  const badgeCounts = {
+    orderConfirmation: counts?.orderConfirmation || 0,
+    toDispatch: counts?.toDispatch || 0,
+    dispatched: counts?.dispatched || 0,
+    stashed: counts?.stashed || 0,
+    blocked: counts?.blocked || 0,
+  };
 
   const NAV_SECTIONS: NavSection[] = [
     {
       title: "Operations",
       items: [
-        { label: "Dashboard", href: "/" },
-        { label: "Order Confirmation", href: "/order-confirmation", badge: badgeCounts.orderConfirmation },
-        { label: "To Dispatch", href: "/to-dispatch", badge: badgeCounts.toDispatch },
-        { label: "Dispatched", href: "/dispatched", badge: badgeCounts.dispatched },
-        { label: "Stashed", href: "/stashed", badge: badgeCounts.stashed },
-        { label: "Blocked", href: "/blocked", badge: badgeCounts.blocked }
+        { label: "Operations Overview", href: "/app/ops/overview" },
+        { label: "Dashboard", href: "/app/dashboard" },
+        { label: "Map", href: "/app/ops/map" },
+        { label: "Zone Capacity", href: "/app/ops/zones" },
+        { label: "Located Dashboard", href: "/app/located-dashboard" },
+        { label: "Order Confirmation", href: "/app/order-confirmation", badge: badgeCounts.orderConfirmation },
+        { label: "To Dispatch", href: "/app/to-dispatch", badge: badgeCounts.toDispatch },
+        { label: "Dispatched", href: "/app/dispatched", badge: badgeCounts.dispatched },
+        { label: "Stashed", href: "/app/stashed", badge: badgeCounts.stashed },
+        { label: "Blocked", href: "/app/blocked", badge: badgeCounts.blocked }
       ]
     },
     {
       title: "Management",
       items: [
-        { label: "Zone Capacity", href: "/manager/zone-capacity" }
+        { label: "Zone Capacity Dashboard", href: "/app/zones/capacity" }
       ]
     },
     {
       title: "People",
       items: [
-        { label: "Tow Trucks", href: "/tow-trucks" },
-        { label: "Tow Driver View", href: "/tow-driver" },
-        { label: "Driver Progress", href: "/driver/progress" }
+        { label: "Tow Trucks", href: "/app/tow-trucks" },
+        { label: "Tow Driver View", href: "/app/tow-driver" },
+        { label: "Driver Progress", href: "/app/driver/progress" }
       ]
     },
     {
       title: "Fleet",
       items: [
-        { label: "Fleet Management", href: "/fleet" },
-        { label: "Spotters", href: "/spotters/new" }
+        { label: "Fleet Management", href: "/app/fleet" },
+        { label: "Spotters", href: "/app/spotters/new" }
       ]
     },
     {
       title: "Admin",
       items: [
-        { label: "Users", href: "/admin/users" },
-        { label: "Markets", href: "/markets" },
-        { label: "Shift Management", href: "/admin/shift-management" },
-        { label: "Client Preferences", href: "/admin/clients" },
-        { label: "Scheduling", href: "/admin/scheduling" },
-        { label: "Zones", href: "/admin/zones" },
-        { label: "Reports", href: "/admin/reports" },
-        { label: "Action Items", href: "/admin/action-items" },
-        { label: "Storage Lots", href: "/admin/storage-lots" }
+        { label: "Users", href: "/app/admin/users" },
+        { label: "Markets", href: "/app/markets" },
+        { label: "Shift Management", href: "/app/admin/shift-management" },
+        { label: "Client Preferences", href: "/app/admin/clients" },
+        { label: "Scheduling", href: "/app/admin/scheduling" },
+        { label: "Zones", href: "/app/admin/zones" },
+        { label: "Zone Zip Codes", href: "/app/admin/zones/zip-codes" },
+        { label: "Reports", href: "/app/admin/reports" },
+        { label: "Action Items", href: "/app/admin/action-items" },
+        { label: "Storage Lots", href: "/app/admin/storage-lots" },
+        { label: "Alert Automation", href: "/app/admin/alert-automation" }
       ]
     }
   ];
 
   const isActive = (href: string) => {
-    if (href === '/') {
-      return pathname === '/';
+    if (href === '/app/dashboard') {
+      return pathname === '/app/dashboard';
     }
     return pathname.startsWith(href);
   };
@@ -108,7 +112,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
       <div className="h-screen pt-16 px-4 pb-4 flex flex-col">
         {/* Brand row */}
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-xl font-bold text-vizla-text-primary">Vizla Console</h1>
+          <Logo size="default" linkToHome={true} showText={true} />
           <button
             onClick={onClose}
             className="lg:hidden p-1 rounded-lg hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"

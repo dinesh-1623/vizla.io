@@ -114,6 +114,16 @@ function parseCoordinates(gpsField: string): { lat: number; lon: number } | null
     /(-?\d+\.?\d*),(-?\d+\.?\d*)/,
   ];
   
+  // Skip warning for fields that clearly don't contain coordinates
+  const nonCoordinatePatterns = [
+    /^(SEE|USER|PASS|LOGIN|UPDATED|LAST PING|A|LV|VA)$/i,
+    /^(USER|PASS|LOGIN|TEAM)/i,
+    /^[A-Z]{1,3}$/, // Single letters or short codes like "A", "LV", "VA"
+    /^(SEE OFFICE|USER:|PASS:)/i,
+  ];
+  
+  const looksLikeCoordinates = !nonCoordinatePatterns.some(pattern => pattern.test(gpsField.trim()));
+  
   for (const pattern of patterns) {
     const match = gpsField.match(pattern);
     if (match) {
@@ -127,7 +137,14 @@ function parseCoordinates(gpsField: string): { lat: number; lon: number } | null
     }
   }
   
-  console.warn('Could not parse coordinates from:', gpsField);
+  // Only warn if the field looked like it might contain coordinates
+  if (looksLikeCoordinates && gpsField.length > 5) {
+    // Check if it contains numbers (might be coordinates)
+    if (/\d/.test(gpsField)) {
+      console.warn('Could not parse coordinates from:', gpsField);
+    }
+  }
+  
   return null;
 }
 

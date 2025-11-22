@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { TowCard } from '@/app/tow-driver/data/baltimoreRun';
+import { findNearestLot } from '@/lib/services/nearestLotFinder';
+import { DEFAULT_LOT } from '@/lib/data/illinoisLots';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { GLASS_SURFACE, TEXT_STYLES, STATUS_COLORS } from '@/lib/constants';
-import { CheckCircle, Trash2, MapPin, Home, Package, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { CheckCircle, Trash2, MapPin, Home, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 
 interface VehicleCardProps {
   car: TowCard;
@@ -17,9 +19,41 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
   const [showMarkAsDone, setShowMarkAsDone] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showZoomModal, setShowZoomModal] = useState(false);
+  const [nearestLotAddress, setNearestLotAddress] = useState<string>(DEFAULT_LOT.address);
+  const [isFindingLot, setIsFindingLot] = useState(false);
 
   // Get all available images (multiple images from spotter submissions or fallback to single img)
   const allImages = car.images && car.images.length > 0 ? car.images : (car.img ? [car.img] : []);
+
+  // Find nearest lot based on vehicle coordinates (AI-powered optimization)
+  useEffect(() => {
+    const findLot = async () => {
+      if (car.lat && car.lng) {
+        setIsFindingLot(true);
+        try {
+          const result = await findNearestLot(car.lat, car.lng, true);
+          setNearestLotAddress(result.lot.address);
+          console.log(`✅ Nearest lot for vehicle ${car.id}:`, {
+            lot: result.lot.name,
+            address: result.lot.address,
+            distance: `${result.distance.miles.toFixed(2)} miles`,
+            duration: result.duration.text,
+            usingDistanceMatrix: result.distanceMatrixUsed
+          });
+        } catch (error) {
+          console.warn('⚠️ Failed to find nearest lot, using default:', error);
+          setNearestLotAddress(DEFAULT_LOT.address);
+        } finally {
+          setIsFindingLot(false);
+        }
+      } else {
+        // No coordinates, use default lot
+        setNearestLotAddress(DEFAULT_LOT.address);
+      }
+    };
+
+    findLot();
+  }, [car.lat, car.lng, car.id]);
   
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
@@ -57,104 +91,85 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
   const status = getStatus();
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder shadow-[0_2px_30px_rgba(0,0,0,0.25)] transition hover:shadow-[0_6px_40px_rgba(0,0,0,0.35)] hover:translate-y-[-1px] group p-4 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus focus-visible:outline-none">
+    <div className="overflow-hidden rounded-xl bg-vizla-glass backdrop-blur-md ring-1 ring-vizla-glassBorder shadow-[0_2px_30px_rgba(0,0,0,0.25)] transition hover:shadow-[0_6px_40px_rgba(0,0,0,0.35)] hover:translate-y-[-1px] group p-2.5 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus focus-visible:outline-none aspect-square flex flex-col h-full">
       {/* Header with status badge and step indicator */}
-      <div className="flex items-center justify-between mb-3">
-        <h3 className={`${TEXT_STYLES.HEADING_SECONDARY} truncate`}>{car.year} {car.make} {car.model}, {car.color}</h3>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-2 flex-shrink-0">
+        <h3 className={`text-xs font-semibold text-vizla-text-primary truncate flex-1 mr-2`}>{car.year} {car.make} {car.model}</h3>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {/* Eye icon for zoom view */}
           <button
             onClick={() => setShowZoomModal(true)}
-            className="p-1.5 text-vizla-text-muted hover:text-vizla-text-primary hover:bg-vizla-glassElev rounded-lg transition-colors"
+            className="p-1 text-vizla-text-muted hover:text-vizla-text-primary hover:bg-vizla-glassElev rounded transition-colors"
             title="View card details"
             aria-label="View card details"
           >
-            <Eye className="w-4 h-4" />
+            <Eye className="w-3 h-3" />
           </button>
           
           {stepNumber && (
-            <span className="bg-vizla-brand-primary/20 text-vizla-brand-primary text-xs px-2 py-1 rounded-full font-medium">
-              Step #{stepNumber}
+            <span className="bg-vizla-brand-primary/20 text-vizla-brand-primary text-[10px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap">
+              #{stepNumber}
             </span>
           )}
-          <span className={`${status.color} text-white text-xs px-2 py-1 rounded-full font-medium`}>
+          <span className={`${status.color} text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap`}>
             {status.text}
           </span>
         </div>
       </div>
 
-      {/* Vehicle details */}
-      <div className="space-y-2 mb-4">
-        <div className="flex justify-between text-sm">
-          <span className={TEXT_STYLES.BODY_MUTED}>Tag:</span>
-          <span className={`${TEXT_STYLES.BODY_SECONDARY} font-mono`}>{car.plate}</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className={TEXT_STYLES.BODY_MUTED}>VIN:</span>
-          <span className={`${TEXT_STYLES.BODY_SECONDARY} font-mono text-xs`}>{car.vin}</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className={TEXT_STYLES.BODY_MUTED}>Client:</span>
-          <span className={`${TEXT_STYLES.BODY_SECONDARY}`}>{car.client}</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className={TEXT_STYLES.BODY_MUTED}>Address:</span>
-          <span className={`${TEXT_STYLES.BODY_SECONDARY} text-xs`}>{car.street}, {car.city} {car.zip}</span>
-        </div>
-      </div>
-
-      {/* Vehicle Images - Carousel */}
-      <div className="mb-4">
-        <div className="relative w-full h-32 rounded-lg overflow-hidden bg-gray-800">
+      {/* Vehicle Images - Carousel - Smaller */}
+      <div className="mb-2 flex-shrink-0">
+        <div className="relative w-full aspect-[3/2] rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
           {allImages.length > 0 && allImages[currentImageIndex] !== '/placeholder.svg' ? (
             <>
               <img
                 src={allImages[currentImageIndex]}
                 alt={`${car.year} ${car.make} ${car.model} - Image ${currentImageIndex + 1}`}
                 className="w-full h-full object-cover"
-                onLoad={() => setImageLoading(false)}
-                onError={() => {
+                loading="lazy"
+            onLoad={() => setImageLoading(false)}
+            onError={() => {
                   console.log('Image failed to load:', allImages[currentImageIndex]);
                   setImageLoading(false);
-                  setImageError(true);
+              setImageError(true);
                 }}
               />
               
-              {/* Navigation Arrows - only show if multiple images */}
+              {/* Navigation Arrows - only show if multiple images - Smaller */}
               {allImages.length > 1 && (
                 <>
                   <button
                     onClick={prevImage}
-                    className="absolute left-1 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full transition-colors"
+                    className="absolute left-0.5 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-0.5 rounded-full transition-colors"
                     aria-label="Previous image"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-3 h-3" />
                   </button>
                   <button
                     onClick={nextImage}
-                    className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full transition-colors"
+                    className="absolute right-0.5 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-0.5 rounded-full transition-colors"
                     aria-label="Next image"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-3 h-3" />
                   </button>
                 </>
               )}
               
-              {/* Image Counter - only show if multiple images */}
+              {/* Image Counter - only show if multiple images - Smaller */}
               {allImages.length > 1 && (
-                <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-2 py-1 rounded-full text-xs">
-                  {currentImageIndex + 1} / {allImages.length}
+                <div className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-1.5 py-0.5 rounded-full text-[10px]">
+                  {currentImageIndex + 1}/{allImages.length}
                 </div>
               )}
               
-              {/* Image Dots - only show if multiple images */}
+              {/* Image Dots - only show if multiple images - Smaller */}
               {allImages.length > 1 && (
-                <div className="absolute bottom-1 right-1 flex gap-1">
+                <div className="absolute bottom-0.5 right-0.5 flex gap-0.5">
                   {allImages.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
-                      className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                      className={`w-1 h-1 rounded-full transition-colors ${
                         index === currentImageIndex ? 'bg-white' : 'bg-white/50'
                       }`}
                       aria-label={`Go to image ${index + 1}`}
@@ -166,8 +181,8 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-800 text-gray-400">
               <div className="text-center">
-                <div className="w-8 h-8 mx-auto mb-2">🚗</div>
-                <p className="text-xs">No image available</p>
+                <div className="w-6 h-6 mx-auto mb-1 text-xl">🚗</div>
+                <p className="text-[10px]">No image</p>
               </div>
             </div>
           )}
@@ -181,110 +196,111 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
           {imageError && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-800 text-gray-400">
               <div className="text-center">
-                <div className="w-8 h-8 mx-auto mb-2">🚗</div>
-                <p className="text-xs">Image unavailable</p>
+                <div className="w-6 h-6 mx-auto mb-1 text-xl">🚗</div>
+                <p className="text-[10px]">Unavailable</p>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="space-y-3 mt-4">
-        {/* Route buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              // Build Google Maps URL: Lot → Vehicle → Lot
-              console.log('🔍 VehicleCard - car.fullAddress:', car.fullAddress);
-              
-              const baseUrl = 'https://www.google.com/maps/dir/';
-              const origin = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226'); // LOT_ADDRESS
-              
-              // Use the best address for Google Maps
-              let cleanVehicleAddress = car.fullAddress;
-              
-              // If car has default coordinates, use the street address
-              if (car.isDefaultCoords && car.street) {
-                cleanVehicleAddress = `${car.street}, ${car.city}, ${car.zip}`;
-                console.log('🔍 Using street address for default coords:', cleanVehicleAddress);
-              } else if (cleanVehicleAddress.includes('21231,')) {
-                // Remove corrupted coordinates and use just the street address
-                cleanVehicleAddress = car.street + ', Baltimore, MD';
-                console.log('🧹 Cleaned corrupted address:', cleanVehicleAddress);
-              } else {
-                // If no corrupted coordinates, use the full address
-                cleanVehicleAddress = car.fullAddress;
-              }
-              
-              const vehicleAddress = encodeURIComponent(cleanVehicleAddress);
-              const destination = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226'); // LOT_ADDRESS
-              const url = `${baseUrl}${origin}/${vehicleAddress}/${destination}`;
-              
-              console.log('🔗 Google Maps URL:', url);
-              window.open(url, '_blank', 'noopener,noreferrer');
-            }}
-            className="flex-1 bg-vizla-brand-primary text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-          >
-            Start Route (Lot)
-          </button>
-          <button
-            onClick={() => {
-              // Build Google Maps URL: Lot → Vehicle → Stash
-              console.log('🔍 VehicleCard (Stash) - car.fullAddress:', car.fullAddress);
-              
-              const baseUrl = 'https://www.google.com/maps/dir/';
-              const origin = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226'); // LOT_ADDRESS
-              
-              // Use the best address for Google Maps
-              let cleanVehicleAddress = car.fullAddress;
-              
-              // If car has default coordinates, use the street address
-              if (car.isDefaultCoords && car.street) {
-                cleanVehicleAddress = `${car.street}, ${car.city}, ${car.zip}`;
-                console.log('🔍 Using street address for default coords (Stash):', cleanVehicleAddress);
-              } else if (cleanVehicleAddress.includes('21231,')) {
-                // Remove corrupted coordinates and use just the street address
-                cleanVehicleAddress = car.street + ', Baltimore, MD';
-                console.log('🧹 Cleaned corrupted address (Stash):', cleanVehicleAddress);
-              } else {
-                // If no corrupted coordinates, use the full address
-                cleanVehicleAddress = car.fullAddress;
-              }
-              
-              const vehicleAddress = encodeURIComponent(cleanVehicleAddress);
-              const destination = encodeURIComponent('751 W Patapsco Ave, Halethorpe, MD 21227'); // STASH_ADDRESS
-              const url = `${baseUrl}${origin}/${vehicleAddress}/${destination}`;
-              
-              console.log('🔗 Google Maps URL (Stash):', url);
-              window.open(url, '_blank', 'noopener,noreferrer');
-            }}
-            className="flex-1 bg-vizla-glass text-vizla-text-secondary px-3 py-2 rounded-lg text-sm font-medium ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
-          >
-            Start Route (Stash)
-          </button>
+      {/* Vehicle details - All details visible in square card */}
+      <div className="space-y-1 mb-2 flex-grow flex flex-col min-h-0 overflow-hidden">
+        <div className="flex justify-between items-center gap-1.5 min-w-0">
+          <span className="text-vizla-text-muted text-[11px] flex-shrink-0 whitespace-nowrap">Tag:</span>
+          <span className="text-vizla-text-secondary font-mono text-right text-[11px] truncate min-w-0">{car.plate || '—'}</span>
         </div>
+        <div className="flex justify-between items-center gap-1.5 min-w-0">
+          <span className="text-vizla-text-muted text-[11px] flex-shrink-0 whitespace-nowrap">VIN:</span>
+          <span className="text-vizla-text-secondary font-mono text-right text-[11px] truncate min-w-0" title={car.vin}>{car.vin || '—'}</span>
+        </div>
+        <div className="flex justify-between items-center gap-1.5 min-w-0">
+          <span className="text-vizla-text-muted text-[11px] flex-shrink-0 whitespace-nowrap">Client:</span>
+          <span className="text-vizla-text-secondary text-right text-[11px] truncate min-w-0" title={car.client}>{car.client || '—'}</span>
+        </div>
+        <div className="flex justify-between items-start gap-1.5 min-w-0">
+          <span className="text-vizla-text-muted text-[11px] flex-shrink-0 whitespace-nowrap">Address:</span>
+          <span className="text-vizla-text-secondary text-right text-[11px] line-clamp-2 leading-tight min-w-0 break-words" title={`${car.street}, ${car.city} ${car.zip}`}>
+            {car.street ? `${car.street}, ${car.city} ${car.zip}` : '—'}
+          </span>
+        </div>
+      </div>
 
-        {/* Mark as Done button */}
+      {/* Action buttons - Compact */}
+      <div className="space-y-1.5 mt-auto flex-shrink-0 pt-1">
+        {/* Route button - Compact */}
         <button
-          onClick={() => setShowMarkAsDone(!showMarkAsDone)}
-          className="w-full bg-green-500/20 text-green-400 px-3 py-2 rounded-lg text-sm font-medium border border-green-500/30 hover:bg-green-500/30 focus-visible:ring-2 focus-visible:ring-green-500/50 transition-colors flex items-center justify-center gap-2"
+          onClick={async () => {
+            // Build Google Maps URL: Nearest Lot → Vehicle → Nearest Lot
+            console.log('🔍 VehicleCard - Finding nearest lot for:', car.fullAddress);
+            
+            // Get nearest lot (use cached or find new)
+            let lotAddress = nearestLotAddress;
+            if (car.lat && car.lng) {
+              try {
+                const result = await findNearestLot(car.lat, car.lng, true);
+                lotAddress = result.lot.address;
+                setNearestLotAddress(lotAddress);
+                console.log(`✅ Using nearest lot: ${result.lot.name} (${result.duration.text})`);
+              } catch (error) {
+                console.warn('⚠️ Error finding nearest lot, using cached:', error);
+              }
+            }
+            
+            const baseUrl = 'https://www.google.com/maps/dir/';
+            const origin = encodeURIComponent(lotAddress);
+            
+            // Use the best address for Google Maps
+            // Build address from parsed components to ensure correct city/state/zip
+            let cleanVehicleAddress: string;
+            
+            if (car.street && car.city && car.zip) {
+              // Use parsed components - this preserves the original city/state/zip
+              cleanVehicleAddress = `${car.street}, ${car.city}, ${car.zip}`;
+              console.log('🔍 Using parsed address components:', cleanVehicleAddress);
+            } else if (car.fullAddress) {
+              // Fallback to fullAddress if components aren't available
+              // Remove any appended coordinates
+              cleanVehicleAddress = car.fullAddress.replace(/,\s*-?\d{1,2}\.\d+,\s*-?\d{1,3}\.\d+\s*$/, '').trim();
+              console.log('🔍 Using cleaned fullAddress:', cleanVehicleAddress);
+            } else {
+              // Last resort - use street only
+              cleanVehicleAddress = car.street || 'Unknown Address';
+              console.log('⚠️ Using street only:', cleanVehicleAddress);
+            }
+            
+            const vehicleAddress = encodeURIComponent(cleanVehicleAddress);
+            const destination = encodeURIComponent(lotAddress);
+            const url = `${baseUrl}${origin}/${vehicleAddress}/${destination}`;
+            
+            console.log('🔗 Google Maps URL (Nearest Lot):', url);
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }}
+          className="w-full bg-vizla-brand-primary text-white px-2 py-1.5 rounded text-[10px] font-medium hover:bg-vizla-brand-primary/80 focus-visible:ring-2 focus-visible:ring-vizla-ring-focus transition-colors"
         >
-          <CheckCircle className="w-4 h-4" />
-          Mark as Done
+          Direction to Lot
         </button>
 
-        {/* Mark as Done options */}
+        {/* Mark as Done button - Compact */}
+        <button
+          onClick={() => setShowMarkAsDone(!showMarkAsDone)}
+          className="w-full bg-green-500/20 text-green-400 px-2 py-1.5 rounded text-[10px] font-medium border border-green-500/30 hover:bg-green-500/30 focus-visible:ring-2 focus-visible:ring-green-500/50 transition-colors flex items-center justify-center gap-1"
+        >
+          <CheckCircle className="w-3 h-3" />
+          Done
+        </button>
+
+        {/* Mark as Done options - Compact */}
         {showMarkAsDone && (
-          <div className="grid grid-cols-2 gap-2 p-3 bg-gray-800/50 rounded-lg border border-gray-600">
+          <div className="grid grid-cols-3 gap-1.5 p-2 bg-gray-800/50 rounded-lg border border-gray-600">
             <button
               onClick={() => {
                 onMarkAsDone?.(car.id, 'collected');
                 setShowMarkAsDone(false);
               }}
-              className="flex items-center gap-2 px-3 py-2 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-500/30 transition-colors"
+              className="flex items-center gap-1 px-2 py-1.5 bg-blue-500/20 text-blue-400 rounded text-[10px] font-medium hover:bg-blue-500/30 transition-colors"
             >
-              <CheckCircle className="w-3 h-3" />
+              <CheckCircle className="w-2.5 h-2.5" />
               Collected
             </button>
             <button
@@ -292,29 +308,19 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
                 onMarkAsDone?.(car.id, 'dropped-lot');
                 setShowMarkAsDone(false);
               }}
-              className="flex items-center gap-2 px-3 py-2 bg-orange-500/20 text-orange-400 rounded-lg text-xs font-medium hover:bg-orange-500/30 transition-colors"
+              className="flex items-center gap-1 px-2 py-1.5 bg-orange-500/20 text-orange-400 rounded text-[10px] font-medium hover:bg-orange-500/30 transition-colors"
             >
-              <Home className="w-3 h-3" />
-              Dropped at Lot
-            </button>
-            <button
-              onClick={() => {
-                onMarkAsDone?.(car.id, 'dropped-stash');
-                setShowMarkAsDone(false);
-              }}
-              className="flex items-center gap-2 px-3 py-2 bg-purple-500/20 text-purple-400 rounded-lg text-xs font-medium hover:bg-purple-500/30 transition-colors"
-            >
-              <Package className="w-3 h-3" />
-              Dropped at Stash
+              <Home className="w-2.5 h-2.5" />
+              At Lot
             </button>
             <button
               onClick={() => {
                 onMarkAsDone?.(car.id, 'delete');
                 setShowMarkAsDone(false);
               }}
-              className="flex items-center gap-2 px-3 py-2 bg-red-500/20 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/30 transition-colors"
+              className="flex items-center gap-1 px-2 py-1.5 bg-red-500/20 text-red-400 rounded text-[10px] font-medium hover:bg-red-500/30 transition-colors"
             >
-              <Trash2 className="w-3 h-3" />
+              <Trash2 className="w-2.5 h-2.5" />
               Delete
             </button>
           </div>
@@ -458,19 +464,34 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3 pt-4 border-t border-vizla-glassBorder">
               <button
-                onClick={() => {
-                  const baseUrl = 'https://www.google.com/maps/dir/';
-                  const origin = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226');
-                  let cleanVehicleAddress = car.fullAddress;
+                onClick={async () => {
+                  // Get nearest lot if not already found
+                  let lotAddress = nearestLotAddress;
+                  if (car.lat && car.lng) {
+                    try {
+                      const result = await findNearestLot(car.lat, car.lng, true);
+                      lotAddress = result.lot.address;
+                      setNearestLotAddress(lotAddress);
+                    } catch (error) {
+                      console.warn('⚠️ Error finding nearest lot:', error);
+                    }
+                  }
                   
-                  if (car.isDefaultCoords && car.street) {
+                  const baseUrl = 'https://www.google.com/maps/dir/';
+                  const origin = encodeURIComponent(lotAddress);
+                  
+                  // Build clean vehicle address
+                  let cleanVehicleAddress: string;
+                  if (car.street && car.city && car.zip) {
                     cleanVehicleAddress = `${car.street}, ${car.city}, ${car.zip}`;
-                  } else if (cleanVehicleAddress.includes('21231,')) {
-                    cleanVehicleAddress = car.street + ', Baltimore, MD';
+                  } else if (car.fullAddress) {
+                    cleanVehicleAddress = car.fullAddress.replace(/,\s*-?\d{1,2}\.\d+,\s*-?\d{1,3}\.\d+\s*$/, '').trim();
+                  } else {
+                    cleanVehicleAddress = car.street || 'Unknown Address';
                   }
                   
                   const vehicleAddress = encodeURIComponent(cleanVehicleAddress);
-                  const destination = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226');
+                  const destination = encodeURIComponent(lotAddress);
                   const url = `${baseUrl}${origin}/${vehicleAddress}/${destination}`;
                   
                   window.open(url, '_blank', 'noopener,noreferrer');
@@ -481,29 +502,6 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
                 Start Route (Lot)
               </button>
               
-              <button
-                onClick={() => {
-                  const baseUrl = 'https://www.google.com/maps/dir/';
-                  const origin = encodeURIComponent('4221 Curtis Ave, Baltimore, MD 21226');
-                  let cleanVehicleAddress = car.fullAddress;
-                  
-                  if (car.isDefaultCoords && car.street) {
-                    cleanVehicleAddress = `${car.street}, ${car.city}, ${car.zip}`;
-                  } else if (cleanVehicleAddress.includes('21231,')) {
-                    cleanVehicleAddress = car.street + ', Baltimore, MD';
-                  }
-                  
-                  const vehicleAddress = encodeURIComponent(cleanVehicleAddress);
-                  const destination = encodeURIComponent('751 W Patapsco Ave, Halethorpe, MD 21227');
-                  const url = `${baseUrl}${origin}/${vehicleAddress}/${destination}`;
-                  
-                  window.open(url, '_blank', 'noopener,noreferrer');
-                }}
-                className="flex-1 min-w-32 bg-vizla-glass text-vizla-text-secondary px-4 py-3 rounded-lg text-sm font-medium ring-1 ring-vizla-glassBorder hover:bg-vizla-glassElev transition-colors flex items-center justify-center gap-2"
-              >
-                <Package className="w-4 h-4" />
-                Start Route (Stash)
-              </button>
               
               <button
                 onClick={() => {
@@ -518,7 +516,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
 
             {/* Mark as Done options in modal */}
             {showMarkAsDone && (
-              <div className="grid grid-cols-2 gap-3 p-4 bg-vizla-glassElev rounded-lg border border-vizla-glassBorder">
+              <div className="grid grid-cols-3 gap-3 p-4 bg-vizla-glassElev rounded-lg border border-vizla-glassBorder">
                 <button
                   onClick={() => {
                     onMarkAsDone?.(car.id, 'collected');
@@ -538,16 +536,6 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, stepNumber, onMar
                 >
                   <Home className="w-4 h-4" />
                   Dropped at Lot
-                </button>
-                <button
-                  onClick={() => {
-                    onMarkAsDone?.(car.id, 'dropped-stash');
-                    setShowMarkAsDone(false);
-                  }}
-                  className="flex items-center gap-2 px-4 py-3 bg-purple-500/20 text-purple-400 rounded-lg text-sm font-medium hover:bg-purple-500/30 transition-colors"
-                >
-                  <Package className="w-4 h-4" />
-                  Dropped at Stash
                 </button>
                 <button
                   onClick={() => {

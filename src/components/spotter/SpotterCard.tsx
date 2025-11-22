@@ -41,7 +41,7 @@ export const SpotterCard: React.FC<SpotterCardProps> = ({ submission, className 
   return (
     <GlassCard className={`overflow-hidden ${className}`}>
       {/* Vehicle Photos - Carousel */}
-      <div className="w-full h-64 bg-gray-900 overflow-hidden relative">
+      <div className="w-full h-40 bg-gray-900 overflow-hidden relative">
         {images.length > 0 ? (
           <>
             <img
@@ -57,41 +57,50 @@ export const SpotterCard: React.FC<SpotterCardProps> = ({ submission, className 
               }}
             />
             
-            {/* Navigation Arrows */}
+            {/* Navigation Arrows - Smaller */}
             {images.length > 1 && (
               <>
                 <button
-                  onClick={prevImage}
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    prevImage();
+                  }}
+                  className="absolute left-1 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full transition-colors"
                   aria-label="Previous image"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-3 h-3" />
                 </button>
                 <button
-                  onClick={nextImage}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextImage();
+                  }}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full transition-colors"
                   aria-label="Next image"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-3 h-3" />
                 </button>
               </>
             )}
             
-            {/* Image Counter */}
+            {/* Image Counter - Smaller */}
             {images.length > 1 && (
-              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+              <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-2 py-0.5 rounded-full text-xs">
                 {currentImageIndex + 1} / {images.length}
               </div>
             )}
             
-            {/* Image Dots */}
+            {/* Image Dots - Smaller */}
             {images.length > 1 && (
-              <div className="absolute bottom-2 right-2 flex gap-1">
+              <div className="absolute bottom-1 right-1 flex gap-0.5">
                 {images.map((_, index) => (
                   <button
                     key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`w-2 h-2 rounded-full transition-colors ${
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentImageIndex(index);
+                    }}
+                    className={`w-1.5 h-1.5 rounded-full transition-colors ${
                       index === currentImageIndex ? 'bg-white' : 'bg-white/50'
                     }`}
                     aria-label={`Go to image ${index + 1}`}
@@ -103,105 +112,79 @@ export const SpotterCard: React.FC<SpotterCardProps> = ({ submission, className 
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-800">
             <div className="text-center text-gray-400">
-              <Camera className="w-12 h-12 mx-auto mb-2" />
-              <p>No images available</p>
+              <Camera className="w-8 h-8 mx-auto mb-1" />
+              <p className="text-xs">No images</p>
             </div>
           </div>
         )}
       </div>
       
       {/* Vehicle Information - Below the image */}
-      <div className="p-6 bg-vizla-glass">
+      <div className="p-3 bg-vizla-glass">
         {/* Title */}
-        <h3 className="text-xl font-bold text-vizla-text-primary mb-3">
-          {submission.year} {submission.make} {submission.model}, {submission.color}
+        <h3 className="text-sm font-bold text-vizla-text-primary mb-2 line-clamp-1">
+          {submission.year} {submission.make} {submission.model}
         </h3>
         
         {/* Plate */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className="font-mono text-sm bg-vizla-glassElev px-3 py-1 rounded-full text-vizla-text-secondary">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="font-mono text-xs bg-vizla-glassElev px-2 py-0.5 rounded text-vizla-text-secondary">
             {submission.plate}
           </span>
+          <span className="text-xs text-vizla-text-muted">{submission.color}</span>
         </div>
         
-        {/* Address and Client */}
-        <div className="flex items-start gap-2 mb-4">
-          <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-vizla-text-muted" />
-          <div className="text-sm">
-            <div className="text-vizla-text-primary">{submission.address}</div>
-            <div className="text-vizla-text-muted">{submission.client}</div>
-          </div>
+        {/* Client */}
+        <div className="mb-2">
+          <div className="text-xs text-vizla-text-muted truncate">{submission.client}</div>
         </div>
         
-        {/* Time */}
-        <div className="flex items-center gap-2 mb-4">
-          <Clock className="w-4 h-4 text-vizla-text-muted" />
-          <span className="text-sm text-vizla-text-secondary">{formatRelativeTime(submission.createdAtISO)}</span>
+        {/* Address */}
+        <div className="flex items-start gap-1 mb-2">
+          <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0 text-vizla-text-muted" />
+          <div className="text-xs text-vizla-text-primary line-clamp-1">{submission.address}</div>
         </div>
         
-        {/* Status Indicators */}
-        <div className="flex items-center gap-4 mb-4">
-          {/* Reachable */}
-          <div className="flex items-center gap-2">
+        {/* Status Indicators - Compact */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-1">
             {submission.reachable === 'Reachable' ? (
-              <Check className="w-4 h-4 text-green-400" />
+              <Check className="w-3 h-3 text-green-400" />
             ) : (
-              <X className="w-4 h-4 text-red-400" />
+              <X className="w-3 h-3 text-red-400" />
             )}
-            <span className="text-sm text-vizla-text-primary">
+            <span className="text-xs text-vizla-text-secondary">
               {submission.reachable === 'Reachable' ? 'Reachable' : 'Not reachable'}
             </span>
           </div>
           
-          {/* Rusted */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {submission.rusted === 'Not rusted' ? (
-              <Check className="w-4 h-4 text-green-400" />
+              <Check className="w-3 h-3 text-green-400" />
             ) : (
-              <X className="w-4 h-4 text-red-400" />
+              <X className="w-3 h-3 text-red-400" />
             )}
-            <span className="text-sm text-vizla-text-primary">
+            <span className="text-xs text-vizla-text-secondary">
               {submission.rusted === 'Not rusted' ? 'Not rusted' : 'Rusted'}
             </span>
           </div>
         </div>
         
-        {/* Additional Details */}
-        <div className="grid grid-cols-2 gap-4 text-sm pt-4 border-t border-vizla-glassBorder">
-          <div>
-            <span className="text-vizla-text-muted">VIN:</span>
-            <span className="ml-2 font-mono text-vizla-text-primary">{submission.vin}</span>
+        {/* Time and Location - Compact */}
+        <div className="flex items-center justify-between text-xs pt-2 border-t border-vizla-glassBorder">
+          <div className="flex items-center gap-1 text-vizla-text-muted">
+            <Clock className="w-3 h-3" />
+            <span>{formatRelativeTime(submission.createdAtISO)}</span>
           </div>
-          <div>
-            <span className="text-vizla-text-muted">Location:</span>
-            <span className="ml-2 text-vizla-text-primary">{submission.locationType}</span>
-          </div>
-          <div>
-            <span className="text-vizla-text-muted">Parked:</span>
-            <span className="ml-2 text-vizla-text-primary">{submission.parked}</span>
-          </div>
-          <div>
-            <span className="text-vizla-text-muted">Spotter:</span>
-            <span className="ml-2 text-vizla-text-primary">{submission.createdBy}</span>
+          <div className="text-vizla-text-muted truncate max-w-[120px]">
+            {submission.locationType}
           </div>
         </div>
         
-        {/* Notes */}
-        {submission.notes.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-vizla-glassBorder">
-            <span className="text-vizla-text-muted text-sm">Notes:</span>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {submission.notes.map((note, index) => (
-                <span
-                  key={index}
-                  className="px-2 py-1 bg-vizla-brand-primary/20 text-vizla-brand-primary text-xs rounded-full"
-                >
-                  {note}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* VIN - Compact (hidden by default, can show on hover if needed) */}
+        <div className="mt-1 text-xs text-vizla-text-muted truncate font-mono">
+          {submission.vin.substring(0, 8)}...
+        </div>
       </div>
     </GlassCard>
   );

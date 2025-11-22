@@ -1,12 +1,60 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import AppShell from '@/components/shell/AppShell';
-import { getCarsByQueue } from '@/lib/mockState';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { DataTable } from '@/components/ui/DataTable';
+import { useVehicles } from '@/hooks/useVehicles';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 const Stashed: React.FC = () => {
-  const stashedCars = getCarsByQueue('stashed');
+  // Load vehicles from unified data source
+  const { data: vehicles, isLoading, error, refetch } = useVehicles({ status: 'Stashed' });
+
+  // Transform vehicles to table format
+  const stashedCars = useMemo(() => {
+    if (!vehicles) return [];
+    return vehicles.map(vehicle => ({
+      id: vehicle.id,
+      yearMakeModel: `${vehicle.year || 'N/A'} ${vehicle.make || ''} ${vehicle.model || ''}`.trim(),
+      client: vehicle.client || 'Unknown',
+      zone: vehicle.zone || 'Unknown',
+      locatedDate: vehicle.locatedAt ? new Date(vehicle.locatedAt).toISOString().split('T')[0] : 'N/A',
+    }));
+  }, [vehicles]);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <AppShell title="Stashed">
+        <div className="space-y-6">
+          <Skeleton className="h-12 w-full" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map(i => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <AppShell title="Stashed">
+        <div className="space-y-6">
+          <GlassCard>
+            <div className="text-center py-8">
+              <p className="text-red-400 mb-4">Error loading vehicles: {error instanceof Error ? error.message : 'Unknown error'}</p>
+              <Button onClick={() => refetch()}>Try Again</Button>
+            </div>
+          </GlassCard>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell title="Stashed">
@@ -64,7 +112,7 @@ const Stashed: React.FC = () => {
               client: car.client,
               zone: car.zone,
               stored: car.locatedDate,
-              storage: 'Lot A'
+              storage: 'Lot A' // TODO: Get from vehicle data when available
             }))}
             emptyText="No vehicles in storage"
           />

@@ -1,12 +1,8 @@
+// Chicago Storage Lots for Test Drivers
 export const STORAGE_LOTS = [
-  "11051 Pulaski Hwy, White Marsh, MD 21162",
-  "12 Peoples Dr, Newark, DE 19702", 
-  "2507 Bladensburg Road NE, Washington, DC 20018",
-  "4221 Curtis Ave, Baltimore, MD 21226",
-  "5090 Mountville Road, Fredrick, MD 21703",
-  "700 West Sunset Ave., Greensboro, MD 21639",
-  "7908 Bellefonte Lane, Clinton, MD 20735",
-  "8595 Dorsey Run Road, Annapolis Junction, MD 20701" // Investigation & Recovery
+  "12109 Paulina St, Calumet Park, IL 60827",
+  "4699 W Lake St, Melrose Park, IL 60160",
+  "827 Gardner St, Joliet, IL 60433"
 ] as const;
 
 export type StorageLot = typeof STORAGE_LOTS[number];

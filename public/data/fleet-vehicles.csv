@@ -1,0 +1,21 @@
+id,vin,make,model,year,type,driver_name,status,maintenance_status,starting_point,location,storage_lot,zone,market,shift,shift_goal_current,shift_goal_total
+fleet-001,4RM6DSH6J6X5945L7,Chevrolet,Silverado 3500,2021,Spotter,James Brown,Active,,Not Fixed,North Stash,Main Storage Lot,Buckhead,Atlanta,,3,15
+fleet-002,UYXFJKR1KPE33Y63D,Chevrolet,Silverado 3500,2020,Rollback,Emily Rodriguez,Inactive,,Not Fixed,East Lot,Main Storage Lot,North Perimeter,Atlanta,Day,7,19
+fleet-003,R8RU48B1Y2L6JB2BF,Ford,F-450,2024,Tow Truck,Michael Rodriguez,Maintenance,Engine check,Not Fixed,West Lot,Main Storage Lot,Downtown,Atlanta,Night,17,21
+fleet-004,U3TF7BDZRECBSNBKS,Ford,F-250,2021,Tow Truck,Olivia Brown,Active,,Not Fixed,East Lot,Main Storage Lot,South,Atlanta,Night,12,20
+fleet-005,LWGBW12NESGWHCZ40,Ford,F-450,2021,Rollback,William Lee,Active,,Fixed,North Stash,Main Storage Lot,South,Atlanta,,3,24
+fleet-006,4MU764UXSFU5S61YB,Ford,F-550,2022,Spotter,John Anderson,Active,,Not Fixed,West Lot,Main Storage Lot,Downtown,Atlanta,,4,22
+fleet-007,ANFS38S785BFVR2SW,Chevrolet,Silverado 3500,2024,Tow Truck,Sarah Johnson,Active,,Not Fixed,Central Yard,North Stash,South Valley,Phoenix,,17,19
+fleet-008,WTRHNXHMNP7UVGNVR,Ford,F-250,2022,Tow Truck,Olivia Brown,Active,,Not Fixed,West Lot,Main Storage Lot,Eastside,Atlanta,,8,22
+fleet-009,GAV775YMDT7HE28ED,Ram,3500,2019,Tow Truck,Sarah Rodriguez,Active,,Fixed,Central Yard,Main Storage Lot,Metro,Phoenix,Night,15,17
+fleet-010,155W4WDGPPTFLSMEL,Ford,F-450,2019,Spotter,Maria Thomas,Active,,Fixed,Central Yard,Main Storage Lot,West,Baltimore,,7,24
+fleet-011,RTN4HRKUKEDLWV5H6,Ford,F-550,2021,Tow Truck,,Active,,Not Fixed,West Lot,Main Storage Lot,North,Baltimore,,2,22
+fleet-012,TBFRBUCM75UM48F7Z,Ford,F-250,2020,Rollback,Michael Rodriguez,Maintenance,Electrical,Not Fixed,East Lot,Central Storage,West,Baltimore,,19,20
+fleet-013,C6FXTXH29A63DN085,Chevrolet,Silverado 3500,2020,Tow Truck,,Active,,Fixed,East Lot,West Lot,East Mesa,Phoenix,Night,12,25
+fleet-014,LWA3FRH6HK8V9U377,Ram,2500,2018,Tow Truck,Maria Thomas,Active,,Not Fixed,Main Lot,Main Storage Lot,Buckhead,Atlanta,,7,24
+fleet-015,VW8K57ZY16XNS1R3C,Ford,F-450,2021,Spotter,Sarah Johnson,Active,,Fixed,West Lot,Main Storage Lot,South,Baltimore,,0,19
+fleet-016,G5G6AK3KE7TY2FY1X,Ram,3500,2023,Spotter,,Maintenance,Electrical,Not Fixed,North Stash,Central Storage,West,Dallas,,10,24
+fleet-017,GG5LWBCXDVZ04KS3M,Ford,F-250,2023,Rollback,Olivia Brown,Inactive,,Fixed,West Lot,South Yard,North,Baltimore,Day,13,16
+fleet-018,6TA6VLE5ZW4T6WN17,Ford,F-450,2019,Tow Truck,James Brown,Inactive,,Fixed,North Stash,Main Storage Lot,Eastside,Atlanta,Night,8,25
+fleet-019,8VRZRNTJGCW5C0JFV,Ford,F-550,2019,Tow Truck,James Brown,Active,,Not Fixed,East Lot,West Lot,Metro,Phoenix,Night,1,15
+fleet-020,6EKR20F2ATH60T10G,Ram,3500,2023,Tow Truck,Sarah Johnson,Active,,Not Fixed,East Lot,North Stash,North Valley,Phoenix,Night,3,20
